@@ -1,0 +1,20 @@
+{
+  "name": "pi-trellis",
+  "version": "0.1.0",
+  "description": "Project-local pi extension for Trellis: task context injection, footer task status, subagent context handoff. No generated files, no AGPL code.",
+  "license": "MIT",
+  "keywords": [
+    "pi-package",
+    "pi",
+    "pi-extension",
+    "trellis"
+  ],
+  "pi": {
+    "extensions": [
+      "extensions/trellis.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  }
+}
