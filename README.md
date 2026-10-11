@@ -22,17 +22,33 @@ What it deliberately does **not** do: implement subagents (that is [`@tintinweb/
 # 1. Trellis core, without the --pi adapter layer
 trellis init -u <your-name>
 
-# 2. this extension, project-locally
-pi install -l git:github.com/<you>/pi-trellis
+# 2. this extension
+curl -fsSL https://raw.githubusercontent.com/AkiChase/pi-trellis/main/scripts/install.sh | bash
 
 # 3. first start asks for project trust — approve once
 pi
 ```
 
+The installer checks pi, the Trellis version, python3, and `.trellis/scripts/`,
+reports which skill directory will be bridged, warns if the project also has a
+generated `trellis init --pi` adapter, then runs `pi install -l`. Options:
+
+| Flag | Effect |
+|---|---|
+| `--source <spec>` | What to install. Defaults to the git source; pass a path for a local checkout. |
+| `--neutral-skills` | Also run `trellis init --codex` so Trellis writes platform-neutral skills to `.agents/skills/`, the directory pi discovers natively. Adds a `.codex/` directory. |
+| `--dry-run` | Print what would happen, change nothing. |
+
+Or skip the script entirely:
+
+```bash
+pi install -l git:github.com/AkiChase/pi-trellis
+```
+
 Uninstall:
 
 ```bash
-pi uninstall -l git:github.com/<you>/pi-trellis
+pi uninstall -l git:github.com/AkiChase/pi-trellis
 rm -rf .pi/agents/trellis-*.md .pi/.pi-trellis-hashes.json
 ```
 
@@ -58,13 +74,13 @@ Whether they belong in git is your call:
 
 ## Known limitations
 
-**pi cannot see Trellis skills, and this extension only works around it.** `trellis init` writes skills per platform; its default targets (`.claude/skills/`, `.cursor/skills/`) are not directories pi discovers. The skill bridge hands pi the `trellis-*` skills from the first directory that exists, in this order:
+**pi cannot see Trellis skills, and this extension only works around it.** `trellis init` writes skills per platform; its default targets (`.claude/skills/`, `.cursor/skills/`) are not directories pi discovers. Nothing is vendored here — this repository contains no skill text. The bridge hands pi the `trellis-*` skills that your own Trellis install already wrote, from the first directory that exists:
 
 1. `.agents/skills/` — pi finds these natively, so the bridge stays out of the way
 2. `.claude/skills/`
 3. `.cursor/skills/`
 
-Falling back to 2 or 3 means the skill text was rendered for another platform: it refers to `/trellis:continue` and similar slash commands, **which do not exist in pi**. Read those as "follow the matching flow in `.trellis/workflow.md`". For byte-neutral skill text instead, run `trellis init -u <name> --codex`, which writes `.agents/skills/` — at the cost of a `.codex/` directory.
+Falling back to 2 or 3 means the skill text was rendered for another platform: it refers to `/trellis:continue` and similar slash commands, **which do not exist in pi**. Read those as "follow the matching flow in `.trellis/workflow.md`". For neutral text instead, install with `--neutral-skills` (or run `trellis init --codex` yourself), which makes Trellis write `.agents/skills/` — at the cost of a `.codex/` directory.
 
 **The workflow section is an excerpt.** Only the stable head of `.trellis/workflow.md` is injected (about 10 KB), with platform blocks that do not name Pi removed. Per-phase detail is loaded on demand via `get_context.py --mode phase --step <N.N>`; the model is told so.
 

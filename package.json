@@ -16,5 +16,13 @@
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AkiChase/pi-trellis.git"
+  },
+  "homepage": "https://github.com/AkiChase/pi-trellis#readme",
+  "bugs": {
+    "url": "https://github.com/AkiChase/pi-trellis/issues"
   }
 }
