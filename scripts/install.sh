@@ -15,6 +15,8 @@
 #                       write platform-neutral skills to .agents/skills/ —
 #                       the directory pi discovers natively. Adds a .codex/
 #                       directory to the project.
+#   --check             Run the checks only; do not install anything. Useful
+#                       after the fact to diagnose a project.
 #   --dry-run           Print what would happen, change nothing.
 #   -h, --help          This text.
 
@@ -23,6 +25,7 @@ set -euo pipefail
 SOURCE="git:github.com/AkiChase/pi-trellis"
 NEUTRAL_SKILLS=0
 DRY_RUN=0
+CHECK_ONLY=0
 
 MIN_TRELLIS_MAJOR=0
 MIN_TRELLIS_MINOR=6
@@ -47,6 +50,7 @@ while [ $# -gt 0 ]; do
 		--source) SOURCE="${2:?--source needs a value}"; shift 2 ;;
 		--source=*) SOURCE="${1#*=}"; shift ;;
 		--neutral-skills) NEUTRAL_SKILLS=1; shift ;;
+		--check) CHECK_ONLY=1; shift ;;
 		--dry-run) DRY_RUN=1; shift ;;
 		-h|--help) awk 'NR>1 && /^#/ { sub(/^# ?/, ""); print; next } NR>1 { exit }' "$0"; exit 0 ;;
 		*) die "unknown option: $1 (try --help)" ;;
@@ -62,7 +66,11 @@ esac
 echo
 echo "pi-trellis installer"
 echo "  project: $(pwd)"
-echo "  source:  $SOURCE"
+if [ "$CHECK_ONLY" = "1" ]; then
+	echo "  mode:    checks only"
+else
+	echo "  source:  $SOURCE"
+fi
 echo
 
 # ---------------------------------------------------------------------------
@@ -159,6 +167,23 @@ fi
 # ---------------------------------------------------------------------------
 
 echo
+if [ "$CHECK_ONLY" = "1" ]; then
+	if [ -f .pi/settings.json ] && grep -q "pi-trellis" .pi/settings.json 2>/dev/null; then
+		green "✓ pi-trellis is declared in .pi/settings.json"
+	else
+		amber "! pi-trellis is not declared in .pi/settings.json — re-run without --check to install it"
+	fi
+	if [ -d .pi/agents ] && ls .pi/agents/trellis-*.md >/dev/null 2>&1; then
+		green "✓ agent definitions present in .pi/agents/"
+	else
+		amber "! no .pi/agents/trellis-*.md yet — they appear on the first trusted pi start"
+	fi
+	echo
+	green "Checks done."
+	echo
+	exit 0
+fi
+
 echo "Installing the extension project-locally..."
 # `-l` writes .pi/settings.json, which pi treats as project-local config and
 # refuses to touch in an untrusted project. Running this installer is the

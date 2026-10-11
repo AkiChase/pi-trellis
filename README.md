@@ -23,27 +23,33 @@ What it deliberately does **not** do: implement subagents (that is [`@tintinweb/
 trellis init -u <your-name>
 
 # 2. this extension
-curl -fsSL https://raw.githubusercontent.com/AkiChase/pi-trellis/main/scripts/install.sh | bash
+pi install -l --approve git:github.com/AkiChase/pi-trellis
 
 # 3. first start asks for project trust — approve once
 pi
 ```
 
-The installer checks pi, the Trellis version, python3, and `.trellis/scripts/`,
-reports which skill directory will be bridged, warns if the project also has a
-generated `trellis init --pi` adapter, then runs `pi install -l`. Options:
+That is the whole install. The repository also ships a script that does the
+preflight `pi install` cannot — verifying pi, the Trellis version, python3 and
+`.trellis/scripts/`, probing `get_context.py`, reporting which skill directory
+will be bridged, and warning when the project also carries a generated
+`trellis init --pi` adapter:
+
+```bash
+# instead of step 2
+git clone --depth 1 https://github.com/AkiChase/pi-trellis /tmp/pi-trellis
+/tmp/pi-trellis/scripts/install.sh
+
+# or, after installing, from the copy pi cloned
+.pi/git/github.com/AkiChase/pi-trellis/scripts/install.sh --check
+```
 
 | Flag | Effect |
 |---|---|
 | `--source <spec>` | What to install. Defaults to the git source; pass a path for a local checkout. |
 | `--neutral-skills` | Also run `trellis init --codex` so Trellis writes platform-neutral skills to `.agents/skills/`, the directory pi discovers natively. Adds a `.codex/` directory. |
+| `--check` | Run the checks only, install nothing. Use it to diagnose an existing project. |
 | `--dry-run` | Print what would happen, change nothing. |
-
-Or skip the script entirely:
-
-```bash
-pi install -l git:github.com/AkiChase/pi-trellis
-```
 
 Uninstall:
 
