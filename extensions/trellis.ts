@@ -21,6 +21,13 @@ import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 
+/** The slice of pi's Theme this extension uses. Narrow on purpose: `ctx.ui.theme` is always present, even in the no-op UI. */
+type ThemeColorToken = "accent" | "success" | "warning" | "error" | "muted" | "dim" | "text";
+interface ExtensionTheme {
+	fg(color: ThemeColorToken, text: string): string;
+	bold(text: string): string;
+}
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -42,6 +49,16 @@ const WORKFLOW_MAX_CHARS = 14000;
 /** Total width budget for the footer status chip, including the `trellis: ` prefix. */
 const STATUS_MAX_CHARS = 34;
 
+/**
+ * Where the active task is shown: `widget` takes its own line above the editor
+ * (themed, room to breathe), `status` is the one-line footer chip shared with
+ * every other extension's status, `off` shows nothing.
+ */
+const DISPLAY_MODE = (() => {
+	const raw = process.env.TRELLIS_PI_STATUS?.trim().toLowerCase();
+	return raw === "status" || raw === "off" ? raw : "widget";
+})();
+
 const PYTHON = process.env.TRELLIS_PYTHON || (process.platform === "win32" ? "python" : "python3");
 
 /**
@@ -55,6 +72,7 @@ const SECTION_OVERVIEW = "session-overview";
 const SECTION_WORKFLOW = "trellis-workflow";
 const STATE_MESSAGE_TYPE = "trellis-task-state";
 const STATUS_KEY = "trellis";
+const WIDGET_KEY = "trellis";
 const AGENT_PREFIX = "trellis-";
 const ACTIVE_TASK_MARKER = "Active task:";
 const HASH_FILE = ".pi-trellis-hashes.json";
@@ -119,6 +137,10 @@ interface ActiveTask {
 	dir: string;
 	status: string;
 	title?: string;
+	/** Linked child tasks, for parent tasks. */
+	children: number;
+	/** Which planning artifacts exist on disk. */
+	artifacts: { prd: boolean; design: boolean; implement: boolean };
 }
 
 // ---------------------------------------------------------------------------
@@ -299,14 +321,31 @@ function readActiveTaskFromDisk(root: string, key: string): ActiveTask | undefin
 		const dir = typeof data?.current_task === "string" ? data.current_task : undefined;
 		if (!dir) return undefined;
 
-		const record = parseJson<{ status?: unknown; title?: unknown }>(
+		const record = parseJson<{ status?: unknown; title?: unknown; children?: unknown }>(
 			readFileSync(join(root, dir, "task.json"), "utf8"),
 		);
 		const status = typeof record?.status === "string" && record.status ? record.status : "task_error";
-		return { dir, status, title: typeof record?.title === "string" ? record.title : undefined };
+		return {
+			dir,
+			status,
+			title: typeof record?.title === "string" ? record.title : undefined,
+			children: Array.isArray(record?.children) ? record.children.length : 0,
+			artifacts: readArtifacts(root, dir),
+		};
 	} catch {
 		return undefined;
 	}
+}
+
+function readArtifacts(root: string, dir: string): ActiveTask["artifacts"] {
+	const has = (name: string) => {
+		try {
+			return existsSync(join(root, dir, name));
+		} catch {
+			return false;
+		}
+	};
+	return { prd: has("prd.md"), design: has("design.md"), implement: has("implement.md") };
 }
 
 function readActiveTask(root: string, key: string): Promise<ActiveTask | undefined> {
@@ -329,15 +368,17 @@ async function resolveActiveTask(root: string, key: string): Promise<ActiveTask 
 
 	const result = await runScript(root, key, "task.py", ["current", "--json"], 10000);
 	if (!result) return undefined;
-	const data = parseJson<{ current_task?: { dir?: unknown; status?: unknown; title?: unknown } | null }>(
-		result.stdout,
-	);
+	const data = parseJson<{
+		current_task?: { dir?: unknown; status?: unknown; title?: unknown; children?: unknown } | null;
+	}>(result.stdout);
 	const task = data?.current_task;
 	if (!task || typeof task.dir !== "string") return undefined;
 	return {
 		dir: task.dir,
 		status: typeof task.status === "string" && task.status ? task.status : "task_error",
 		title: typeof task.title === "string" ? task.title : undefined,
+		children: Array.isArray(task.children) ? task.children.length : 0,
+		artifacts: readArtifacts(root, task.dir),
 	};
 }
 
@@ -563,6 +604,54 @@ function renderStatus(task: ActiveTask | undefined): string | undefined {
 	return `${prefix}${short}${separator}${status}`;
 }
 
+/** Theme token used for a status name, so the colour carries meaning. */
+function statusColor(status: string): ThemeColorToken {
+	switch (status) {
+		case "in_progress":
+			return "accent";
+		case "planning":
+			return "warning";
+		case "completed":
+			return "success";
+		case "task_error":
+			return "error";
+		default:
+			return "muted";
+	}
+}
+
+/**
+ * One themed line for the widget above the editor.
+ *
+ * The widget gets its own row, so unlike the footer chip there is no need to
+ * fight other extensions for width: the task name is shown in full and the
+ * planning artifacts fit alongside it.
+ */
+function renderWidget(theme: ExtensionTheme, task: ActiveTask): string[] {
+	const dot = theme.fg("dim", " · ");
+	const parts: string[] = [
+		theme.fg("muted", "▸ trellis"),
+		theme.bold(theme.fg("text", basename(task.dir))),
+		theme.fg(statusColor(task.status), task.status),
+	];
+
+	if (task.children > 0) {
+		parts.push(theme.fg("muted", `${task.children} subtask${task.children === 1 ? "" : "s"}`));
+	}
+
+	const artifact = (label: string, present: boolean) =>
+		present ? theme.fg("success", `${label} ✓`) : theme.fg("dim", `${label} ·`);
+	parts.push(
+		[
+			artifact("prd", task.artifacts.prd),
+			artifact("design", task.artifacts.design),
+			artifact("impl", task.artifacts.implement),
+		].join(" "),
+	);
+
+	return [parts.join(dot)];
+}
+
 // ---------------------------------------------------------------------------
 // M4 — agent definitions
 // ---------------------------------------------------------------------------
@@ -709,22 +798,45 @@ function session(ctx: ExtensionContext): Session | undefined {
 	return { root, key, cacheKey: cacheKeyFor(root, key) };
 }
 
-async function refreshStatus(ctx: ExtensionContext, known?: Session): Promise<void> {
+/**
+ * Repaint the active-task display.
+ *
+ * Both surfaces are cleared on every pass before one is drawn, so switching
+ * `TRELLIS_PI_STATUS` between runs cannot leave a stale chip behind, and a
+ * task that goes away takes its row with it.
+ */
+async function refreshDisplay(ctx: ExtensionContext, known?: Session): Promise<void> {
 	try {
 		const current = known ?? session(ctx);
-		if (!ctx.hasUI || !ctx.ui?.setStatus) return;
-		if (!current) {
-			ctx.ui.setStatus(STATUS_KEY, undefined);
+		if (!ctx.hasUI || DISPLAY_MODE === "off") return;
+
+		const task = current ? await readActiveTask(current.root, current.key) : undefined;
+		if (!task) {
+			clearDisplay(ctx);
 			return;
 		}
-		const task = await readActiveTask(current.root, current.key);
-		ctx.ui.setStatus(STATUS_KEY, renderStatus(task));
-	} catch {
-		try {
-			ctx.ui?.setStatus?.(STATUS_KEY, undefined);
-		} catch {
-			// Status is cosmetic. Never let it surface.
+
+		if (DISPLAY_MODE === "status") {
+			ctx.ui?.setWidget?.(WIDGET_KEY, undefined);
+			ctx.ui?.setStatus?.(STATUS_KEY, renderStatus(task));
+			return;
 		}
+
+		ctx.ui?.setStatus?.(STATUS_KEY, undefined);
+		ctx.ui?.setWidget?.(WIDGET_KEY, renderWidget(ctx.ui.theme as ExtensionTheme, task), {
+			placement: "aboveEditor",
+		});
+	} catch {
+		clearDisplay(ctx);
+	}
+}
+
+function clearDisplay(ctx: ExtensionContext): void {
+	try {
+		ctx.ui?.setStatus?.(STATUS_KEY, undefined);
+		ctx.ui?.setWidget?.(WIDGET_KEY, undefined);
+	} catch {
+		// The display is cosmetic. Never let it surface.
 	}
 }
 
@@ -744,6 +856,8 @@ export const __internals = {
 	renderWorkflowSection,
 	renderState,
 	renderStatus,
+	renderWidget,
+	statusColor,
 	readActiveTaskFromDisk,
 	bridgeSkills,
 	shortHash,
@@ -786,7 +900,7 @@ export default function (pi: ExtensionAPI): void {
 			}
 		}
 
-		await refreshStatus(ctx, current);
+		await refreshDisplay(ctx, current);
 	});
 
 	// ---- M1: prompt sections -----------------------------------------------
@@ -889,14 +1003,14 @@ export default function (pi: ExtensionAPI): void {
 			if (typeof command !== "string" || !/task\.py/.test(command)) return;
 			const current = session(ctx);
 			if (current) invalidateTask(current.root, current.key);
-			await refreshStatus(ctx, current);
+			await refreshDisplay(ctx, current);
 		} catch {
 			// ignore
 		}
 	});
 
 	pi.on("agent_end", async (_event, ctx) => {
-		await refreshStatus(ctx);
+		await refreshDisplay(ctx);
 	});
 
 	// ---- M5: skill bridge --------------------------------------------------
@@ -915,10 +1029,6 @@ export default function (pi: ExtensionAPI): void {
 	// ---- Cleanup -----------------------------------------------------------
 
 	pi.on("session_shutdown", (_event, ctx) => {
-		try {
-			ctx.ui?.setStatus?.(STATUS_KEY, undefined);
-		} catch {
-			// ignore
-		}
+		clearDisplay(ctx);
 	});
 }

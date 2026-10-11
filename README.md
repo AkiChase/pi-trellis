@@ -9,7 +9,7 @@ It replaces the pi adapter layer that `trellis init --pi` generates — 13 files
 | | |
 |---|---|
 | **Task context injection** | Adds `session-overview` and `trellis-workflow` sections to the system prompt, plus a per-turn task-state message. The model knows the active task, its status, and the workflow breadcrumb without reading a single file. |
-| **Footer status** | `trellis: 00-bootstrap ▸ in_progress`, updated when a session starts, when a turn ends, and immediately after any `task.py` call. |
+| **Task display** | A themed line above the editor: `▸ trellis · 00-bootstrap-guidelines · in_progress · prd ✓ design · impl ·`, refreshed when a session starts, when a turn ends, and immediately after any `task.py` call. Switch it to the footer chip or turn it off with `TRELLIS_PI_STATUS`. |
 | **Session isolation** | Exports `TRELLIS_CONTEXT_ID` so concurrent pi sessions keep separate active tasks. Subagent sessions inherit the parent's id. |
 | **Subagent context** | `trellis-implement`, `trellis-check` and `trellis-research` agent definitions, and an `Active task:` pointer prepended to every `trellis-*` dispatch. |
 | **Skill bridge** | Points pi at the Trellis skills already on disk (`.claude/skills/trellis-*` and friends), which pi otherwise cannot see. No files are copied. |
@@ -99,6 +99,26 @@ Falling back to 2 or 3 means the skill text was rendered for another platform: i
 | `TRELLIS_CONTEXT_ID` | Pins the Trellis session key. Set it yourself to share one active task across several pi sessions; otherwise it is derived from the session file, or from the project root for unsaved sessions. |
 | `TRELLIS_PYTHON` | Python interpreter. Defaults to `python3` (`python` on Windows). |
 | `TRELLIS_PI_CONTEXT` | `full` or `compact` to override the headless heuristic. |
+| `TRELLIS_PI_STATUS` | `widget` (default), `status`, or `off`. See below. |
+
+## Where the task display goes
+
+The default is a **widget**: its own row above the editor, drawn with your
+theme's colors, with the task name in full and the planning artifacts beside
+it. Status colors carry meaning — `planning` is warning, `in_progress` is
+accent, `completed` is success, `task_error` is error.
+
+`TRELLIS_PI_STATUS=status` moves it into the footer instead
+(`trellis: 00-bootstr… ▸ in_progress`). That is more compact but shares one
+line with every other extension that calls `setStatus()`: pi joins those
+statuses with a space, sorts them alphabetically by key, and truncates the
+whole line to the terminal width. Keys never collide — each extension owns its
+own — but width is finite, and `trellis` sorts late enough to be among the
+first to get cut. The widget has no such competition: widgets are keyed and
+stacked, up to ten lines across all extensions.
+
+`TRELLIS_PI_STATUS=off` draws nothing. Context injection is unaffected either
+way — the display is just a display.
 
 ## Design notes
 
