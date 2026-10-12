@@ -4,14 +4,16 @@
  * Scope (see design doc §2):
  *   M1  session / task context injection via systemPrompt sections + per-turn state message
  *   M2  active-task status in the footer
- *   M3  `Active task:` pointer handed to trellis-* subagents
+ *   M3  role-specific JSONL/artifact material handed to trellis-* subagents
  *   M4  agent definitions deployed to .pi/agents/ (hash-guarded)
  *   M5  skill bridge: point pi at skill directories that already exist on disk
  *
- * This extension contains no Trellis source code. It talks to Trellis through
- * documented surfaces only: the `task.py` / `get_context.py` CLIs, the
+ * No Trellis runtime implementation is copied into this TypeScript extension.
+ * Bundled agent documents retain their upstream license; see docs/trellis-agent-sync.md.
+ * It talks to Trellis through documented surfaces only: the `task.py` / `get_context.py` CLIs, the
  * TRELLIS_CONTEXT_ID environment variable, and on-disk paths under `.trellis/`.
- * Everything here is written to fail silently rather than take a session down.
+ * Optional UI/context discovery degrades rather than taking a session down.
+ * Dispatch material failures are visible and leave the child-side fallback active.
  */
 
 import { execFile } from "node:child_process";
@@ -20,6 +22,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSy
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { assembleDispatchPrompt, buildTaskContext, INJECTED_MARKER, isTrellisRole, parseDispatchFacts, readTaskRecord, resolveTaskPath } from "../lib/task-context.ts";
 
 /** The slice of pi's Theme this extension uses. Narrow on purpose: `ctx.ui.theme` is always present, even in the no-op UI. */
 type ThemeColorToken = "accent" | "success" | "warning" | "error" | "muted" | "dim" | "text";
@@ -87,22 +90,17 @@ const SKILL_DIRS = [
 // ---------------------------------------------------------------------------
 // Module state
 //
-// NOTE: pi caches extension factories per path (loader.js:461-488), so this
-// state is shared between the top-level session and subagent sessions in the
-// same process. That is deliberate for `envOwnerRoot` — it is how a child
-// session inherits the parent's context key (design doc §3.10(6)).
-// ---------------------------------------------------------------------------
-
-/** root -> TRELLIS_CONTEXT_ID */
-const keyByRoot = new Map<string, string>();
-/** The root that claimed process.env.TRELLIS_CONTEXT_ID. */
-let envOwnerRoot: string | undefined;
+// Session identity is explicit; never republish an id into a shared process.env.
+// A caller-provided id pins sessions intentionally; children receive facts in their prompt.
+const pinnedContextId = process.env.TRELLIS_CONTEXT_ID?.trim();
+const keyBySession = new Map<string, string>();
+const taskBySession = new Map<string, string>();
 
 /** cacheKey -> memoized prompt sections. Must stay byte-stable for the process lifetime. */
 const sectionCache = new Map<string, { overview?: string; workflow?: string }>();
 /** cacheKey -> last state text handed to the model, for dedup. */
 const lastStateSent = new Map<string, string>();
-/** root -> cached `get_context.py --mode default` payload. */
+/** session/root/context -> cached `get_context.py --mode default` payload. */
 const contextCache = new Map<string, { at: number; value: Promise<TrellisContext | undefined> }>();
 /** cacheKey -> cached active task, including cached absence. */
 const taskCache = new Map<string, { at: number; value: Promise<ActiveTask | undefined> }>();
@@ -185,52 +183,18 @@ function packageDir(): string {
 // Context key
 // ---------------------------------------------------------------------------
 
-/**
- * Derive the Trellis context id for this session, and publish it to the
- * process environment.
- *
- * Trellis uses the value verbatim as a filename under
- * `.trellis/.runtime/sessions/`, so it must stay filesystem-safe.
- *
- * Inheritance matters: a subagent session has no handle on its spawner
- * (agent-runner.js:740-757), so without inheriting the parent's key it would
- * compute a different one and see "no active task". The parent claims
- * `process.env.TRELLIS_CONTEXT_ID` first; same-process children read it back.
- * A different project root never inherits — that would cross-contaminate.
- */
-function contextKey(root: string, ctx: ExtensionContext): string {
-	const cached = keyByRoot.get(root);
-	if (cached) {
-		publishKey(root, cached);
-		return cached;
-	}
-
-	const inherited = process.env.TRELLIS_CONTEXT_ID?.trim();
-	let key: string;
-	if (inherited && (envOwnerRoot === undefined || envOwnerRoot === root)) {
-		// Either a parent session in this project claimed it, or the user pinned
-		// one by hand before starting pi. Both are intentional; honour them.
-		key = inherited;
-	} else {
-		let sessionFile: string | undefined;
-		try {
-			sessionFile = ctx.sessionManager?.getSessionFile?.();
-		} catch {
-			sessionFile = undefined;
-		}
-		// Session file keeps the pointer stable across restarts of the same
-		// conversation; root keeps it stable for unsaved sessions.
-		key = `pi-${shortHash(sessionFile || root)}`;
-	}
-
-	keyByRoot.set(root, key);
-	publishKey(root, key);
-	return key;
+function sessionIdentity(root: string, ctx: ExtensionContext): string {
+	return `${root}::${ctx.sessionManager.getSessionId()}`;
 }
 
-function publishKey(root: string, key: string): void {
-	process.env.TRELLIS_CONTEXT_ID = key;
-	envOwnerRoot = root;
+function contextKey(root: string, ctx: ExtensionContext): string {
+	const identity = sessionIdentity(root, ctx);
+	const cached = keyBySession.get(identity);
+	if (cached) return cached;
+	const pinned = pinnedContextId && /^[A-Za-z0-9_-]{1,128}$/.test(pinnedContextId) ? pinnedContextId : undefined;
+	const key = pinned ?? `pi-${shortHash(ctx.sessionManager.getSessionFile() || identity)}`;
+	keyBySession.set(identity, key);
+	return key;
 }
 
 function cacheKeyFor(root: string, key: string): string {
@@ -293,13 +257,14 @@ function parseJson<T>(text: string): T | undefined {
  * own python process.
  */
 function loadContext(root: string, key: string): Promise<TrellisContext | undefined> {
-	const cached = contextCache.get(root);
+	const cacheKey = cacheKeyFor(root, key);
+	const cached = contextCache.get(cacheKey);
 	if (cached && Date.now() - cached.at < CONTEXT_TTL_MS) return cached.value;
 
 	const value = runScript(root, key, "get_context.py", ["--mode", "default", "--json"])
 		.then((result) => (result ? parseJson<TrellisContext>(result.stdout) : undefined))
 		.catch(() => undefined);
-	contextCache.set(root, { at: Date.now(), value });
+	contextCache.set(cacheKey, { at: Date.now(), value });
 	return value;
 }
 
@@ -320,10 +285,7 @@ function readActiveTaskFromDisk(root: string, key: string): ActiveTask | undefin
 		const data = parseJson<{ current_task?: unknown }>(readFileSync(pointer, "utf8"));
 		const dir = typeof data?.current_task === "string" ? data.current_task : undefined;
 		if (!dir) return undefined;
-
-		const record = parseJson<{ status?: unknown; title?: unknown; children?: unknown }>(
-			readFileSync(join(root, dir, "task.json"), "utf8"),
-		);
+		const record = readTaskRecord(root, dir);
 		const status = typeof record?.status === "string" && record.status ? record.status : "task_error";
 		return {
 			dir,
@@ -373,6 +335,7 @@ async function resolveActiveTask(root: string, key: string): Promise<ActiveTask 
 	}>(result.stdout);
 	const task = data?.current_task;
 	if (!task || typeof task.dir !== "string") return undefined;
+	resolveTaskPath(root, task.dir);
 	return {
 		dir: task.dir,
 		status: typeof task.status === "string" && task.status ? task.status : "task_error",
@@ -553,7 +516,7 @@ function renderOverview(root: string, key: string, context: TrellisContext | und
 		`  ${PYTHON} ./.trellis/scripts/get_context.py --mode default --json`,
 		`  ${PYTHON} ./.trellis/scripts/get_context.py --mode phase --step <N.N>`,
 		`  ${PYTHON} ./.trellis/scripts/get_context.py --mode packages`,
-		`The session pointer is keyed by TRELLIS_CONTEXT_ID (already exported as ${key}).`,
+		`Trellis CLI calls use TRELLIS_CONTEXT_ID=${key}; pi-trellis scopes each bash call explicitly.`,
 	);
 
 	return lines.join("\n");
@@ -789,13 +752,28 @@ interface Session {
 	root: string;
 	key: string;
 	cacheKey: string;
+	identity: string;
 }
 
 function session(ctx: ExtensionContext): Session | undefined {
 	const root = findRoot(ctx.cwd);
 	if (!root || !hasScripts(root)) return undefined;
 	const key = contextKey(root, ctx);
-	return { root, key, cacheKey: cacheKeyFor(root, key) };
+	return { root, key, cacheKey: `${sessionIdentity(root, ctx)}::${key}`, identity: sessionIdentity(root, ctx) };
+}
+
+async function sessionTask(current: Session): Promise<ActiveTask | undefined> {
+	const explicit = taskBySession.get(current.identity);
+	if (!explicit) return readActiveTask(current.root, current.key);
+	try {
+		const record = readTaskRecord(current.root, explicit);
+		return {
+			dir: explicit, status: typeof record.status === "string" ? record.status : "task_error",
+			title: typeof record.title === "string" ? record.title : undefined,
+			children: Array.isArray(record.children) ? record.children.length : 0,
+			artifacts: readArtifacts(current.root, explicit),
+		};
+	} catch { return undefined; }
 }
 
 /**
@@ -810,7 +788,7 @@ async function refreshDisplay(ctx: ExtensionContext, known?: Session): Promise<v
 		const current = known ?? session(ctx);
 		if (!ctx.hasUI || DISPLAY_MODE === "off") return;
 
-		const task = current ? await readActiveTask(current.root, current.key) : undefined;
+		const task = current ? await sessionTask(current) : undefined;
 		if (!task) {
 			clearDisplay(ctx);
 			return;
@@ -860,6 +838,9 @@ export const __internals = {
 	statusColor,
 	readActiveTaskFromDisk,
 	bridgeSkills,
+	contextKey,
+	loadContext,
+	deployAgents,
 	shortHash,
 };
 
@@ -907,8 +888,15 @@ export default function (pi: ExtensionAPI): void {
 
 	pi.on("before_agent_start", async (event, ctx) => {
 		try {
-			const current = session(ctx);
+			let current = session(ctx);
 			if (!current) return;
+			const facts = parseDispatchFacts(event.prompt);
+			if (facts) {
+				resolveTaskPath(current.root, facts.taskDir);
+				taskBySession.set(current.identity, facts.taskDir);
+				if (facts.contextId) keyBySession.set(current.identity, facts.contextId);
+				current = session(ctx)!;
+			}
 
 			const sections = event.systemPromptOptions?.sections;
 			if (!sections) return;
@@ -940,7 +928,7 @@ export default function (pi: ExtensionAPI): void {
 
 			// Volatile state never enters the prompt: a section that changes every
 			// turn invalidates the provider's prefix cache from byte zero.
-			const task = await readActiveTask(current.root, current.key);
+			const task = await sessionTask(current);
 			const state = renderState(current.root, task, loadWorkflow(current.root)?.states);
 			if (lastStateSent.get(current.cacheKey) !== state) {
 				lastStateSent.set(current.cacheKey, state);
@@ -963,34 +951,37 @@ export default function (pi: ExtensionAPI): void {
 			if (!current) return;
 
 			if (event.toolName === "bash") {
-				// The key already sits in process.env (republished just above by
-				// `session()`), and spawned shells inherit it. The inline export is
-				// only needed when two project roots are live in one process, where
-				// a concurrent call could flip the variable between publish and spawn.
-				if (keyByRoot.size < 2) return;
 				const input = event.input as { command?: unknown };
 				if (typeof input.command !== "string") return;
-				if (!/\btrellis\b|task\.py|get_context\.py/.test(input.command)) return;
-				if (input.command.includes("TRELLIS_CONTEXT_ID=")) return;
-				input.command = `export TRELLIS_CONTEXT_ID=${current.key}\n${input.command}`;
+				// Scope every shell, including indirect CLI invocations, without a process-global mutation.
+				const prefix = `export TRELLIS_CONTEXT_ID=${current.key}\n`;
+				if (!input.command.startsWith(prefix)) input.command = `${prefix}${input.command}`;
 				return;
 			}
 
 			if (event.toolName !== "Agent") return;
-			const input = event.input as { subagent_type?: unknown; prompt?: unknown };
-			if (typeof input.subagent_type !== "string" || !input.subagent_type.startsWith(AGENT_PREFIX)) return;
-			if (typeof input.prompt !== "string") return;
-			if (input.prompt.includes(ACTIVE_TASK_MARKER)) return; // idempotent
-
-			const task = await readActiveTask(current.root, current.key);
-			if (!task) return;
-
-			// One line, by design. The child session loads this extension too and
-			// injects the task context itself (design doc §3.10) — repeating the
-			// artifacts here would bill the same context twice.
-			input.prompt = `${ACTIVE_TASK_MARKER} ${task.dir} (status: ${task.status})\n\n${input.prompt}`;
-		} catch {
-			// Never block a tool because our patching failed.
+			const input = event.input as { subagent_type?: unknown; prompt?: unknown; isolated?: unknown; isolation?: unknown };
+			if (!isTrellisRole(input.subagent_type) || typeof input.prompt !== "string") return;
+			// Ordinary Agent cannot promise task materials from a separately-created temporary tree.
+			if (input.isolation === "worktree") return { block: true, reason: "pi-trellis task agents need the current prepared checkout. Temporary worktree isolation cannot see its uncommitted task materials; no agent was started." };
+			const facts = parseDispatchFacts(input.prompt);
+			const task = facts ? { dir: facts.taskDir } : await sessionTask(current);
+			if (!task) {
+				// No material loaded: caller-provided marker must not suppress the child's fallback.
+				input.prompt = input.prompt.replaceAll(INJECTED_MARKER, "");
+				return;
+			}
+			const context = buildTaskContext({ executionRoot: current.root, taskDir: task.dir, role: input.subagent_type });
+			input.prompt = assembleDispatchPrompt({
+				prompt: input.prompt, taskDir: task.dir, contextId: current.key, role: input.subagent_type, context,
+			});
+		} catch (error) {
+			if (event.toolName === "Agent") {
+				const input = event.input as { subagent_type?: unknown; prompt?: unknown };
+				if (isTrellisRole(input.subagent_type) && typeof input.prompt === "string") {
+					input.prompt = `${input.prompt.replaceAll(INJECTED_MARKER, "")}\n\npi-trellis could not load task materials: ${String(error)}. Use the context-loading fallback before working.`;
+				}
+			}
 		}
 	});
 
@@ -1030,5 +1021,12 @@ export default function (pi: ExtensionAPI): void {
 
 	pi.on("session_shutdown", (_event, ctx) => {
 		clearDisplay(ctx);
+		const current = session(ctx);
+		if (current) {
+			keyBySession.delete(current.identity);
+			taskBySession.delete(current.identity);
+			sectionCache.delete(current.cacheKey);
+			lastStateSent.delete(current.cacheKey);
+		}
 	});
 }

@@ -1,8 +1,13 @@
 {
   "name": "pi-trellis",
   "version": "0.1.0",
-  "description": "Project-local pi extension for Trellis: task context injection, footer task status, subagent context handoff. No generated files, no AGPL code.",
-  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "test:provider": "node tests/provider-contracts.mjs"
+  },
+  "description": "Project-local pi extension for Trellis: isolated task context, JSONL material injection, and Claude-based agents adapted for Pi.",
+  "license": "(MIT AND AGPL-3.0-only)",
   "keywords": [
     "pi-package",
     "pi",
