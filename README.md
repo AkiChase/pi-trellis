@@ -19,8 +19,8 @@ What it deliberately does **not** do: implement subagents (that is [`@tintinweb/
 ## Install
 
 ```bash
-# 1. Trellis core, without the --pi adapter layer
-trellis init -u <your-name>
+# 1. Trellis core + Claude Code skills, without the --pi adapter layer
+trellis init --claude -u <your-name>
 
 # 2. this extension
 pi install -l --approve git:github.com/AkiChase/pi-trellis
