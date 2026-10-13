@@ -28,7 +28,7 @@ this only bypasses the CLI's empty-manifest gate, not approval, spec reading or 
 `task.py validate` still reports empty manifests; do not describe that result as full validation success.
 If dispatch becomes necessary later, curate that role's context before dispatching.
 Parent/child links are organization, not a dependency scheduler. Execute in the approved order.
-Session-scoped pointers never infer another session. `finish` clears only your pointer, not task status.
+Session-scoped pointers never infer another session. `deactivate` clears only your session binding, not task status.
 
 ## Phase Index
 
@@ -135,7 +135,7 @@ If the user requested no commits, leave changes uncommitted and report their sta
 
 #### 3.5 Archive and Journal [conditional]
 Use `/skill:trellis-finish-work` for approved lifecycle actions. Only main performs finish/archive/session recording.
-Unfinished tasks stay active; finish alone does not complete status. Archive only accepted completed work.
+Unfinished tasks stay active; deactivation alone does not complete status. Archive only accepted completed work.
 Session end does not imply task completion or lifecycle approval. Honor already-granted finish/archive/journal
 authorization without asking again; archive only after acceptance. Journal records deliberate summaries,
 respecting configuration. Lifecycle commands must not implicitly commit product code or unrelated changes.

@@ -32,7 +32,7 @@ function setup(t) {
   } };
   const key = ui.contextKey(root, ctx);
   const pointer = name => put(`.trellis/.runtime/sessions/${key}.json`, JSON.stringify({ current_task: `.trellis/tasks/${name}` }));
-  const changed = () => handlers.get("tool_result")({ toolName: "bash", input: { command: "python3 .trellis/scripts/task.py finish" } }, ctx);
+  const changed = () => handlers.get("tool_result")({ toolName: "bash", input: { command: "python3 .trellis/scripts/task.py deactivate" } }, ctx);
   return { root, put, record, handlers, display, ctx, key, pointer, changed, messages };
 }
 
@@ -293,7 +293,7 @@ for (const mode of ["status", "off"]) {
       assert.equal(display.status,mode === 'off' ? undefined : '<muted>trellis</muted><accent>(3)</accent>');
       const key=ui.contextKey(root,ctx), pointer=join(root,'.trellis/.runtime/sessions',key+'.json');
       mkdirSync(join(pointer,'..'),{recursive:true}); writeFileSync(pointer,JSON.stringify({current_task:'.trellis/tasks/a'}));
-      const changed=() => handlers.get('tool_result')({toolName:'bash',input:{command:'task.py finish'}},ctx);
+      const changed=() => handlers.get('tool_result')({toolName:'bash',input:{command:'task.py deactivate'}},ctx);
       await changed();
       if(mode==='status') {
         assert.ok(display.status.includes('<warning>planning</warning>'));

@@ -45,11 +45,11 @@ for(const state of ['absent manifest','mismatched bytes','corrupt manifest','inc
   assert.ok(!existsSync(join(f.root,'executed-unverified')));assert.ok(!existsSync(join(f.root,'bound-unverified')));
   assert.ok(!existsSync(join(f.root,`.trellis/.runtime/sessions/${__internals.contextKey(f.root,f.ctx)}.json`)));
   for(const tool of ['bash','bash_bg','monitor'])for(const command of [
-   'python3 .trellis/scripts/task.py finish','python3 -B ./.trellis/scripts/get_context.py --mode default --json',
-   './.trellis/scripts/task.py current --json','task.py finish',
-   'env X=1 python3 ".trellis/scripts/init_developer.py" Dev','env -u TRELLIS_CONTEXT_ID python3 .trellis/scripts/task.py finish',
-   '/usr/bin/env python3 .trellis/scripts/task.py finish','/usr/bin/env -u TRELLIS_CONTEXT_ID python3 .trellis/scripts/get_context.py --json',
-   '"/usr/bin/env" X=1 python3 .trellis/scripts/task.py current --json','/usr/bin/nohup python3 .trellis/scripts/task.py finish',
+   'python3 .trellis/scripts/task.py deactivate','python3 -B ./.trellis/scripts/get_context.py --mode default --json',
+   './.trellis/scripts/task.py current --json','task.py deactivate',
+   'env X=1 python3 ".trellis/scripts/init_developer.py" Dev','env -u TRELLIS_CONTEXT_ID python3 .trellis/scripts/task.py deactivate',
+   '/usr/bin/env python3 .trellis/scripts/task.py deactivate','/usr/bin/env -u TRELLIS_CONTEXT_ID python3 .trellis/scripts/get_context.py --json',
+   '"/usr/bin/env" X=1 python3 .trellis/scripts/task.py current --json','/usr/bin/nohup python3 .trellis/scripts/task.py deactivate',
    'python3 .trellis/scripts/add_session.py --title test',
    'bash -c \'python3 .trellis/scripts/worktree.py prepare --task task\'',
    'python3 -c "from common.active_task import set_active_task"','python3 -c "from common import active_task"','trellis task finish',

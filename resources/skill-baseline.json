@@ -31,7 +31,7 @@
       "adapted": true
     },
     "trellis-finish-work/SKILL.md": {
-      "sha256": "6954658ba4b686eea0bd77fcae0cb9c26db8463512aa1ce12dfc848dd4802c51",
+      "sha256": "9f378118f510e66e7f382f967b44dd1f44321bf6a8d5202b4520fe32c899a0b2",
       "sourcePath": ".agents/skills/trellis-finish-work/SKILL.md",
       "sourceSha256": "161060fbcd44f787440d3a5c297a9f5223ea7774bb3021a50e376875a9ac5b2d",
       "license": "AGPL-3.0-only",
@@ -220,7 +220,7 @@
       "adapted": true
     },
     "trellis-meta/references/local-architecture/task-system.md": {
-      "sha256": "03736d6f68e71984f341e2ef204054905ac58c0d2ec23748a9678cab8e151c08",
+      "sha256": "6aea191790e23fac52fe4907fa9c858b4db4ee411bca94482bbfcfeeae15d31b",
       "sourcePath": ".agents/skills/trellis-meta/references/local-architecture/task-system.md",
       "sourceSha256": "b154568e74f1c738a51633df9f2503f416b3afa5f309325224422162e0b707e4",
       "license": "AGPL-3.0-only",

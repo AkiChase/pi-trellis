@@ -63,12 +63,15 @@ for compatibility; no new frontend/backend or package detection is implemented.
   or invalid records fail. `current --json` returns null plus diagnostic on
   invalid pointers/tasks, distinct from `no-task`/`no-identity`; both invalid
   and absent task cases exit nonzero.
-- `finish` unlinks **only its own key** and returns prior authorization only
+- `deactivate` unlinks **only its own key** and returns prior authorization only
   after unlink succeeds. Session runtime ancestors must be local directories;
-  symlinked ancestors cannot authorize reads, start, finish or archive. A final
-  pointer symlink is invalid and finish may remove that link only, not its target.
+  symlinked ancestors cannot authorize reads, start, deactivate or archive. A final
+  pointer symlink is invalid and deactivate may remove that link only, not its target.
   Clearing its corrupt/stale pointer reports diagnostics
-  without hooks; repeated/missing finish runs none. Unlink failure exits nonzero.
+  without hooks; repeated/missing deactivate runs none. Unlink failure exits nonzero.
+  Valid deactivation invokes `after_deactivate` once, without changing task status,
+  archiving or recording a journal. The old `finish` command and `after_finish`
+  hook are not supported.
 - Context/package/journal CLI readers refuse invalid pointer state; direct
   context readers retain `task_error`. Raw stale references never select task
   files, packages, journal metadata or hook paths. Hooks revalidate records.
@@ -103,7 +106,7 @@ exclusive create; this is not a general initialization transaction.
 
 `tests/runtime-contracts.test.mjs` copies the **full runtime** into disposable Git
 projects, covering real script effects, forbidden reads/hooks/commits, real child
-binding/finish/non-resurrection, preserved identity/index/history, source/output
+binding/deactivate/non-resurrection, preserved identity/index/history, source/output
 hashes, import closure, syntax and `npm pack --dry-run` contents. It uses the real
 host preload (`tests/host-tui.mjs`, explicit `PI_TRELLIS_TEST_HOST` if needed).
 Fixture commits are not user-project commits. Native worktree/material/dispatch

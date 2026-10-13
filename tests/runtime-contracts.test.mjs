@@ -32,8 +32,8 @@ test('real runtime never infers foreign task, including explicit compatibility f
  const f=fixture(t), foreign=f.task('parent');f.pointer('parent',foreign);
  for(const pin of ['own','']){const r=f.run('task.py',['current','--json'],{TRELLIS_CONTEXT_ID:pin});assert.notEqual(r.status,0);assert.equal(JSON.parse(r.stdout).current_task,null);}
  const r=f.probe(`from common.active_task import resolve_active_task\nassert resolve_active_task(root,allow_single_session_fallback=True).task_path is None\nfrom common.paths import get_current_task\nassert get_current_task(root) is None`);assert.equal(r.status,0,r.stderr);
- f.pointer('own',null);f.ok('task.py',['finish']);assert.ok(existsSync(join(f.root,'.trellis/.runtime/sessions/parent.json')));
- const child=f.task('child');assert.equal(start(f,child).status,0);f.ok('task.py',['finish']);f.ok('task.py',['finish']);assert.notEqual(f.run('task.py',['current','--json']).status,0);assert.ok(existsSync(join(f.root,'.trellis/.runtime/sessions/parent.json')));
+ f.pointer('own',null);f.ok('task.py',['deactivate']);assert.ok(existsSync(join(f.root,'.trellis/.runtime/sessions/parent.json')));
+ const child=f.task('child');assert.equal(start(f,child).status,0);f.ok('task.py',['deactivate']);f.ok('task.py',['deactivate']);assert.notEqual(f.run('task.py',['current','--json']).status,0);assert.ok(existsSync(join(f.root,'.trellis/.runtime/sessions/parent.json')));
 });
 
 test('start without identity fails before status and hooks; invalid and nonexistent records refuse binding',t=>{
@@ -43,28 +43,46 @@ test('start without identity fails before status and hooks; invalid and nonexist
  rmSync(join(f.root,path,'task.json'));assert.notEqual(start(f,path).status,0);assert.notEqual(start(f,'.trellis/tasks/absent').status,0);assert.ok(!existsSync(join(f.root,'hook-marker')));
 });
 
-test('invalid raw refs cannot authorize reads, context, package, journal or finish hooks',t=>{
+test('invalid raw refs cannot authorize reads, context, package, journal or deactivation hooks',t=>{
  const f=fixture(t);f.ok('init_developer.py',['Dev']);const outside=join(f.root,'victim');f.put('victim/task.json',{id:'SECRET',title:'SECRET',status:'in_progress',package:'evil',branch:'SECRET'});f.put('victim/prd.md','SECRET');
- f.put('.trellis/config.yaml','session_auto_commit: false\npackages:\n  safe:\n    path: safe\n  evil:\n    path: evil\nsession:\n  spec_scope: active_task\nhooks:\n  after_finish:\n    - echo touched >> hook-marker\n');
+ f.put('.trellis/config.yaml','session_auto_commit: false\npackages:\n  safe:\n    path: safe\n  evil:\n    path: evil\nsession:\n  spec_scope: active_task\nhooks:\n  after_deactivate:\n    - echo touched >> hook-marker\n');
  for(const ref of ['victim',outside,'.trellis/tasks/../../victim','.trellis/tasks/missing']){
   f.pointer('own',ref);const r=f.run('task.py',['current','--json']);assert.notEqual(r.status,0);const data=JSON.parse(r.stdout);assert.equal(data.current_task,null);assert.ok(data.error);assert.equal(data.raw_ref,ref);
   const p=f.probe(`from common.paths import get_current_task, get_current_task_abs\nassert get_current_task(root) is None and get_current_task_abs(root) is None`);assert.equal(p.status,0,p.stderr);
   for(const args of [['--json'],['--mode','record','--json'],['--mode','packages','--json']]){const result=f.run('get_context.py',args);assert.notEqual(result.status,0);assert.doesNotMatch(result.stdout,/SECRET/);}
   const journal=f.run('add_session.py',['--title','invalid task','--no-commit']);assert.notEqual(journal.status,0);assert.doesNotMatch(readFileSync(join(f.root,'.trellis/workspace/Dev/journal-1.md'),'utf8'),/invalid task|SECRET/);
-  f.ok('task.py',['finish']);assert.ok(!existsSync(join(f.root,'hook-marker')));assert.ok(!existsSync(join(f.root,'.trellis/.runtime/sessions/own.json')));
+  f.ok('task.py',['deactivate']);assert.ok(!existsSync(join(f.root,'hook-marker')));assert.ok(!existsSync(join(f.root,'.trellis/.runtime/sessions/own.json')));
  }
 });
 
 test('pointer corruption distinguished from no task; invalid override cannot sanitize into another key',t=>{
  const f=fixture(t),path=f.task();f.pointer('own',path);
- for(const content of ['broken','[]','{"current_task":42}']){f.put('.trellis/.runtime/sessions/own.json',content);const r=f.run('task.py',['current','--json']);assert.notEqual(r.status,0);assert.ok(JSON.parse(r.stdout).error);f.ok('task.py',['finish']);}
+ for(const content of ['broken','[]','{"current_task":42}']){f.put('.trellis/.runtime/sessions/own.json',content);const r=f.run('task.py',['current','--json']);assert.notEqual(r.status,0);assert.ok(JSON.parse(r.stdout).error);f.ok('task.py',['deactivate']);}
  for(const pin of ['own/../own','own!','a'.repeat(129)]){const r=f.run('task.py',['current','--json'],{TRELLIS_CONTEXT_ID:pin});assert.notEqual(r.status,0);assert.ok(JSON.parse(r.stdout).error);}
 });
 
-test('finish hooks only once for successfully cleared valid task, never after unlink failure',t=>{
- const f=fixture(t),path=f.task();f.put('.trellis/config.yaml','hooks:\n  after_finish:\n    - echo finished >> hook-marker\n');assert.equal(start(f,path).status,0);
- const failed=f.probe(`from unittest.mock import patch\nfrom common.active_task import clear_active_task\nwith patch.object(Path,'unlink',side_effect=PermissionError('denied')):\n try: clear_active_task(root)\n except RuntimeError: pass\n else: raise AssertionError('unlink failure returned authorization')`);assert.equal(failed.status,0,failed.stderr);assert.ok(existsSync(join(f.root,'.trellis/.runtime/sessions/own.json')));assert.ok(!existsSync(join(f.root,'hook-marker')));
- f.ok('task.py',['finish']);f.ok('task.py',['finish']);assert.equal(readFileSync(join(f.root,'hook-marker'),'utf8'),'finished\n');
+test('deactivation hooks only once for successfully cleared valid task, never after unlink failure',t=>{
+ const f=fixture(t),path=f.task();f.put('.trellis/config.yaml','hooks:\n  after_deactivate:\n    - echo finished >> hook-marker\n');assert.equal(start(f,path).status,0);
+ const failed=f.probe(`from unittest.mock import patch\nimport argparse\nimport task\nwith patch.object(Path,'unlink',side_effect=PermissionError('denied')), patch.object(task,'run_task_hooks') as hooks:\n assert task.cmd_deactivate(argparse.Namespace()) == 1\n hooks.assert_not_called()`);assert.equal(failed.status,0,failed.stderr);assert.ok(existsSync(join(f.root,'.trellis/.runtime/sessions/own.json')));assert.ok(!existsSync(join(f.root,'hook-marker')));
+ f.ok('task.py',['deactivate']);f.ok('task.py',['deactivate']);assert.equal(readFileSync(join(f.root,'hook-marker'),'utf8'),'finished\n');
+});
+
+test('deactivate is the only unbind command; old command/hook do not mutate state or run',t=>{
+ const f=fixture(t),path=f.task(),foreign=f.task('foreign');f.pointer('foreign',foreign);
+ f.put('.trellis/config.yaml','hooks:\n  after_finish:\n    - echo old >> old-hook-marker\n  after_deactivate:\n    - echo new >> new-hook-marker\n');
+ assert.equal(start(f,path).status,0);
+ const record=readFileSync(join(f.root,path,'task.json')),pointer=readFileSync(join(f.root,'.trellis/.runtime/sessions/own.json')),other=readFileSync(join(f.root,'.trellis/.runtime/sessions/foreign.json'));
+ const help=f.ok('task.py',['--help']).stdout;
+ assert.match(help,/deactivate/);assert.doesNotMatch(help,/\bfinish\b/);
+ assert.match(f.ok('task.py',['deactivate','--help']).stdout,/Does not complete or archive the task,\s+or record a journal/);
+ const removed=f.run('task.py',['finish']);assert.equal(removed.status,2);
+ assert.deepEqual(readFileSync(join(f.root,'.trellis/.runtime/sessions/own.json')),pointer);
+ assert.ok(!existsSync(join(f.root,'old-hook-marker')));assert.ok(!existsSync(join(f.root,'new-hook-marker')));
+ f.ok('task.py',['deactivate']);f.ok('task.py',['deactivate']);
+ assert.deepEqual(readFileSync(join(f.root,path,'task.json')),record);
+ assert.deepEqual(readFileSync(join(f.root,'.trellis/.runtime/sessions/foreign.json')),other);
+ assert.ok(existsSync(join(f.root,path,'prd.md')));assert.ok(!existsSync(join(f.root,'.trellis/tasks/archive')));assert.ok(!existsSync(join(f.root,'.trellis/workspace')));
+ assert.ok(!existsSync(join(f.root,'old-hook-marker')));assert.equal(readFileSync(join(f.root,'new-hook-marker'),'utf8'),'new\n');
 });
 
 test('external source task-store parity and lexical/record escape refusals',t=>{
@@ -108,7 +126,7 @@ test('supported entrypoints run without trellis and suppress all bytecode/update
  const walk=dir=>readdirSync(dir,{withFileTypes:true}).flatMap(e=>e.isDirectory()?[e.name,...walk(join(dir,e.name))]:[e.name]);assert.ok(!walk(join(f.root,'.trellis')).some(n=>n==='__pycache__'||n.startsWith('update-check-')));
 });
 
-test('real runtime child binding/finish cannot resurrect from repeated dispatch header; failed binding never borrows parent',async t=>{
+test('real runtime child binding/deactivate cannot resurrect from repeated dispatch header; failed binding never borrows parent',async t=>{
  const f=fixture(t);rmSync(join(f.root,'.trellis'),{recursive:true});installRuntimeFixture(f.root);const path=f.task();const handlers=new Map(),messages=[];
  trellis({events:{on:()=>()=>{},emit:()=>{}},registerCommand: () => {}, registerTool:()=>{},on:(name,fn)=>handlers.set(name,fn),sendMessage:m=>messages.push(m),getAllTools:()=>[]});
  const ctx=name=>({cwd:f.root,hasUI:false,sessionManager:{getSessionId:()=>name,getSessionFile:()=>undefined},ui:{}});
@@ -116,7 +134,7 @@ test('real runtime child binding/finish cannot resurrect from repeated dispatch 
  const prompt=`Active task: ${path}\nTrellis context id: ${parentKey}\nTrellis agent: trellis-implement\n\nImplement`;
  await handlers.get('before_agent_start')({prompt,systemPromptOptions:{sections:{}}},child);
  const childKey=__internals.contextKey(f.root,child);assert.notEqual(childKey,parentKey);assert.equal(JSON.parse(f.ok('task.py',['current','--json'],{TRELLIS_CONTEXT_ID:childKey}).stdout).current_task.dir,path);
- f.ok('task.py',['finish'],{TRELLIS_CONTEXT_ID:childKey});await handlers.get('tool_result')({toolName:'bash',input:{command:'task.py finish'}},child);
+ f.ok('task.py',['deactivate'],{TRELLIS_CONTEXT_ID:childKey});await handlers.get('tool_result')({toolName:'bash',input:{command:'task.py deactivate'}},child);
  await handlers.get('before_agent_start')({prompt,systemPromptOptions:{sections:{}}},child);assert.ok(!existsSync(join(f.root,`.trellis/.runtime/sessions/${childKey}.json`)));assert.match(messages.at(-1).content,/No active task/i);
  const failed=ctx('runtime-failed');await handlers.get('before_agent_start')({prompt:prompt.replace(path,'.trellis/tasks/missing'),systemPromptOptions:{sections:{}}},failed);const failedKey=__internals.contextKey(f.root,failed);assert.notEqual(failedKey,parentKey);assert.notEqual(f.run('task.py',['current','--json'],{TRELLIS_CONTEXT_ID:failedKey}).status,0);
  assert.equal(JSON.parse(f.ok('task.py',['current','--json'],{TRELLIS_CONTEXT_ID:parentKey}).stdout).current_task.dir,path);
@@ -160,16 +178,16 @@ test('trimmed dot developer names fail before identity or workspace writes',t=>{
  }
 });
 
-test('session directory and final pointer symlinks never authorize reads, finish or start',t=>{
+test('session directory and final pointer symlinks never authorize reads, deactivate or start',t=>{
  const f=fixture(t),path=f.task();const external=mkdtempSync(join(tmpdir(),'pi-pointer-victim-'));t.after(()=>rmSync(external,{recursive:true,force:true}));
  const victim=join(external,'own.json');writeFileSync(victim,JSON.stringify({current_task:path}));const before=readFileSync(victim);
- f.put('.trellis/config.yaml','hooks:\n  after_start:\n    - echo started >> hook-marker\n  after_finish:\n    - echo finished >> hook-marker\n');
+ f.put('.trellis/config.yaml','hooks:\n  after_start:\n    - echo started >> hook-marker\n  after_deactivate:\n    - echo finished >> hook-marker\n');
  const unchanged=readFileSync(join(f.root,path,'task.json'));
  for(const route of ['.trellis/.runtime','.trellis/.runtime/sessions','.trellis/.runtime/sessions/own.json']){
   rmSync(join(f.root,'.trellis/.runtime'),{recursive:true,force:true});mkdirSync(join(f.root,route,'..'),{recursive:true});symlinkSync(route.endsWith('.json')?victim:external,join(f.root,route));
   const current=f.run('task.py',['current','--json']);assert.notEqual(current.status,0);assert.ok(JSON.parse(current.stdout).error);
   assert.notEqual(start(f,path).status,0);assert.deepEqual(readFileSync(join(f.root,path,'task.json')),unchanged);
-  const finish=f.run('task.py',['finish']);if(route.endsWith('.json'))assert.equal(finish.status,0);else assert.notEqual(finish.status,0);
+  const finish=f.run('task.py',['deactivate']);if(route.endsWith('.json'))assert.equal(finish.status,0);else assert.notEqual(finish.status,0);
   assert.deepEqual(readFileSync(victim),before);assert.ok(!existsSync(join(f.root,'hook-marker')));
  }
 });
@@ -212,13 +230,13 @@ test('recorded native provenance matches original git bytes and derived sources 
  }
 });
 
-test('actual create/start/current/finish lifecycle and malformed hooks remain observable without global trellis',t=>{
- const f=fixture(t);f.ok('init_developer.py',['Dev']);f.put('.pi/settings.json','{}');f.put('.trellis/config.yaml','hooks:\n  after_start:\n    - printf "%s\\n" "$TASK_JSON_PATH" >> hook-paths\n  after_finish: invalid scalar\n');
+test('actual create/start/current/deactivate lifecycle and malformed hooks remain observable without global trellis',t=>{
+ const f=fixture(t);f.ok('init_developer.py',['Dev']);f.put('.pi/settings.json','{}');f.put('.trellis/config.yaml','hooks:\n  after_start:\n    - printf "%s\\n" "$TASK_JSON_PATH" >> hook-paths\n  after_deactivate: invalid scalar\n');
  const created=f.ok('task.py',['create','Lifecycle','--description','Actual CLI lifecycle','--slug','lifecycle','--no-start']);const path=created.stdout.trim().split('\n').at(-1);
  assert.match(path,/^\.trellis\/tasks\/\d{2}-\d{2}-lifecycle$/);assert.ok(existsSync(join(f.root,path,'implement.jsonl')));assert.ok(!existsSync(join(f.root,'.trellis/.runtime/sessions/own.json')));
  assert.notEqual(f.run('task.py',['start',path]).status,0);f.put(path+'/implement.jsonl',JSON.stringify({file:path+'/prd.md'})+'\n');f.put(path+'/check.jsonl',JSON.stringify({file:path+'/prd.md'})+'\n');f.ok('task.py',['validate',path]);f.ok('task.py',['start',path]);
  assert.equal(JSON.parse(f.ok('task.py',['current','--json']).stdout).current_task.status,'in_progress');assert.equal(realpathSync(readFileSync(join(f.root,'hook-paths'),'utf8').trim()),realpathSync(join(f.root,path,'task.json')));
- const finish=f.ok('task.py',['finish']);assert.match(finish.stderr,/ignoring hook.*after_finish/);assert.ok(!existsSync(join(f.root,'.trellis/.runtime/sessions/own.json')));
+ const finish=f.ok('task.py',['deactivate']);assert.match(finish.stderr,/ignoring hook.*after_deactivate/);assert.ok(!existsSync(join(f.root,'.trellis/.runtime/sessions/own.json')));
 });
 
 test('context validation refuses invalid task records rather than raw external or nonobject metadata',t=>{

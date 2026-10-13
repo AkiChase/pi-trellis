@@ -1,3 +1,3 @@
 # Task System
 
-Tasks live under `.trellis/tasks/` with valid task.json, PRD and curated role JSONL. Session context selects only its own pointer. `task.py finish` clears that pointer without completing status. Use exact task paths and real command help; invalid bindings authorize no material reads/hooks/Git.
+Tasks live under `.trellis/tasks/` with valid task.json, PRD and curated role JSONL. Session context selects only its own pointer. `task.py deactivate` clears only that session binding without completing status, archiving the task or recording a journal. Its lifecycle hook is `after_deactivate`; work wrap-up remains the separate `trellis-finish-work` skill. Use exact task paths and real command help; invalid bindings authorize no material reads/hooks/Git.

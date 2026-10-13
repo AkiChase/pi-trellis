@@ -48,7 +48,7 @@ test("two sessions in one project keep keys, CLI context cache, and dispatch tas
   assert.match(bi.prompt, /b requirements/); assert.ok(ai.prompt.includes(INJECTED_MARKER));
   assert.equal(process.env.TRELLIS_CONTEXT_ID, before);
 });
-test("child binds explicit task under its own key; finish never clears parent and never resurrects task", async (t) => {
+test("child binds explicit task under its own key; deactivation never clears parent and never resurrects task", async (t) => {
   const f = setup(t), parent = f.ctx("parent"), child = f.ctx("child");
   f.pointer(parent, "a"); f.pointer(child, "b");
   const input = { subagent_type: "trellis-implement", prompt: "implement" };
@@ -65,7 +65,7 @@ test("child binds explicit task under its own key; finish never clears parent an
   await f.call(child, shell, "bash");
   assert.ok(shell.command.startsWith(`export TRELLIS_CONTEXT_ID=${childKey}\n`));
   rmSync(join(f.root, `.trellis/.runtime/sessions/${childKey}.json`));
-  await f.handlers.get('tool_result')({toolName:'bash',input:{command:'task.py finish'}},child);
+  await f.handlers.get('tool_result')({toolName:'bash',input:{command:'task.py deactivate'}},child);
   await f.handlers.get('before_agent_start')({prompt:input.prompt,systemPromptOptions:{sections:{}}},child);
   assert.match(f.messages.at(-1).content, /No active task/i);
   assert.equal(JSON.parse(readFileSync(join(f.root, `.trellis/.runtime/sessions/${parentKey}.json`))).current_task,'.trellis/tasks/a');
@@ -78,7 +78,7 @@ test("failed child binding isolates key before error; parent pointer is never in
   await f.handlers.get('before_agent_start')({prompt:`Active task: .trellis/tasks/a\nTrellis context id: ${parentKey}\n\nwork`,systemPromptOptions:{sections:{}}},child);
   const childKey = __internals.contextKey(f.root,child);
   assert.notEqual(childKey,parentKey);
-  const shell = {command:'task.py finish'};
+  const shell = {command:'task.py deactivate'};
   await f.call(child,shell,'bash');
   assert.ok(shell.command.startsWith(`export TRELLIS_CONTEXT_ID=${childKey}\n`));
   assert.equal(JSON.parse(readFileSync(join(f.root,`.trellis/.runtime/sessions/${parentKey}.json`))).current_task,'.trellis/tasks/a');
