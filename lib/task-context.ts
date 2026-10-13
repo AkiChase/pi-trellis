@@ -224,11 +224,15 @@ export function parseDispatchFacts(prompt: string): DispatchFacts | undefined {
 /** Removes markers supplied by the caller; only fresh, owned material can assert injection. */
 export function assembleDispatchPrompt(options: {
 	prompt: string; taskDir: string; contextId: string; role: TrellisRole; context: TaskContext;
+	materials?: { revision: string; sourceFingerprint: string; targetFingerprint: string };
 }): string {
 	let request = options.prompt.replace(/<!-- pi-trellis:task-context:start -->[\s\S]*?<!-- pi-trellis:task-context:end -->/g, "")
 		.replaceAll(INJECTED_MARKER, "");
 	if (parseDispatchFacts(request)) request = request.replace(/^Active task:[^\r\n]*(?:\r?\n(?:Trellis context id:|Trellis agent:)[^\r\n]*)*\r?\n?/, "");
-	const header = `Active task: ${options.taskDir}\nTrellis context id: ${options.contextId}\nTrellis agent: ${options.role}`;
+	request = request.replace(/^Trellis material (?:revision|source fingerprint|target fingerprint):[^\r\n]*(?:\r?\n|$)/gm, "");
+	const facts = options.materials;
+	const materialFacts = facts ? `\nTrellis material revision: ${facts.revision}\nTrellis material source fingerprint: ${facts.sourceFingerprint}\nTrellis material target fingerprint: ${facts.targetFingerprint}` : "";
+	const header = `Active task: ${options.taskDir}\nTrellis context id: ${options.contextId}\nTrellis agent: ${options.role}${materialFacts}`;
 	const materialText = options.context.text.replaceAll(INJECTED_MARKER, "[marker quoted in task material]")
 		.replaceAll(CONTEXT_OPEN, "[context delimiter quoted in task material]").replaceAll(CONTEXT_CLOSE, "[context delimiter quoted in task material]");
 	const material = [CONTEXT_OPEN, options.context.complete ? INJECTED_MARKER : "", materialText, CONTEXT_CLOSE].filter(Boolean).join("\n");

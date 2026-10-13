@@ -11,7 +11,11 @@ from .records import (
     resolve_base, runtime, same_identity, source_for, source_lock, task_slug,
     validate_branch, worktree_directory,
 )
-from .materials import prepare, task_record, validate_ready
+from .materials import (
+    prepare, task_record, validate_ready, validate_context, material_graph,
+    initialize_snapshot, material_summary, require_fresh, refresh_plan, collect_plan,
+    collection_candidates, plan_preview, apply_files, store_snapshot, cleanup_snapshots,
+)
 
 
 def checked_binding(source, task):
@@ -42,6 +46,17 @@ def query(cwd, task=None, ready=False):
             if task_record(source["root"], task).get("status") != "in_progress":
                 raise ValueError("Source task is not approved/in_progress for managed execution")
             validate_ready(b)
+        if b and b.get('materials'):
+            try:
+                result['materials'] = material_summary(b)
+            except (ValueError, OSError, UnicodeError) as error:
+                if ready:
+                    raise
+                result['materials'] = dict(state='invalid', error=str(error)[:4096])
+        if ready:
+            if 'materials' not in result:
+                raise ValueError('Missing material snapshot; prepare a new worktree (no migration)')
+            require_fresh(result['materials'])
     return result
 
 
@@ -114,12 +129,13 @@ def remove(b, cwd, integrated_into, confirm):
             tip = git(b["worktreePath"], ["rev-parse", "HEAD"])
             git(b["sourceRoot"], ["merge-base", "--is-ancestor", tip, saved])
             git(b["sourceRoot"], ["worktree", "remove", "--", b["worktreePath"]])
+        cleanup_snapshots(b)
         for file in (binding_file(b["sourceRoot"], b["taskDir"]), execution_file(b)):
             file.unlink(missing_ok=True)
     return dict(binding=b, preview=not confirm, ignored=ignored, note=f"{'Removed/unbound' if confirm else 'Removal preview'}. Ignored files at risk:\n{ignored or '(none)'}. No branch deleted.")
 
 
-def manage(action, cwd, task, confirm=False, path=None, branch=None, base=None, integrated_into=None):
+def manage(action, cwd, task, confirm=False, path=None, branch=None, base=None, integrated_into=None, files=None):
     source, local = source_for(cwd)
     task_slug(task)
     b = checked_binding(source, task)
@@ -130,12 +146,76 @@ def manage(action, cwd, task, confirm=False, path=None, branch=None, base=None, 
         status = git(b["worktreePath"], ["status", "--short"]) if not problems else None
         execution = read_execution(b)
         verification = "not verified"
+        materials = None
+        if not problems and b.get('materials'):
+            try:
+                materials = material_summary(b)
+            except (ValueError, OSError, UnicodeError) as error:
+                materials = dict(state='invalid', error=str(error)[:4096])
         if execution and execution.get("role") == "trellis-check" and execution["state"] == "completed":
             try:
-                verification = "check ended on current snapshot (inspect its report; not automatic acceptance)" if execution.get("finalSnapshot") == snapshot(b) else "check snapshot stale or unavailable"
+                current = materials and materials['state'] == 'valid' and not materials['sourceDrift']['count'] and not materials['conflicts']['count'] and execution.get('materialRevision') == materials['revision'] and execution.get('finalSnapshot') == snapshot(b)
+                verification = "check ended on current snapshot and material revision (inspect its report; not automatic acceptance)" if current else "check snapshot/material lineage stale or unavailable"
             except (ValueError, OSError):
                 verification = "check snapshot unavailable"
-        return dict(binding=b, problems=problems, gitStatus=status, execution=execution, note=f"Preparation: {b['preparationState']}. Execution: {execution['state'] if execution else 'none'}. {verification}.")
+        return dict(binding=b, problems=problems, gitStatus=status, execution=execution, materials=materials, note=f"Preparation: {b['preparationState']}. Execution: {execution['state'] if execution else 'none'}. {verification}.")
+    if action in ('refresh', 'collect'):
+        if not b:
+            raise ValueError('Task has no worktree binding')
+        def plan_for(binding):
+            require_identity(binding, repository(source['root']))
+            if binding['preparationState'] != 'ready' or active_execution(binding):
+                raise ValueError('Refresh/collect require ready and no active/unknown execution')
+            if task_record(source['root'], task).get('status') != 'in_progress':
+                raise ValueError('Source task must remain in_progress')
+            validate_context(binding)  # Do not reject a repairable old target reference graph.
+            return refresh_plan(binding) if action == 'refresh' else collect_plan(binding, files)
+        files = files or []
+        if action == 'collect' and not files:
+            if confirm:
+                raise ValueError('Collect confirmation requires explicit --file selections')
+            plan_for(b)
+            return dict(binding=b, preview=True, candidates=collection_candidates(b), note='Select task-local files with --file; review preview/diff before approved --confirm. task.json is never collected.')
+        plan = plan_for(b)
+        preview = plan_preview(plan)
+        if not confirm:
+            return dict(binding=b, preview=True, **preview, note='Material plan preview; review hashes/files. Confirmation recomputes under lock, not a persisted reservation.')
+        with source_lock(source['root']):
+            b = fresh_binding(source, task, b)
+            plan = plan_for(b)
+            preview = plan_preview(plan)
+            if plan['conflicts'] or plan['errors']:
+                raise ValueError('Material conflicts/invalid prospective graph: ' + ', '.join(preview['conflicts']['paths'] + plan['errors']) + f" ({preview['conflicts']['count']} conflicts)")
+            # All validation precedes any material write. External editors are not locked.
+            prior_materials = b.get('materials')
+            try:
+                destination = b['worktreePath'] if action == 'refresh' else b['sourceRoot']
+                apply_files(destination, task, plan['overlay'], plan['actions'], 'target' if action == 'refresh' else 'source')
+                validate_ready(b)
+                if task_record(b['sourceRoot'], task).get('status') != 'in_progress':
+                    raise ValueError('Source lifecycle changed during material operation')
+                from .materials import digest, file_hash
+                if action == 'refresh':
+                    if digest(material_graph(b['sourceRoot'], task)) != plan['beforeSource'] or material_graph(b['worktreePath'], task) != plan['prospectiveTarget']:
+                        raise ValueError('Source/target materials changed during refresh')
+                else:
+                    if digest(material_graph(b['worktreePath'], task)) != plan['beforeTarget'] or material_graph(b['sourceRoot'], task) != plan['prospectiveSource']:
+                        raise ValueError('Source/target materials changed during collect')
+                for a in plan['actions']:
+                    expected = a['source'] if action == 'refresh' else a['target']
+                    if a['path'] in plan['overlay'] and file_hash(destination, task, a['path']) != (None if plan['overlay'][a['path']] is None else expected):
+                        raise ValueError('Written material changed before snapshot publication')
+                if plan['changed'] or plan.get('collectionChanged'):
+                    store_snapshot(b, plan['accepted'], plan['ancestors'], advance=plan['changed'])
+                publish(b)
+            except Exception as error:
+                if prior_materials is not None:
+                    b['materials'] = prior_materials
+                b['preparationState'] = 'error'
+                b['lastError'] = str(error)
+                publish(b)
+                raise
+            return dict(binding=b, **plan_preview(plan), note=f'{action.title()} completed; no start/hooks, commit, merge or archive. Inspect reports; no automatic acceptance.')
     if action in ("prepare", "remove", "recover"):
         if not b:
             raise ValueError("Task has no worktree binding; create or adopt first")
@@ -175,7 +255,8 @@ def manage(action, cwd, task, confirm=False, path=None, branch=None, base=None, 
             raise ValueError("Task worktree has an active/unknown execution")
         if b["preparationState"] == "ready":
             validate_ready(b)
-            return dict(binding=b, reused=True, note="Already prepared; current target context validated.")
+            require_fresh(material_summary(b))
+            return dict(binding=b, reused=True, note="Already prepared; validated without synchronization. Use explicit refresh for source updates.")
         if b["preparationState"] in ("error", "creating", "preparing"):
             raise ValueError("Preparation state requires explicit recover first")
         preview = prepare(b)
@@ -190,7 +271,14 @@ def manage(action, cwd, task, confirm=False, path=None, branch=None, base=None, 
             b["preparedFiles"] = preview["hashes"]
             atomic_json(binding_file(source["root"], task), b)
             try:
+                delivered = material_graph(b['sourceRoot'], task)
                 prepared = prepare(b, True)
+                if material_graph(b['sourceRoot'], task) != delivered:
+                    raise ValueError('Source materials changed during preparation')
+                if b.get('materials'):
+                    require_fresh(material_summary(b))
+                else:
+                    initialize_snapshot(b, delivered)
                 b["preparationState"] = "ready"
                 b["preparedFiles"] = prepared["hashes"]
                 b.pop("lastError", None)

@@ -15,7 +15,7 @@
 | `scripts/`, `agents/`, `docs/agent-baseline.json` | Installation and adapted-agent source maintenance; see the scripts layer |
 | `tests/*.test.mjs` | `node:test` coverage with direct TypeScript imports |
 
-Keep host presentation in the entrypoint and reuse the library owner for shared contract logic. `__internals` exports in the extension are test helpers, not a stable public API. Runtime integration uses Trellis CLIs and project files; the new standard-library management core is original pi-trellis code, not a copied Trellis runtime. Host queries invoke the package-local Python query without taking a lock; user commands use the independently deployed fixed project entry. The installer separately applies focused derived Python blocks; [license/provenance rules](../scripts/agent-sync-and-provenance.md) still apply.
+Keep host presentation in the entrypoint and reuse the library owner for shared contract logic. `__internals` exports in the extension are test helpers, not a stable public API. Runtime integration uses Trellis CLIs and project files; the new standard-library management core is original pi-trellis code, not a copied Trellis runtime. Host queries invoke the package-local Python query without taking a lock; user commands use the independently deployed fixed project entry. Python also owns accepted-source snapshots, whole-file B/S/T decisions, prospective overlays and material revisions; TS consumes opaque facts and never duplicates those rules. The installer separately applies focused derived Python blocks; [license/provenance rules](../scripts/agent-sync-and-provenance.md) still apply.
 
 ## Inputs, Types and Validation
 

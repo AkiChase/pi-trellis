@@ -15,6 +15,7 @@ export interface WorktreeBinding {
 	contextId: string;
 	preparationState: "creating" | "unprepared" | "preparing" | "ready" | "error";
 	preparedFiles?: Record<string, string>;
+	materials?: { version: 1; revision: string; snapshotId: string };
 	createdAt: string;
 	lastError?: string;
 }
@@ -47,6 +48,10 @@ export function parseBinding(value: unknown): WorktreeBinding {
 	if (!/^[a-f0-9]{40,64}$/.test(b.baseCommit) || !/^[A-Za-z0-9_-]+$/.test(b.contextId) || !/^[A-Za-z0-9-]+$/.test(b.bindingId)) throw new Error("Invalid binding base/context/binding id");
 	for (const key of ["sourceRoot", "worktreePath", "repositoryIdentity"] as const) {
 		if (canonicalPath(b[key]) !== b[key]) throw new Error(`Binding ${key} must be a canonical absolute path`);
+	}
+	if (b.materials !== undefined) {
+		const m = b.materials;
+		if (!m || m.version !== 1 || Object.keys(m).sort().join(",") !== "revision,snapshotId,version" || ![m.revision, m.snapshotId].every((v) => typeof v === "string" && /^[A-Za-z0-9-]{1,80}$/.test(v))) throw new Error("Invalid material descriptor");
 	}
 	return b;
 }

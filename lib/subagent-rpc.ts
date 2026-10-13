@@ -86,10 +86,10 @@ export function registerDispatchTool(pi: ExtensionAPI, activeTask: (ctx: Extensi
 			if (!adapterConfigured(source.root)) throw new Error("Persist pi-trellis in source/user settings (not only a one-shot -e path), so child sessions can load the context adapter");
 			const task = args.task ?? local?.taskDir ?? await activeTask(ctx);
 			if (!task) throw new Error("No approved active task");
-			const { binding } = await queryWorktree(ctx.cwd, task, action === "dispatch", signal);
-			if (!binding) throw new Error("No worktree binding; use python3 .trellis/scripts/worktree.py create/prepare first");
+			const { binding: initialBinding } = await queryWorktree(ctx.cwd, task, action === "dispatch", signal);
+			if (!initialBinding) throw new Error("No worktree binding; use python3 .trellis/scripts/worktree.py create/prepare first");
 			if (action === "stop") {
-				const execution = readExecution(binding);
+				const execution = readExecution(initialBinding);
 				if (!execution?.agentId) throw new Error("No known agent id; inspect unknown startup before recovery");
 				const reply = await rpc(pi, "stop", { agentId: execution.agentId });
 				if (!reply.success) throw new Error(reply.error || "Stop failed; lease retained");
@@ -110,15 +110,19 @@ export function registerDispatchTool(pi: ExtensionAPI, activeTask: (ctx: Extensi
 			const release = acquireBindingLock(source.root);
 			try {
 				const latest = await queryWorktree(ctx.cwd, task, true, signal);
-				if (!latest.binding || !sameIdentity(latest.binding, binding)) throw new Error("Binding changed before dispatch");
-				if (activeExecution(binding)) throw new Error("Worktree already has running/unknown execution; do not dispatch concurrently");
-				// Render after the awaited under-lock query, not from an earlier
-				// snapshot that could include a stale complete-injection marker.
-				const context = buildTaskContext({ executionRoot: binding.worktreePath, taskDir: task, role: args.agent });
-				const prompt = assembleDispatchPrompt({ prompt: `Execution directory: ${binding.worktreePath}\nReview base: ${binding.baseCommit}\n\n${args.prompt}`, taskDir: task, contextId: binding.contextId, role: args.agent, context });
+				if (!latest.binding || !sameIdentity(latest.binding, initialBinding)) throw new Error("Binding changed before dispatch");
+				const executionBinding = latest.binding;
+				const facts = latest.materials;
+				if (!facts || facts.state !== "valid" || !facts.revision || !facts.sourceFingerprint || !facts.targetFingerprint) throw new Error("Python query returned no valid material facts");
+				if (activeExecution(executionBinding)) throw new Error("Worktree already has running/unknown execution; do not dispatch concurrently");
+				const context = buildTaskContext({ executionRoot: executionBinding.worktreePath, taskDir: task, role: args.agent });
+				const prompt = assembleDispatchPrompt({ prompt: `Execution directory: ${executionBinding.worktreePath}\nReview base: ${executionBinding.baseCommit}\n\n${args.prompt}`, taskDir: task, contextId: executionBinding.contextId, role: args.agent, context, materials: { revision: facts.revision, sourceFingerprint: facts.sourceFingerprint, targetFingerprint: facts.targetFingerprint } });
+				const final = await queryWorktree(ctx.cwd, task, true, signal);
+				if (!final.binding || !sameIdentity(final.binding, executionBinding) || final.materials?.revision !== facts.revision || final.materials?.sourceFingerprint !== facts.sourceFingerprint || final.materials?.targetFingerprint !== facts.targetFingerprint) throw new Error("Materials changed during prompt rendering; inspect and retry dispatch");
 				signal?.throwIfAborted();
 				if (shuttingDown) throw new Error("Host session shut down before spawn");
-				const record: ExecutionRecord = { bindingId: binding.bindingId, requestId: randomUUID(), role: args.agent, state: "starting", ownerPid: process.pid, ownerToken: processToken, createdAt: new Date().toISOString() };
+				const binding = executionBinding;
+				const record: ExecutionRecord = { bindingId: binding.bindingId, requestId: randomUUID(), role: args.agent, state: "starting", ownerPid: process.pid, ownerToken: processToken, createdAt: new Date().toISOString(), materialRevision: facts.revision, sourceFingerprint: facts.sourceFingerprint, targetFingerprint: facts.targetFingerprint };
 				writeExecution(binding, record);
 				try {
 					// No call-time abort forwarded: cancellation of waiting cannot prove the detached child stopped.

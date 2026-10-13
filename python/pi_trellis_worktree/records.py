@@ -162,6 +162,10 @@ def parse_binding(b):
             raise ValueError(f"Binding {key} must be a canonical absolute path")
     if "preparedFiles" in b and (not isinstance(b["preparedFiles"], dict) or any(not isinstance(k, str) or not isinstance(v, str) for k, v in b["preparedFiles"].items())):
         raise ValueError("Invalid preparedFiles")
+    if 'materials' in b:
+        m = b['materials']
+        if not isinstance(m, dict) or type(m.get('version')) is not int or m['version'] != 1 or set(m) != {'version', 'revision', 'snapshotId'} or any(not isinstance(m.get(k), str) or not re.fullmatch(r'[A-Za-z0-9-]{1,80}', m[k]) for k in ('revision', 'snapshotId')):
+            raise ValueError('Invalid material descriptor')
     return b
 
 
@@ -248,6 +252,10 @@ def read_execution(b):
     r = read_json(execution_file(b), 65536)
     if r is not None and (not isinstance(r, dict) or r.get("bindingId") != b["bindingId"] or not isinstance(r.get("requestId"), str) or r.get("state") not in ("starting", "running", "completed", "failed", "stopped", "unknown") or type(r.get("ownerPid")) is not int or abs(r["ownerPid"]) > 9007199254740991):
         raise ValueError("Invalid execution record")
+    if r is not None:
+        for key in ('materialRevision', 'sourceFingerprint', 'targetFingerprint'):
+            if key in r and (not isinstance(r[key], str) or not re.fullmatch(r'[A-Za-z0-9-]{1,80}' if key == 'materialRevision' else r'[a-f0-9]{64}', r[key])):
+                raise ValueError('Invalid execution material facts')
     return r
 
 

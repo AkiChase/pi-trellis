@@ -7,6 +7,7 @@ export async function manageWorktree(request) {
   for (const [key, flag] of [['path', '--path'], ['base', '--base'], ['branch', '--branch'], ['integratedInto', '--integrated-into']]) {
     if (request[key] !== undefined) args.push(flag, request[key]);
   }
+  for (const file of request.files ?? []) args.push('--file', file);
   if (request.confirm && request.action !== 'status') args.push('--confirm');
   return new Promise((done, reject) => execFile(process.env.TRELLIS_PYTHON || 'python3', args, {
     env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' }, signal: request.signal, timeout: 30000,

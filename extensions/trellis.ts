@@ -100,6 +100,8 @@ const SKILL_DIRS = [
 const pinnedContextId = process.env.TRELLIS_CONTEXT_ID?.trim();
 const keyBySession = new Map<string, string>();
 const taskBySession = new Map<string, string>();
+// Display provenance only, never authorization or an active-pointer override.
+const roleBySession = new Map<string, string>();
 
 /** cacheKey -> memoized prompt sections. Must stay byte-stable for the process lifetime. */
 const sectionCache = new Map<string, { overview?: string; workflow?: string }>();
@@ -526,7 +528,7 @@ function platformList(trimmed: string, closeTags: Set<string>): string[] | undef
 // Renderers
 // ---------------------------------------------------------------------------
 
-function renderOverview(root: string, key: string, context: TrellisContext | undefined): string {
+function renderOverview(root: string, key: string, context: TrellisContext | undefined, role?: string, protocolPath = join(packageDir(), "docs/worktree-execution.md")): string {
 	const lines: string[] = [
 		"Trellis-managed project. Snapshot taken when this session started;",
 		`live task state arrives as <${STATE_MESSAGE_TYPE}> messages.`,
@@ -574,8 +576,15 @@ function renderOverview(root: string, key: string, context: TrellisContext | und
 		`  ${PYTHON} ./.trellis/scripts/get_context.py --mode default --json`,
 		`  ${PYTHON} ./.trellis/scripts/get_context.py --mode phase --step <N.N>`,
 		`  ${PYTHON} ./.trellis/scripts/get_context.py --mode packages`,
-		"Worktree management: python3 .trellis/scripts/worktree.py <create|adopt|status|prepare|recover|remove> --task <task> (preview before approved --confirm).",
-		existsSync(scriptPath(root, "worktree.py")) ? "Flow: create → prepare → trellis_dispatch; stop via trellis_dispatch action=stop. Parent Pi stays in source." : "Worktree CLI not deployed: explicitly install/update pi-trellis with scripts/install.sh; no automatic repair.",
+		...(role ? [
+			`Task execution role: ${role}; work only in the supplied execution directory and approved task scope.`,
+			"Read missing full materials before working; do not manage worktrees, dispatch other task roles, or run source lifecycle/Git integration.",
+		] : [
+			existsSync(scriptPath(root, "worktree.py")) ? "Worktree management: python3 .trellis/scripts/worktree.py <command> --task <task>; use --help, preview then approved --confirm." : "Worktree CLI not deployed (python3 .trellis/scripts/worktree.py): explicit install/update required; no automatic repair.",
+			"Dispatch/stop: trellis_dispatch; main session chooses phases and stays at the source project root.",
+			"Never use temporary worktree isolation or silently fall back to source for managed execution.",
+			existsSync(protocolPath) ? `Before the first managed operation, read protocol: ${protocolPath}` : `Worktree protocol missing: ${protocolPath}; explicitly repair package installation before management.`,
+		]),
 		`Trellis CLI calls use TRELLIS_CONTEXT_ID=${key}; pi-trellis scopes each bash call explicitly.`,
 	);
 
@@ -988,7 +997,11 @@ export default function (pi: ExtensionAPI): void {
 		try {
 			let current = session(ctx);
 			if (!current) return;
-			const facts = parseDispatchFacts(event.prompt);
+			const facts = parseDispatchFacts("prompt" in event ? event.prompt : "");
+			if (facts?.role && roleBySession.get(current.identity) !== facts.role) {
+				roleBySession.set(current.identity, facts.role);
+				sectionCache.delete(current.cacheKey);
+			}
 			if (facts && taskBySession.get(current.identity) !== facts.taskDir) {
 				await inheritDispatchTask(current, facts.taskDir);
 				taskBySession.set(current.identity, facts.taskDir);
@@ -1011,7 +1024,7 @@ export default function (pi: ExtensionAPI): void {
 
 			if (cached.overview === undefined) {
 				const context = await loadContext(current.root, current.key);
-				cached.overview = renderOverview(current.root, current.key, context);
+				cached.overview = renderOverview(current.root, current.key, context, roleBySession.get(current.identity));
 			}
 			sections[SECTION_OVERVIEW] = cached.overview;
 
@@ -1131,6 +1144,7 @@ export default function (pi: ExtensionAPI): void {
 		if (current) {
 			keyBySession.delete(current.identity);
 			taskBySession.delete(current.identity);
+			roleBySession.delete(current.identity);
 			sectionCache.delete(current.cacheKey);
 			lastStateSent.delete(current.cacheKey);
 		}

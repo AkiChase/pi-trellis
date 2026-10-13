@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/extension/architecture.md", "reason": "Python管理与TS宿主责任及失败边界"}
+{"file": ".trellis/spec/extension/session-and-context.md", "reason": "主子会话协议、缓存与派发材料"}
+{"file": ".trellis/spec/extension/worktree-lifecycle.md", "reason": "原生CLI与绑定占用准备契约"}
+{"file": ".trellis/spec/scripts/installation-and-patching.md", "reason": "固定项目入口与保护部署边界"}
+{"file": ".trellis/tasks/10-13-worktree-material-sync/research/protocol-discovery.md", "reason": "渐进式披露与主子角色注入研究"}
+{"file": ".trellis/tasks/10-13-worktree-material-sync/research/material-sync.md", "reason": "材料同步源码证据；被否决兼容建议不实施，最终design优先"}

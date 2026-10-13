@@ -34,7 +34,7 @@ def value(raw):
 def parser():
     p = Parser(description="Persistent task worktrees: create → prepare → trellis_dispatch (Pi host). Mutations preview by default; --confirm requires prior user approval.")
     sub = p.add_subparsers(dest="action", required=True, parser_class=Parser)
-    help_text = dict(create="Create a directory from a pinned commit, leave unprepared", adopt="Adopt an existing registered branch-backed worktree", status="Inspect binding, preparation and execution (read-only)", prepare="Copy selected task materials and run target start/hooks", recover="Reset preparation/release only dead-owner execution", remove="Remove a clean integrated worktree without force/branch deletion")
+    help_text = dict(create="Create a directory from a pinned commit, leave unprepared", adopt="Adopt an existing registered branch-backed worktree", status="Inspect binding, preparation and execution (read-only)", prepare="Copy selected task materials and run target start/hooks", refresh="Reconcile source task materials using hash-only B/S/T; no start/hooks", collect="Explicitly collect selected target task files; never task.json", recover="Reset preparation/release only dead-owner execution", remove="Remove a clean integrated worktree without force/branch deletion")
     for action, description in help_text.items():
         s = sub.add_parser(action, help=description, description=description)
         s.add_argument("--task", required=True, type=value, action=Once, help="Existing .trellis/tasks/<full-slug> (explicit; no pointer fallback)")
@@ -47,6 +47,8 @@ def parser():
             s.add_argument("--branch", type=value, action=Once)
         if action == "adopt":
             s.add_argument("--path", required=True, type=value, action=Once, help="Existing registered worktree, source-relative or absolute")
+        if action == 'collect':
+            s.add_argument('--file', dest='files', type=value, action='append', help='Explicit current-task project-relative regular file; repeat for dependencies (no glob/all/deletions)')
         if action == "remove":
             s.add_argument("--integrated-into", type=value, action=Once, help="User-approved commit reference preserving target HEAD; required for existing target")
     return p
@@ -68,6 +70,8 @@ def main(argv=None):
                 for key in ("taskDir", "sourceRoot", "worktreePath", "branch", "baseCommit"):
                     print(f"{key}: {plan[key]}")
             print(result["note"])
+            if result.get('actions') or result.get('candidates'):
+                print(json.dumps({k: result[k] for k in ('actions', 'omitted', 'conflicts', 'errors', 'candidates') if k in result}, ensure_ascii=False, indent=2))
         return 0
     except SystemExit as error:
         if error.code and machine:

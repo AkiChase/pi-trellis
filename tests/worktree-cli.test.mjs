@@ -38,7 +38,9 @@ else: print(json.dumps({'current_task':json.loads(p.read_text()),'source':'sessi
 test('strict CLI help/operation arguments reject before writes, including duplicate flags and whitespace/control values',t=>{
  const f=fixture(t);
  const help=execute([f.cli,'--help']);assert.equal(help.status,0);assert.match(help.stdout,/create.*adopt.*status.*prepare.*recover.*remove/s);
+ assert.match(help.stdout,/refresh.*collect/s);
  for(const [action,flags] of [
+  ['refresh',['--base','HEAD']],['refresh',['--file',f.task+'/prd.md']],['collect',['--file','']],['collect',['--all']],['collect',['--expect','token']],
   ['create',['--path','somewhere']],['status',['--confirm']],['prepare',['--base','HEAD']],['recover',['--branch','x']],
   ['adopt',[]],['create',['--unknown']],['create',['--br','x']],['create',['--task',f.task]],['create',['--json']],
   ['create',['--confirm','--confirm']],['create',['--base']],['create',['--base','']],['create',['--base','   ']],
@@ -183,7 +185,8 @@ test('explicit --cwd cannot hide the actual process cwd from removal',t=>{
 test('Python status compares host snapshots identically for supplementary Unicode filenames',t=>{
  const f=fixture(t),b=f.ok('create',['--confirm']).binding;
  for(const name of ['\uE000.md','🙂.md'])writeFileSync(join(b.worktreePath,name),'snapshot content');
- writeExecution(b,{bindingId:b.bindingId,requestId:'unicode',role:'trellis-check',state:'completed',ownerPid:process.pid,ownerToken:'token',createdAt:new Date().toISOString(),finalSnapshot:worktreeSnapshot(b)});
+ f.ok('prepare',['--confirm']);const prepared=readBinding(f.root,f.task);
+ writeExecution(b,{bindingId:b.bindingId,requestId:'unicode',role:'trellis-check',state:'completed',ownerPid:process.pid,ownerToken:'token',createdAt:new Date().toISOString(),materialRevision:prepared.materials.revision,finalSnapshot:worktreeSnapshot(b)});
  assert.match(f.ok('status').note,/check ended on current snapshot/);
  writeFileSync(join(b.worktreePath,'🙂.md'),'changed');assert.match(f.ok('status').note,/stale/);
 });

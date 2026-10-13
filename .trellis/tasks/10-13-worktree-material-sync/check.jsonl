@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/extension/quality-guidelines.md", "reason": "实际验证与源目标保留断言"}
+{"file": ".trellis/spec/extension/worktree-lifecycle.md", "reason": "安全和当前接口边界审阅（不做旧快照迁移）"}
+{"file": ".trellis/spec/extension/session-and-context.md", "reason": "上下文隔离及缓存回归审阅"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "跨Python与宿主数据边界审阅"}
+{"file": ".trellis/tasks/10-13-worktree-material-sync/research/material-sync.md", "reason": "材料边界负例；不采纳legacy兼容或研究中的额外范围"}

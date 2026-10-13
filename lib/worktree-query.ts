@@ -3,11 +3,17 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { WorktreeBinding } from "./bindings.ts";
 
+export interface MaterialSummary {
+	state: "valid" | "invalid"; revision?: string; sourceFingerprint?: string; targetFingerprint?: string;
+	sourceDrift?: { count: number; paths: string[]; omitted: number };
+	conflicts?: { count: number; paths: string[]; omitted: number };
+}
 interface WorktreeQuery {
 	ok: true;
 	source: { root: string; commonDir: string };
 	local?: WorktreeBinding;
 	binding?: WorktreeBinding;
+	materials?: MaterialSummary;
 }
 
 /** Python owns Git identity and readiness. Read-only even inside the host source lock. */

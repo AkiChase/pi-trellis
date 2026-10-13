@@ -9,6 +9,7 @@ export interface ExecutionRecord {
 	bindingId: string; requestId: string; agentId?: string; role: string;
 	state: "starting" | "running" | "completed" | "failed" | "stopped" | "unknown";
 	ownerPid: number; ownerToken: string; createdAt: string; error?: string; finalSnapshot?: string;
+	materialRevision?: string; sourceFingerprint?: string; targetFingerprint?: string;
 }
 export const processToken = randomUUID();
 export function executionFile(binding: WorktreeBinding): string {
@@ -24,6 +25,9 @@ export function readExecution(binding: WorktreeBinding): ExecutionRecord | undef
 		if (!stat.isFile() || stat.size > 65536) throw new Error("Invalid execution record file");
 		const record = JSON.parse(readFileSync(file, "utf8")) as ExecutionRecord;
 		if (record.bindingId !== binding.bindingId || typeof record.requestId !== "string" || !["starting", "running", "completed", "failed", "stopped", "unknown"].includes(record.state) || !Number.isSafeInteger(record.ownerPid)) throw new Error("Invalid execution record");
+		for (const key of ["materialRevision", "sourceFingerprint", "targetFingerprint"] as const) {
+			if (record[key] !== undefined && (typeof record[key] !== "string" || !(key === "materialRevision" ? /^[A-Za-z0-9-]{1,80}$/ : /^[a-f0-9]{64}$/).test(record[key]))) throw new Error("Invalid execution material facts");
+		}
 		return record;
 	} catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined; throw error; }
 }

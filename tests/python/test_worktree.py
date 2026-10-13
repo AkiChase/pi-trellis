@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "python"))
 from pi_trellis_worktree.records import canonical, parse_binding, text, owner_alive, source_lock, now, read_json, json_value
-from pi_trellis_worktree.materials import references
+from pi_trellis_worktree.materials import references, projection, digest, classify, material_graph, load_snapshot, apply_files, file_hash, collectible, local_file, MaterialView
 from pi_trellis_worktree.cli import parser
 
 
@@ -119,6 +119,83 @@ class NativeContracts(unittest.TestCase):
         self.put(self.task + "/implement.jsonl", json.dumps({"file": self.task + "/research", "type": "directory"}))
         with self.assertRaisesRegex(ValueError, "Directory expansion limit"):
             references(self.root, self.task, "implement")
+
+    def test_material_projection_and_ancestor_rule(self):
+        self.assertEqual(digest(projection('{"branch":"x","status":"planning","meta":{"x":1},"name":"n"}')), digest(projection('{"name":"n","meta":{"x":1}}')))
+        self.assertNotEqual(digest(projection('{"meta":null}')), digest(projection('{}')))
+        self.assertEqual(classify('A', 'A', 'L'), 'target-only')
+        self.assertEqual(classify('A', 'N', 'L'), 'conflict')
+        self.assertEqual(classify(None, None, ''), 'target-only')
+        self.assertEqual(classify('A', 'N', 'N'), 'converged')
+
+    def test_overlay_validates_new_directory_without_writes(self):
+        self.put(self.task + '/check.jsonl', json.dumps({'file': self.task + '/prd.md'}))
+        overlay = {self.task + '/implement.jsonl': json.dumps({'file': self.task + '/research', 'type': 'directory'}).encode(), self.task + '/research/new/sub.md': b'virtual research'}
+        graph = material_graph(self.root, self.task, overlay)
+        self.assertIn(self.task + '/research/new/sub.md', graph['hashes'])
+        self.assertFalse((self.root / self.task / 'research').exists())
+        with self.assertRaises(ValueError):
+            material_graph(self.root, self.task, dict(overlay, **{self.task + '/research/new/sub.md': b'\x00'}))
+
+    def test_task_lifecycle_race_is_detected_before_projection_replace(self):
+        self.put(self.task + '/task.json', '{"branch":"target","name":"n"}')
+        label = self.task + '/task.json'
+        import hashlib
+        action = dict(path=label, target=file_hash(self.root, self.task, label), targetBytes=hashlib.sha256((self.root / label).read_bytes()).hexdigest())
+        self.put(label, '{"branch":"changed-runtime","name":"n"}')
+        with self.assertRaisesRegex(ValueError, 'changed before write'):
+            apply_files(self.root, self.task, {label: b'{"branch":"target","name":"new"}'}, [action], 'target')
+        self.assertIn('changed-runtime', (self.root / label).read_text())
+
+    def test_snapshot_schema_bounds_and_symlink_directory(self):
+        import uuid
+        revision = str(uuid.uuid4())
+        b = dict(sourceRoot=str(self.root), bindingId='binding', taskDir=self.task, materials=dict(version=1, revision=revision, snapshotId=revision))
+        path = f'.trellis/.runtime/pi-trellis/materials/binding/{revision}.json'
+        valid = dict(version=1, bindingId='binding', revision=revision, accepted=dict(hashes={self.task + '/prd.md': 'a'*64}, roles=dict(implement=[self.task + '/prd.md'], check=[self.task + '/prd.md'])), ancestors={self.task + '/prd.md': 'a'*64})
+        self.put(path, json.dumps(valid))
+        self.assertEqual(load_snapshot(b)['revision'], revision)
+        for bad in [dict(valid, version=True), dict(valid, ancestors={self.task + '/prd.md': 'bad'}), dict(valid, ancestors={'../escape': 'a'*64}), dict(valid, accepted={'hashes':{},'roles':{'implement':[{}],'check':[]}}), dict(valid, ancestors={})]:
+            self.put(path, json.dumps(bad))
+            with self.assertRaises(ValueError): load_snapshot(b)
+        self.put(path, ' ' * (1024*1024+1))
+        with self.assertRaises(ValueError): load_snapshot(b)
+        directory = self.root / '.trellis/.runtime/pi-trellis/materials/binding'
+        import shutil
+        shutil.rmtree(directory)
+        outside = self.root / 'outside'; outside.mkdir()
+        directory.symlink_to(outside, target_is_directory=True)
+        with self.assertRaisesRegex(ValueError, 'symlinks'): load_snapshot(b)
+
+    def test_collection_not_arbitrary_code_or_credential_files(self):
+        for label in [self.task+'/code.py', self.task+'/research/run.sh', self.task+'/research/secrets.md', self.task+'/.env']:
+            with self.assertRaises(ValueError): collectible(self.task, label)
+        collectible(self.task, self.task+'/research/report.md')
+
+    def test_task_local_alias_and_impossible_overlay_ancestors(self):
+        task_dir = self.root / self.task
+        alias = self.root / '.trellis/tasks/other'
+        task_dir.rename(alias)
+        task_dir.symlink_to(alias, target_is_directory=True)
+        with self.assertRaisesRegex(ValueError, 'symlink'):
+            local_file(self.root, self.task, self.task + '/prd.md')
+        task_dir.unlink()
+        alias.rename(task_dir)
+        self.put(self.task + '/check.jsonl', json.dumps({'file': self.task + '/prd.md'}))
+        self.put(self.task + '/research', 'regular file blocks directory')
+        overlay = {self.task + '/implement.jsonl': json.dumps({'file': self.task + '/research/new.md'}).encode(), self.task + '/research/new.md': b'new dependency'}
+        with self.assertRaisesRegex(ValueError, 'directory'):
+            material_graph(self.root, self.task, overlay)
+        self.assertEqual((self.root / self.task / 'research').read_text(), 'regular file blocks directory')
+
+    @unittest.skipUnless(hasattr(os, 'mkfifo'), 'POSIX special-file fixture')
+    def test_virtual_reader_rejects_special_file_before_open(self):
+        label = self.task + '/research/pipe.md'
+        path = self.root / label
+        path.parent.mkdir(parents=True, exist_ok=True)
+        os.mkfifo(path)
+        with self.assertRaisesRegex(ValueError, 'regular file'):
+            MaterialView(self.root, self.task).data(label)
 
     def test_live_owner_and_lock_are_conservative(self):
         self.assertTrue(owner_alive({"ownerPid": os.getpid()}))
