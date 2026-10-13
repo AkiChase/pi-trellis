@@ -7,9 +7,9 @@ description: "Guides collaborative requirements discovery before implementation.
 
 ## Non-Negotiable Planning Contract
 
-A request to build, implement, fix, refactor, or "go ahead" is not approval to leave planning. Task-creation consent is also not implementation approval.
+Task-creation consent alone is not implementation approval. Review the plan and resolve user-owned decisions before implementation. An explicit instruction to implement an already-reviewed, unchanged plan is sufficient bounded approval; do not demand another message merely because that plan was saved to task files.
 
-For every non-trivial task, the user must respond at least once after the initial request before implementation begins. If no clarification is needed, that response must approve the final planning summary described below.
+If the plan has not been reviewed and approved, present the final planning summary and wait for approval. Material scope changes require renewed review and approval.
 
 While any user-owned product, scope, UX, compatibility, risk, or acceptance decision remains unresolved, end the turn with exactly one highest-value question. Do not edit product code, dispatch implementation, or run `task.py start`.
 
@@ -57,8 +57,8 @@ Use a concise title from the user's request. Both the title and `--description` 
 5. After each user answer, update `prd.md`, recompute the decision inventory, and repeat from step 2.
 6. When no user-owned decision remains, create or update `design.md` and `implement.md` for complex tasks.
 7. Run the requirement convergence gate, then the PRD convergence pass.
-8. Present the final planning summary and stop. Do not run `task.py start` or edit product code in the same turn.
-9. Only a subsequent user message that explicitly approves the latest planning summary authorizes `task.py start` and implementation. If the artifacts change materially after approval, repeat the final review.
+8. Present the final planning summary. If the user has not already explicitly approved the same plan for implementation, stop and wait; do not run `task.py start` or edit product code.
+9. Once the reviewed plan has explicit implementation approval, save/review the required artifacts and run `task.py start`. If the artifacts change materially after approval, repeat the final review.
 
 Do not invent a project-specific product/spec hierarchy. If the repository already has product, domain, or spec docs, use them. If it does not, proceed with the evidence that exists.
 
@@ -77,9 +77,9 @@ Do not ask process questions such as whether to search, inspect files, or contin
 
 Recommendations are not default selections. Never choose a recommended product decision on the user's behalf merely because the user asked for implementation.
 
-Do not manufacture clarification questions when the request and repository evidence already resolve every decision. In that case, proceed directly to the final planning summary, which still requires a subsequent explicit approval.
+Do not manufacture clarification questions when the request and repository evidence already resolve every decision. Proceed to the final planning summary and check whether the same plan already has explicit implementation approval.
 
-The final review is a required phase-transition gate, not a prohibited process question. Task-creation consent, the initial implementation request, and approval given before the latest final summary do not satisfy this gate.
+Final review is a required phase-transition gate. Task-creation consent and a vague initial implementation request do not satisfy it; explicit approval to implement an already-reviewed, unchanged plan does.
 
 ## Thinking Framework: First Principles Analysis
 
@@ -135,7 +135,7 @@ Before final review, verify all of the following:
 - blocking open questions are empty
 - technical unknowns are researched or explicitly deferred without changing MVP behavior
 
-Lightweight tasks may omit `design.md` and `implement.md`; they may not skip evidence inspection, requirement convergence, final review, or fresh implementation approval.
+Lightweight tasks may omit `design.md` and `implement.md`; they may not skip evidence inspection, requirement convergence, final review or implementation approval. Already-granted approval of the unchanged reviewed plan remains valid.
 
 The final planning summary must show Goal, In Scope, Out of Scope, Acceptance Criteria, Key Decisions, relevant Risks or Deferred Items, and artifact status.
 
@@ -161,13 +161,17 @@ The final planning summary must show Goal, In Scope, Out of Scope, Acceptance Cr
 `implement.md` records execution planning for complex tasks:
 
 - ordered implementation checklist
-- validation commands
+- independently verifiable implementation stages and commit checkpoints; keep coupled code/tests/resource hashes together
+- validation commands for each stage and final integration
+- explicit user constraints, including any no-commit instruction; follow the project workflow for submission policy
 - risky files or rollback points
 - follow-up checks before `task.py start`
 
 Lightweight tasks may have only `prd.md`. Complex tasks must have `prd.md`, `design.md`, and `implement.md` before `task.py start`.
 
-`implement.md` is not a replacement for `implement.jsonl`. On sub-agent-dispatch workflows, `implement.jsonl` and `check.jsonl` must each contain at least one real spec/research entry before `task.py start`; an empty manifest, or one holding only a legacy `_example` placeholder row, does not count.
+`implement.md` is not a replacement for role JSONL. Prepare real spec/research entries only for roles to be dispatched: `implement.jsonl` for implementation and `check.jsonl` for independent review. Main implementation followed by independent check needs only check dispatch context. Direct work still reads applicable specs and artifacts.
+
+The current CLI gates both seeded manifests by default. When unused role manifests are intentionally empty, use `task.py start <task> --allow-empty-context` explicitly; never use it to excuse missing context for a dispatched role. `task.py validate` still reports empty manifests, so record that diagnostic honestly. Curate any newly needed role before later dispatch.
 
 ## PRD Convergence Pass
 
@@ -193,12 +197,11 @@ Before declaring planning ready:
 - Repository-answerable questions have already been answered through inspection.
 - Blocking open questions are empty.
 - Complex tasks have `design.md` and `implement.md`.
-- Sub-agent-dispatch tasks have real curated entries in both `implement.jsonl` and `check.jsonl`; seed-only manifests are not ready.
-- The latest final planning summary has been presented to the user.
-- In a subsequent message, the user explicitly approved that summary for implementation.
+- Each role to be dispatched has real curated JSONL entries; unused role manifests may be intentionally empty with the explicit start option.
+- The final planning summary has been reviewed, and the user explicitly approved the same plan for implementation.
 
-Do not start implementation merely because the user originally asked for implementation.
+Do not infer implementation approval from task creation, status or an unreviewed initial request.
 
 ## Pi Execution Boundary
 
-All `.trellis/...` paths are relative to the execution project, not this package skill. Read-only work needs no task; modifications require approval. Main dispatches implementation/check roles; an already-running role must not recursively dispatch. Managed worktrees follow the package protocol referenced in the session overview. Do not modify deployed runtime to bypass release hashes.
+All `.trellis/...` paths are relative to the execution project, not this package skill. Read-only work needs no task; modifications require approval. Follow the project workflow for execution and review routing. Sub-agents must not recursively dispatch. Managed worktrees follow the package protocol referenced in the session overview. Do not modify deployed runtime to bypass release hashes.

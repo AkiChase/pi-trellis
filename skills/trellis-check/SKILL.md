@@ -7,6 +7,11 @@ description: "Comprehensive quality verification: spec compliance, lint, type-ch
 
 Comprehensive quality verification for recently written code. Combines spec compliance, cross-layer safety, and pre-commit checks.
 
+This skill supports main-session self-review and independent `trellis-check` review. Follow the project workflow
+for reviewer selection and required independence; self-review must not be reported as independent review.
+Before dispatching a reviewer, prepare its context and exact review scope. Main verifies actual findings, fixes
+and evidence before acceptance; report unavailable review or checks honestly.
+
 ---
 
 ## Step 1: Identify What Changed
@@ -38,7 +43,7 @@ Read the specific guideline files referenced — the index is a pointer, not the
 
 ## Step 3: Run Project Checks
 
-Run the project's lint, type-check, and test commands. Fix any failures before proceeding.
+Run relevant focused checks, plus project lint, type-check and broader tests according to impact and availability. Fix scoped failures before acceptance. Record unavailable commands rather than inventing them. Existing results can be reused only if they cover the final relevant code/configuration; rerun affected checks after fixes.
 
 ## Step 4: Review Against Checklist
 
@@ -112,4 +117,4 @@ If a fix would touch files outside the current task's scope, say so and stop ins
 
 ## Pi Execution Boundary
 
-All `.trellis/...` paths are relative to the execution project, not this package skill. Read-only work needs no task; modifications require approval. Main dispatches implementation/check roles; an already-running role must not recursively dispatch. Managed worktrees follow the package protocol referenced in the session overview. Do not modify deployed runtime to bypass release hashes.
+All `.trellis/...` paths are relative to the execution project, not this package skill. Read-only work needs no task; modifications require approval. Follow the project workflow for execution and review routing. Sub-agents must not recursively dispatch. Managed worktrees follow the package protocol referenced in the session overview. Do not modify deployed runtime to bypass release hashes.

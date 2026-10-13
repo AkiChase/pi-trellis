@@ -1,0 +1,114 @@
+import assert from 'node:assert/strict';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import test from 'node:test';
+
+const workflow = readFileSync('resources/templates/workflow.md', 'utf8');
+
+test('workflow separates implementation from review and retains authorization boundaries', () => {
+ assert.match(workflow, /Main implements → main self-reviews/);
+ assert.match(workflow, /Main implements → `trellis-check` independently reviews/);
+ assert.match(workflow, /Require independent review for high-risk changes/);
+ assert.match(workflow, /self-review is never independent review/);
+ assert.match(workflow, /#### 3\.4 Commit \[conditional\]/);
+ assert.match(workflow, /If the user requested no commits, leave changes uncommitted/);
+ assert.match(workflow, /--allow-empty-context/);
+ assert.match(workflow, /not approval, spec reading or context preparation/);
+ assert.doesNotMatch(workflow, /Main session: dispatch implement then independent check|The main session dispatches `trellis-implement`/);
+ assert.doesNotMatch(workflow, /[\u3400-\u9fff]/);
+ for (const status of ['no_task', 'task_error', 'planning', 'in_progress', 'completed']) {
+  const matches = [...workflow.matchAll(new RegExp(`\\[workflow-state:${status}\\]\\n([\\s\\S]*?)\\n\\[/workflow-state:${status}\\]`, 'g'))];
+  assert.equal(matches.length, 1, status);
+  assert.ok(matches[0][1].trim());
+ }
+});
+
+test('associated skills do not restore mandatory paired dispatch or redundant plan approval', () => {
+ for (const name of ['start', 'before-dev', 'brainstorm', 'continue', 'check', 'finish-work', 'update-spec', 'break-loop']) {
+  const text = readFileSync(`skills/trellis-${name}/SKILL.md`, 'utf8');
+  assert.match(text, /Follow the project workflow for execution and review routing/);
+  assert.doesNotMatch(text, /Main dispatches implementation\/check roles|must each contain at least one|fresh implementation approval|Only a subsequent user message/);
+ }
+ const brainstorm = readFileSync('skills/trellis-brainstorm/SKILL.md', 'utf8');
+ assert.match(brainstorm, /already-reviewed, unchanged plan is sufficient bounded approval/);
+ assert.match(brainstorm, /Task-creation consent alone is not implementation approval/);
+ const check = readFileSync('skills/trellis-check/SKILL.md', 'utf8');
+ assert.match(check, /supports main-session self-review and independent `trellis-check` review/);
+ assert.doesNotMatch(check, /Require independent review for high-risk permissions/);
+});
+
+test('stage commits happen at implementation checkpoints, not only final wrap-up', () => {
+ const stage = workflow.slice(workflow.indexOf('#### 2.2'), workflow.indexOf('## Phase 3'));
+ assert.match(stage, /immediately commits that stage unless the user explicitly opted out/);
+ assert.match(stage, /Do not wait for\nwhole-task acceptance/);
+ assert.match(stage, /Select hunks only when a file mixes/);
+ assert.match(stage, /Sub-agents never commit/);
+ assert.match(workflow, /Implementation approval includes scoped local commits/);
+ assert.match(workflow, /No separate commit approval or repeated checkpoint questions/);
+ assert.match(workflow, /Never push without explicit approval/);
+ assert.match(workflow, /rebase or amend earlier history without explicit approval/);
+ assert.doesNotMatch(workflow, /task-level commit approval|Without Git approval/);
+ assert.match(workflow, /final Git review, not the first opportunity to commit/);
+ const breadcrumb = workflow.split('[workflow-state:in_progress]')[1].split('[/workflow-state:in_progress]')[0];
+ assert.match(breadcrumb, /commit it immediately unless the user opted out/);
+ const finish = readFileSync('skills/trellis-finish-work/SKILL.md', 'utf8');
+ assert.match(finish, /Honor already-granted finish\/archive\/journal authorization without asking again/);
+ assert.match(finish, /Code submission policy belongs to the project workflow/);
+ assert.doesNotMatch(finish, /stage commits happen during Phase 2|task-level commit approval|Approved code commits belong to workflow step 3\.4/);
+ const resume = readFileSync('skills/trellis-continue/SKILL.md', 'utf8');
+ assert.match(resume, /return to \*\*2\.1\*\* for the next approved stage/);
+});
+
+test('real phase parser extracts every template step without neighboring bodies', t => {
+ const root = mkdtempSync(join(tmpdir(), 'pi-workflow-'));
+ t.after(() => rmSync(root, { recursive: true, force: true }));
+ mkdirSync(join(root, '.trellis'), { recursive: true });
+ writeFileSync(join(root, '.trellis/workflow.md'), workflow);
+ const code = `import sys,json\nfrom pathlib import Path\nsys.path.insert(0,sys.argv[1])\nfrom common import workflow_phase as w\nw.get_repo_root=lambda:Path(sys.argv[2])\nids=['1.0','1.1','1.2','1.3','1.4','2.1','2.2','3.1','3.2','3.3','3.4','3.5']\nprint(json.dumps({'index':w.get_phase_index(),'steps':{i:w.filter_platform(w.get_step(i),'Pi') for i in ids}}))`;
+ const r = spawnSync('python3', ['-B', '-c', code, resolve('runtime'), root], { encoding: 'utf8' });
+ assert.equal(r.status, 0, r.stderr);
+ const result = JSON.parse(r.stdout);
+ assert.match(result.index, /self-review or independent review/);
+ assert.doesNotMatch(result.index, /####|workflow-state/);
+ for (const [id, body] of Object.entries(result.steps)) {
+  assert.ok(body.startsWith(`#### ${id} `), id);
+  assert.equal([...body.matchAll(/^#### /gm)].length, 1, id);
+  assert.doesNotMatch(body, /workflow-state/);
+ }
+ assert.match(result.steps['2.2'], /Main implements → `trellis-check`/);
+});
+
+test('existing runtime explicitly starts direct or check-only work without weakening default empty-context gate', t => {
+ const root = mkdtempSync(join(tmpdir(), 'pi-direct-start-'));
+ t.after(() => rmSync(root, { recursive: true, force: true }));
+ cpSync(resolve('runtime'), join(root, '.trellis/scripts'), { recursive: true });
+ const task = '.trellis/tasks/direct';
+ mkdirSync(join(root, task), { recursive: true });
+ const record = { id: 'direct', title: 'Direct work', description: 'Fixture', status: 'planning', children: [] };
+ writeFileSync(join(root, task, 'task.json'), JSON.stringify(record));
+ writeFileSync(join(root, task, 'prd.md'), 'Approved scope');
+ writeFileSync(join(root, task, 'implement.jsonl'), '');
+ writeFileSync(join(root, task, 'check.jsonl'), '');
+ const env = { ...process.env, TRELLIS_CONTEXT_ID: 'workflow-fixture', PYTHONDONTWRITEBYTECODE: '1' };
+ for (const key of Object.keys(env)) if (key.startsWith('GIT_')) delete env[key];
+ const run = args => spawnSync('python3', ['-B', join(root, '.trellis/scripts/task.py'), ...args], { cwd: root, env, encoding: 'utf8' });
+ for (const checkOnly of [false, true]) {
+  if (checkOnly) {
+   mkdirSync(join(root, '.trellis/spec'), { recursive: true });
+   writeFileSync(join(root, '.trellis/spec/review.md'), 'Review rules');
+   writeFileSync(join(root, task, 'check.jsonl'), JSON.stringify({ file: '.trellis/spec/review.md', reason: 'Independent check' }) + '\n');
+  }
+  writeFileSync(join(root, task, 'task.json'), JSON.stringify(record));
+  const rejected = run(['start', task]);
+  assert.notEqual(rejected.status, 0);
+  assert.equal(JSON.parse(readFileSync(join(root, task, 'task.json'))).status, 'planning');
+  assert.match(rejected.stdout + rejected.stderr, /no curated entries/);
+  const started = run(['start', task, '--allow-empty-context']);
+  assert.equal(started.status, 0, started.stdout + started.stderr);
+  assert.equal(JSON.parse(readFileSync(join(root, task, 'task.json'))).status, 'in_progress');
+  assert.equal(JSON.parse(run(['current', '--json']).stdout).current_task.dir, task);
+  assert.notEqual(run(['validate', task]).status, 0, 'empty unused manifest remains an honest validation diagnostic');
+ }
+});

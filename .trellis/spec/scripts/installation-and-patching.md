@@ -22,6 +22,16 @@ Unknown files and customized root blocks are never overwritten by init. Incomple
 
 This repository was migrated explicitly after verifying the old scaffold and skills. Its existing config/workflow/spec/workspace were preserved with honest project-snapshot provenance; only selected current instruction references changed. Old `.version`/`.template-hashes.json` and extra unused source files are inactive upstream evidence, not authority for future `trellis update`. Other repositories have no public legacy migration API.
 
+## Workflow and Skill Resource Contracts
+
+`resources/templates/workflow.md` supplies fresh-project defaults; existing project `.trellis/workflow.md` remains user-owned and is not silently replaced. Implementation and review executors are selected independently, including direct main implementation followed by independent check. Keep phase headings/state markers and role recursion guards intact.
+
+When changing this policy, review related bundled skills so boundary boilerplate and continue/brainstorm routing do not restore mandatory paired dispatch. Keep execution/review/submission policy in workflow; skills carry operation-specific guidance and short routing references, not duplicated policy tables. Implementation approval includes scoped local stage commits unless explicitly opted out; push/history rewriting need explicit approval. Finish-work handles accepted lifecycle actions under existing authorization, not product commit scheduling.
+
+Curate JSONL for dispatched roles only; the current CLI still gates both empty seeded manifests unless `start --allow-empty-context` is explicit, and `validate` continues reporting empty manifests. Document this limitation rather than inventing runtime support or fake context entries.
+
+Update only adapted output SHA-256 fields in `resources/template-baseline.json` and `resources/skill-baseline.json`; preserve source evidence and license metadata. `tests/workflow-policy.test.mjs` covers policy text, real phase extraction and default rejection vs explicit direct/check-only start. Resource hashes and initialization are covered by skill-resource/initialization tests. These checks do not prove real-model compliance.
+
 ## Verification
 
 Use real complete runtime copies in disposable fixtures, not patch constants alone. Tests cover inspect/cancel no writes, malformed/forged manifests and recovery plans, historical identity, exact journal/archive scope, symlink/path escape, source hashes and Pi resource filters. Installer tests confirm Pi-only calls and no script mutation. `git diff --check` must include staged/untracked content where applicable. See [quality guidelines](../extension/quality-guidelines.md) for the actual host preload and limitations. Never install or mutate a real project merely to fill a test checklist.

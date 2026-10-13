@@ -31,12 +31,13 @@ Shows the Phase Index (Plan / Execute / Finish) with routing + skill mapping.
 
 - `status=planning` + no `prd.md` → **1.1** (load `trellis-brainstorm`)
 - `status=planning` + `prd.md` only → decide whether the task is lightweight or complex. Lightweight can move to **1.4** review; complex returns to **1.1** to add `design.md` + `implement.md`.
-- `status=planning` + complex artifacts complete + sub-agent jsonl not curated (empty, or only a legacy `_example` placeholder row) → **1.3**
-- `status=planning` + required artifacts complete + required jsonl curated → **1.4** (ask for start review; only run `task.py start` after user confirms)
+- `status=planning` + artifacts complete + context missing for a role to be dispatched → **1.3**
+- `status=planning` + required artifacts and selected role context ready → **1.4** (review approval; start only with explicit approval of the same plan, using `--allow-empty-context` for intentionally unused role manifests if needed)
 - `status=in_progress` + implementation not started → **2.1**
-- `status=in_progress` + implementation done, not yet checked → **2.2**
-- `status=in_progress` + check passed → **3.3** (spec update) → **3.4** (commit)
-- `status=completed` → review acceptance and obtain explicit archive approval
+- `status=in_progress` + current implementation stage done, not yet checked → **2.2**
+- `status=in_progress` + current stage checked → follow **2.2** checkpoint instructions, then return to **2.1** for the next approved stage.
+- `status=in_progress` + all stages checked → **3.1–3.4** for final acceptance, verification, spec assessment and Git review.
+- `status=completed` → review acceptance and use existing archive authorization, or obtain it if absent.
 
 Phase rules (full detail in `.trellis/workflow.md`):
 
@@ -52,7 +53,8 @@ Once you know which step to resume at:
 python3 ./.trellis/scripts/get_context.py --mode phase --step <X.X>
 ```
 
-Follow the loaded instructions. After each `[required]` step completes, move to the next.
+Follow the loaded workflow within approved scope, honoring existing authorization and explicit opt-outs.
+Do not turn every step into a fresh approval question. Report any conditional lifecycle actions left unperformed.
 
 ---
 
@@ -62,4 +64,4 @@ Full workflow and detailed phase steps live in `.trellis/workflow.md`. This comm
 
 ## Pi Execution Boundary
 
-All `.trellis/...` paths are relative to the execution project, not this package skill. Read-only work needs no task; modifications require approval. Main dispatches implementation/check roles; an already-running role must not recursively dispatch. Managed worktrees follow the package protocol referenced in the session overview. Do not modify deployed runtime to bypass release hashes.
+All `.trellis/...` paths are relative to the execution project, not this package skill. Read-only work needs no task; modifications require approval. Follow the project workflow for execution and review routing. Sub-agents must not recursively dispatch. Managed worktrees follow the package protocol referenced in the session overview. Do not modify deployed runtime to bypass release hashes.

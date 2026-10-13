@@ -10,49 +10,49 @@
       "adapted": true
     },
     "trellis-start/SKILL.md": {
-      "sha256": "7e833a2a4363c7473fe9a3f36753ff307b0ea00f4d4d9c635f1b926c7c3df28e",
+      "sha256": "46cd62b4a23fa83a90a47cba43ff2419d8e2d0023ad442787ae0a08efdf2feac",
       "sourcePath": ".agents/skills/trellis-start/SKILL.md",
       "sourceSha256": "79a5ba7a2aff3c72e06d7f4cd6942dc4f4f4092dd40f9c8e94f1838024a81e4d",
       "license": "AGPL-3.0-only",
       "adapted": true
     },
     "trellis-before-dev/SKILL.md": {
-      "sha256": "7d8b10c30e283b52d0642bdf125c53e81f67ff39945f0aab687f892d69210aed",
+      "sha256": "653dabee5ea533dc73540c6e0c970d61dbf1f8150a702ce290f296b0317a5ffe",
       "sourcePath": ".agents/skills/trellis-before-dev/SKILL.md",
       "sourceSha256": "00c9d1c83bc318e91b27a019bc954c2957cfad907ff20d854b596f16cad2c0f3",
       "license": "AGPL-3.0-only",
       "adapted": true
     },
     "trellis-brainstorm/SKILL.md": {
-      "sha256": "e337849ba707cc20d6b46f65f214b50bd301c1ef279e069ea39a850ec71c1721",
+      "sha256": "1cdef4d5d73d5326f678fe1e0ff860eeacc3725ab772dc22ef5d704fa53debad",
       "sourcePath": ".agents/skills/trellis-brainstorm/SKILL.md",
       "sourceSha256": "17d9bf209730c14f584eb97f38198d0683ad3f8da982d9a6e6d4e84c853f9a94",
       "license": "AGPL-3.0-only",
       "adapted": true
     },
     "trellis-finish-work/SKILL.md": {
-      "sha256": "4b4bcb788d0f422592b404e8bdbf51c510e52d5352334cc23f52f8f53315a5f9",
+      "sha256": "6954658ba4b686eea0bd77fcae0cb9c26db8463512aa1ce12dfc848dd4802c51",
       "sourcePath": ".agents/skills/trellis-finish-work/SKILL.md",
       "sourceSha256": "161060fbcd44f787440d3a5c297a9f5223ea7774bb3021a50e376875a9ac5b2d",
       "license": "AGPL-3.0-only",
       "adapted": true
     },
     "trellis-continue/SKILL.md": {
-      "sha256": "ad11c0311fae1714e7df0bb8ff613dcb3aebde73e61e1d6db876b26f38b4ab7b",
+      "sha256": "a8931a03021ec3b06b1ebc6c4226cbdbc36cf7dbca1e310df6bf0f712edb415a",
       "sourcePath": ".agents/skills/trellis-continue/SKILL.md",
       "sourceSha256": "2b948434883636a1f1e2a4ad5b8a3d7dc2edc93ed05da6bca82882e8c024e22b",
       "license": "AGPL-3.0-only",
       "adapted": true
     },
     "trellis-break-loop/SKILL.md": {
-      "sha256": "d4d874aa2bebc71c3777535c48193bf3b52e3757f630a2cf60ecbb7168c11105",
+      "sha256": "cef2ba3c636f3fce846fd1d809db6d4292c823ab0e157fbb5673b4664229ac3f",
       "sourcePath": ".agents/skills/trellis-break-loop/SKILL.md",
       "sourceSha256": "f5a93699832f29dee443b53c135a7459519b371f689af191d15c29e8ee5c7bde",
       "license": "AGPL-3.0-only",
       "adapted": true
     },
     "trellis-check/SKILL.md": {
-      "sha256": "e1c587a676d6b60bb0022f4d50b73240f3c24fbb2d4e80d1c4e152726f1f2275",
+      "sha256": "e1e243a872daec9caedced7adb963ac4dd8317c53a1bfc7a3739774c67ad6eef",
       "sourcePath": ".agents/skills/trellis-check/SKILL.md",
       "sourceSha256": "dfb0600e95c19c7a83200465b6a92a5514ec9778ba4083efa881bed541cc74a8",
       "license": "AGPL-3.0-only",
@@ -66,7 +66,7 @@
       "adapted": true
     },
     "trellis-update-spec/SKILL.md": {
-      "sha256": "ca376a5ce9e01f906819e07a63e96ac027af6059e323e5cdd0a375f7a03a260a",
+      "sha256": "c149b908042e959298043546ac9401b86c36236c385e23743f452a57ceda1329",
       "sourcePath": ".agents/skills/trellis-update-spec/SKILL.md",
       "sourceSha256": "003ce08a3404aeb50998029392c4d4e57b626edf526d3ebd585032bb92dcbb96",
       "license": "AGPL-3.0-only",
@@ -87,7 +87,7 @@
       "adapted": true
     },
     "trellis-meta/references/customize-local/change-workflow.md": {
-      "sha256": "b6a1b5b3cd0daa6b85d5ca8cddff1915d4ce1e38c8a61e4cbf520b04b9741467",
+      "sha256": "55c3e6672cc55c401df7eb8a6f173710bec8a4a63e255c24a7bf5c9f494246b9",
       "sourcePath": ".agents/skills/trellis-meta/references/customize-local/change-workflow.md",
       "sourceSha256": "43fa780a2ca580de121b10893d49b99f978873deebbf45008c466e5ac6651519",
       "license": "AGPL-3.0-only",

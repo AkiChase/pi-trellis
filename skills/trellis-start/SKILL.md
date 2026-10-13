@@ -63,4 +63,4 @@ Full rules + anti-rationalization table in `.trellis/workflow.md`.
 
 ## Pi Execution Boundary
 
-All `.trellis/...` paths are relative to the execution project, not this package skill. Read-only work needs no task; modifications require approval. Main dispatches implementation/check roles; an already-running role must not recursively dispatch. Managed worktrees follow the package protocol referenced in the session overview. Do not modify deployed runtime to bypass release hashes.
+All `.trellis/...` paths are relative to the execution project, not this package skill. Read-only work needs no task; modifications require approval. Follow the project workflow for execution and review routing. Sub-agents must not recursively dispatch. Managed worktrees follow the package protocol referenced in the session overview. Do not modify deployed runtime to bypass release hashes.
