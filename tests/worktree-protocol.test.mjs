@@ -5,13 +5,14 @@ import { tmpdir } from 'node:os';
 import test from 'node:test';
 import trellis, { __internals } from '../extensions/trellis.ts';
 
+import { installRuntimeFixture } from "./runtime-fixture.mjs";
+
 function fixture(t) {
  const root=mkdtempSync(join(tmpdir(),'pi protocol space '));t.after(()=>rmSync(root,{recursive:true,force:true}));
  const put=(p,text)=>{mkdirSync(join(root,p,'..'),{recursive:true});writeFileSync(join(root,p),text);};
- put('.trellis/scripts/task.py',"print('{}')");put('.trellis/scripts/get_context.py',"print('{}')");put('.trellis/scripts/worktree.py','# deployed');
- put('.trellis/scripts/common/active_task.py',"from types import SimpleNamespace\ndef set_active_task(task,root):\n return SimpleNamespace(task_path=task)\n");
+ installRuntimeFixture(root);
  put('.trellis/tasks/task/task.json','{"status":"in_progress"}');
- const handlers=new Map(),pi={events:{on:()=>()=>{},emit:()=>{}},on:(n,h)=>handlers.set(n,h),registerTool:()=>{},sendMessage:()=>{}};trellis(pi);
+ const handlers=new Map(),pi={events:{on:()=>()=>{},emit:()=>{}},on:(n,h)=>handlers.set(n,h),registerCommand: () => {}, registerTool:()=>{},sendMessage:()=>{}};trellis(pi);
  const ctx={cwd:root,hasUI:false,sessionManager:{getSessionId:()=>root,getSessionFile:()=>undefined},ui:{}};
  const before=async prompt=>{const sections={};await handlers.get('before_agent_start')({prompt,systemPromptOptions:{sections}},ctx);return sections['session-overview'];};
  return {root,put,ctx,handlers,before};

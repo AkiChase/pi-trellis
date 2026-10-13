@@ -8,6 +8,8 @@ import { stripVTControlCharacters as plain } from "node:util";
 import test from "node:test";
 import trellis, { __internals as ui } from "../extensions/trellis.ts";
 
+import { installRuntimeFixture } from "./runtime-fixture.mjs";
+
 const colors = { accent: 36, success: 32, warning: 33, error: 31, muted: 90, dim: 2, text: 37 };
 const theme = { fg: (color, text) => `\x1b[${colors[color]}m${text}\x1b[0m`, bold: text => `\x1b[1m${text}\x1b[0m` };
 const task = (dir = ".trellis/tasks/current", status = "in_progress", children = 2) => ({ dir, status, children, artifacts: { prd: true, design: false, implement: true } });
@@ -20,13 +22,12 @@ function setup(t) {
     writeFileSync(join(root, path), value);
   };
   const record = (name, value = { status: "planning" }) => put(`.trellis/tasks/${name}/task.json`, JSON.stringify(value));
-  mkdirSync(join(root, ".trellis/tasks"), { recursive: true });
-  put(".trellis/scripts/task.py", "import json,os\nprint(json.dumps({'source':'session:'+os.environ['TRELLIS_CONTEXT_ID'],'current_task':None}))");
-  put(".trellis/scripts/get_context.py", "print('{}')");
+  installRuntimeFixture(root);
   const handlers = new Map(), display = { status: undefined, widget: undefined }, messages = [];
-  trellis({ events: { on: () => () => {}, emit: () => {} }, registerTool: () => {}, on: (name, fn) => handlers.set(name, fn), sendMessage: message => messages.push(message), getAllTools: () => [{ name: "Agent" }] });
+  trellis({ events: { on: () => () => {}, emit: () => {} }, registerCommand: () => {}, registerTool: () => {}, on: (name, fn) => handlers.set(name, fn), sendMessage: message => messages.push(message), getAllTools: () => [{ name: "Agent" }] });
   const ctx = { cwd: root, hasUI: true, sessionManager: { getSessionId: () => "display", getSessionFile: () => undefined }, ui: {
     theme, setWidget: (key, lines, options) => { assert.equal(key, "trellis"); display.widget = lines; display.options = options; },
+    notify: () => {},
     setStatus: (key, value) => { assert.equal(key, "trellis"); display.status = value; }
   } };
   const key = ui.contextKey(root, ctx);
@@ -285,7 +286,7 @@ for (const mode of ["status", "off"]) {
       const root = process.argv[1], mode = process.env.TRELLIS_PI_STATUS;
       const handlers = new Map(), display = {};
       const theme = { fg: (color,text) => '<'+color+'>'+text+'</'+color+'>', bold: text => text };
-      trellis({ events: { on: () => () => {}, emit: () => {} }, registerTool: () => {}, on: (name,fn) => handlers.set(name,fn), sendMessage: () => {}, getAllTools: () => [{name:'Agent'}] });
+      trellis({ events: { on: () => () => {}, emit: () => {} }, registerCommand: () => {}, registerTool: () => {}, on: (name,fn) => handlers.set(name,fn), sendMessage: () => {}, getAllTools: () => [{name:'Agent'}] });
       const ctx = { cwd: root, hasUI: true, sessionManager: {getSessionId: () => 'mode', getSessionFile: () => undefined}, ui: {theme, setStatus: (_key,value) => display.status=value, setWidget: (_key,value) => display.widget=value} };
       await handlers.get('session_start')({},ctx);
       assert.equal(display.widget,undefined);

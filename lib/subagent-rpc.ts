@@ -1,8 +1,6 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { randomUUID } from "node:crypto";
-import { join, resolve, dirname } from "node:path";
-import { homedir } from "node:os";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { readFileSync } from "node:fs";
 import { acquireBindingLock, sameIdentity } from "./bindings.ts";
 import { activeExecution, processToken, readExecution, writeExecution, worktreeSnapshot, type ExecutionRecord } from "./executions.ts";
@@ -10,22 +8,8 @@ import { queryWorktree } from "./worktree-query.ts";
 import { canonicalPath, validateText } from "./config.ts";
 import { assembleDispatchPrompt, buildTaskContext, isTrellisRole } from "./task-context.ts";
 
-function adapterConfigured(sourceRoot: string): boolean {
-	const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
-	const adapter = canonicalPath(join(packageRoot, "extensions/trellis.ts"));
-	const agentDir = process.env.PI_CODING_AGENT_DIR ?? join(homedir(), ".pi/agent");
-	for (const directory of [join(sourceRoot, ".pi"), agentDir]) {
-		let settings: { extensions?: unknown[]; packages?: unknown[] };
-		try { settings = JSON.parse(readFileSync(join(directory, "settings.json"), "utf8")); } catch { continue; }
-		if (settings.extensions?.some((value) => typeof value === "string" && !value.startsWith("-") && canonicalPath(resolve(directory, value)) === adapter)) return true;
-		if (settings.packages?.some((value) => {
-			const entry = typeof value === "string" ? { source: value } : value as { source?: string; extensions?: unknown[] };
-			if (!entry || typeof entry.source !== "string" || entry.extensions !== undefined) return false;
-			return entry.source === "git:github.com/AkiChase/pi-trellis" || entry.source === "npm:pi-trellis" || canonicalPath(resolve(directory, entry.source)) === canonicalPath(packageRoot);
-		})) return true;
-	}
-	return false;
-}
+import { adapterConfigured } from "./adapter-resources.ts";
+import { verifyRuntime } from "./initialization/engine.ts";
 
 interface RpcReply { success: boolean; data?: { id?: string; version?: number }; error?: string }
 export function rpc(pi: ExtensionAPI, method: string, payload: Record<string, unknown>, timeout = 15000): Promise<RpcReply> {
@@ -83,10 +67,11 @@ export function registerDispatchTool(pi: ExtensionAPI, activeTask: (ctx: Extensi
 			}
 			const { source, local } = await queryWorktree(ctx.cwd, undefined, false, signal);
 			if (canonicalPath(process.cwd()) !== source.root || canonicalPath(ctx.cwd) !== source.root) throw new Error("Dispatch from a Pi host opened at the source project root; provider role discovery/config must not silently fall back to generic agents");
-			if (!adapterConfigured(source.root)) throw new Error("Persist pi-trellis in source/user settings (not only a one-shot -e path), so child sessions can load the context adapter");
+			if (!verifyRuntime(source.root)) throw new Error("Supported Pi Trellis runtime manifest required before dispatch; no child was started");
+			if (!await adapterConfigured(source.root)) throw new Error("Persist pi-trellis in source/user settings (not only a one-shot -e path), so child sessions can load the context adapter");
 			const task = args.task ?? local?.taskDir ?? await activeTask(ctx);
 			if (!task) throw new Error("No approved active task");
-			const { binding: initialBinding } = await queryWorktree(ctx.cwd, task, action === "dispatch", signal);
+			const { binding: initialBinding } = await queryWorktree(ctx.cwd, task, action === "dispatch", signal, true);
 			if (!initialBinding) throw new Error("No worktree binding; use python3 .trellis/scripts/worktree.py create/prepare first");
 			if (action === "stop") {
 				const execution = readExecution(initialBinding);
@@ -109,7 +94,7 @@ export function registerDispatchTool(pi: ExtensionAPI, activeTask: (ctx: Extensi
 			const ping = await rpc(pi, "ping", {}, 3000); if (!ping.success) throw new Error(ping.error || "Subagent provider unavailable");
 			const release = acquireBindingLock(source.root);
 			try {
-				const latest = await queryWorktree(ctx.cwd, task, true, signal);
+				const latest = await queryWorktree(ctx.cwd, task, true, signal, true);
 				if (!latest.binding || !sameIdentity(latest.binding, initialBinding)) throw new Error("Binding changed before dispatch");
 				const executionBinding = latest.binding;
 				const facts = latest.materials;
@@ -117,7 +102,7 @@ export function registerDispatchTool(pi: ExtensionAPI, activeTask: (ctx: Extensi
 				if (activeExecution(executionBinding)) throw new Error("Worktree already has running/unknown execution; do not dispatch concurrently");
 				const context = buildTaskContext({ executionRoot: executionBinding.worktreePath, taskDir: task, role: args.agent });
 				const prompt = assembleDispatchPrompt({ prompt: `Execution directory: ${executionBinding.worktreePath}\nReview base: ${executionBinding.baseCommit}\n\n${args.prompt}`, taskDir: task, contextId: executionBinding.contextId, role: args.agent, context, materials: { revision: facts.revision, sourceFingerprint: facts.sourceFingerprint, targetFingerprint: facts.targetFingerprint } });
-				const final = await queryWorktree(ctx.cwd, task, true, signal);
+				const final = await queryWorktree(ctx.cwd, task, true, signal, true);
 				if (!final.binding || !sameIdentity(final.binding, executionBinding) || final.materials?.revision !== facts.revision || final.materials?.sourceFingerprint !== facts.sourceFingerprint || final.materials?.targetFingerprint !== facts.targetFingerprint) throw new Error("Materials changed during prompt rendering; inspect and retry dispatch");
 				signal?.throwIfAborted();
 				if (shuttingDown) throw new Error("Host session shut down before spawn");

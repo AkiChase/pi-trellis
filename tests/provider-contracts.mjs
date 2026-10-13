@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { assembleDispatchPrompt, buildTaskContext } from "../lib/task-context.ts";
+import { installRuntimeFixture } from "./runtime-fixture.mjs";
 
 const args = process.argv.slice(2);
 const host = args[args.indexOf("--host") + 1];
@@ -36,8 +37,7 @@ try {
     mkdirSync(target, { recursive: true });
     const taskDir = ".trellis/tasks/test";
     for (const dir of [root, target]) {
-      put(dir, ".trellis/scripts/task.py", "print('{}')");
-      put(dir, ".trellis/scripts/get_context.py", "print('{}')");
+      installRuntimeFixture(dir);
       put(dir, `${taskDir}/task.json`, '{"status":"in_progress"}');
       put(dir, `${taskDir}/prd.md`, dir === target ? "TARGET material" : "SOURCE material");
       for (const role of ["implement", "check"]) put(dir, `${taskDir}/${role}.jsonl`, JSON.stringify({ file: `${taskDir}/prd.md` }));

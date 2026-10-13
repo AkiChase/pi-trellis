@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -8,6 +8,7 @@ import { canonicalPath } from '../lib/config.ts';
 import { manageWorktree } from './worktree-fixture.mjs';
 import { registerDispatchTool } from '../lib/subagent-rpc.ts';
 import { readExecution } from '../lib/executions.ts';
+import { apply, plan } from '../lib/initialization/engine.ts';
 import { readBinding } from '../lib/bindings.ts';
 
 function fixture(t) {
@@ -15,14 +16,8 @@ function fixture(t) {
  const cwd=process.cwd();process.chdir(root);t.after(()=>{process.chdir(cwd);rmSync(root,{recursive:true,force:true});});
  const put=(path,data)=>{mkdirSync(join(root,path,'..'),{recursive:true});writeFileSync(join(root,path),data);};
  const git=(...args)=>execFileSync('git',['-C',root,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
- git('init','-q');put('.gitignore','/.worktree/\n/.trellis/.runtime/\n/.pi/\n');put('code.txt','base');put('.trellis/spec/spec.md','BASE target spec');
- put('.trellis/scripts/task.py',`import sys,json,os,pathlib
-p=pathlib.Path('.trellis/.runtime/sessions')/(os.environ['TRELLIS_CONTEXT_ID']+'.json')
-if sys.argv[1]=='start':
- p.parent.mkdir(parents=True,exist_ok=True);p.write_text(json.dumps({'dir':sys.argv[2]}))
-else: print(json.dumps({'current_task':json.loads(p.read_text()),'source':'session:'+os.environ['TRELLIS_CONTEXT_ID']}))
-`);
- execFileSync(process.env.TRELLIS_PYTHON || 'python3',[new URL('../scripts/deploy-worktree.py',import.meta.url).pathname,'--root',root],{stdio:'pipe'});
+ git('init','-q');put('.gitignore','/.worktree/\n/.trellis/.runtime/\n/.pi/\n');put('code.txt','base');
+ apply(plan(root,'Fixture'));put('.trellis/spec/spec.md','BASE target spec');
  git('add','.');git('-c','user.name=Fixture','-c','user.email=fixture@example.invalid','-c','commit.gpgsign=false','commit','-qm','fixture');
  const task='.trellis/tasks/test';
  put('.pi/settings.json',JSON.stringify({extensions:[new URL('../extensions/trellis.ts',import.meta.url).pathname]}));
@@ -81,8 +76,8 @@ test('changed target pointer or incompatible customized agent rejected without R
  const f=fixture(t),c=await f.run();await f.run({action:'prepare'});
  f.put('.pi/agents/trellis-implement.md','---\nname: trellis-implement\nisolation: worktree\n---\n');
  await assert.rejects(f.dispatch(),/conflicts/);assert.equal(f.replies.length,0);
- writeFileSync(join(c.binding.worktreePath,'.trellis/.runtime/sessions',c.binding.contextId+'.json'),'{"dir":".trellis/tasks/other"}');
- await assert.rejects(f.dispatch(),/does not match/);assert.equal(f.replies.length,0);
+ writeFileSync(join(c.binding.worktreePath,'.trellis/.runtime/sessions',c.binding.contextId+'.json'),'{"current_task":".trellis/tasks/other"}');
+ await assert.rejects(f.dispatch(),/does not match|Trellis CLI failed/);assert.equal(f.replies.length,0);
 });
 
 
@@ -102,8 +97,8 @@ test('dispatch old call shape/optional empty task works; stop requires no agent/
 
 test('host rechecks Python ready rules inside source lock after provider ping; no spawn/lease on changed pointer',async t=>{
  const f=fixture(t),c=await f.run();await f.run({action:'prepare'});
- f.bus.on('subagents:rpc:ping',()=>writeFileSync(join(c.binding.worktreePath,'.trellis/.runtime/sessions',c.binding.contextId+'.json'),'{"dir":"wrong"}'));
- await assert.rejects(f.dispatch(),/does not match/);assert.equal(f.replies.length,0);assert.equal(readExecution(c.binding),undefined);
+ f.bus.on('subagents:rpc:ping',()=>writeFileSync(join(c.binding.worktreePath,'.trellis/.runtime/sessions',c.binding.contextId+'.json'),'{"current_task":"wrong"}'));
+ await assert.rejects(f.dispatch(),/does not match|Trellis CLI failed/);assert.equal(f.replies.length,0);assert.equal(readExecution(c.binding),undefined);
 });
 
 test('failed/unknown provider stop retains lease; source task and actual host cwd/config remain required',async t=>{
@@ -125,7 +120,7 @@ test('spawn failure remains unknown with long-lived host owner instead of releas
  await assert.rejects(f.run({action:'recover'}),/still alive/);assert.equal(readExecution(c.binding).state,'unknown');
 });
 
-test('multiline dispatch prose is preserved and materials are rendered after the locked readiness query',async t=>{
+test('modified target runtime is rejected before execution/spawn, even if it attempts lock-time material changes',async t=>{
  const f=fixture(t),c=await f.run();await f.run({action:'prepare'});
  // Change material during the second query, when the source lock is held.
  writeFileSync(join(c.binding.worktreePath,'.trellis/scripts/task.py'),`import pathlib,os,json
@@ -134,11 +129,9 @@ if pathlib.Path(${JSON.stringify(join(f.root,'.trellis/.runtime/pi-trellis/workt
 p=pathlib.Path('.trellis/.runtime/sessions')/(os.environ['TRELLIS_CONTEXT_ID']+'.json')
 print(json.dumps({'current_task':json.loads(p.read_text()),'source':'session:'+os.environ['TRELLIS_CONTEXT_ID']}))
 `);
- await f.call({agent:'trellis-implement',prompt:'First line\n\tSecond line'});
- assert.match(f.replies[0].prompt,/First line\n\tSecond line/);
- assert.match(f.replies[0].prompt,/LATEST lock-time task material/);
- assert.doesNotMatch(f.replies[0].prompt,/Task requirements/);
- const record=readExecution(c.binding);assert.ok(record.materialRevision);assert.match(f.replies[0].prompt,new RegExp('Trellis material revision: '+record.materialRevision));
+ await assert.rejects(f.call({agent:'trellis-implement',prompt:'First line\n\tSecond line'}),/runtime is missing or modified/);
+ assert.equal(f.replies.length,0);assert.equal(readExecution(c.binding),undefined);
+ assert.equal(readFileSync(join(c.binding.worktreePath,f.task,'prd.md'),'utf8'),'Task requirements');
 });
 
 test('shutdown while spawn reply is pending retains unknown with returned id, never revives running lease',async t=>{
@@ -160,7 +153,7 @@ test('target baseline change during locked query is rejected, not silently accep
  await assert.rejects(f.dispatch(),/baseline/);assert.equal(f.replies.length,0);assert.equal(readExecution(c.binding),undefined);
 });
 
-test('final query detects a material change after render and writes no starting lease',async t=>{
+test('modified target task CLI cannot change material through a ready query',async t=>{
  const f=fixture(t),c=await f.run();await f.run({action:'prepare'});
  writeFileSync(join(c.binding.worktreePath,'.trellis/scripts/task.py'),`import pathlib,os,json
 lock=pathlib.Path(${JSON.stringify(join(f.root,'.trellis/.runtime/pi-trellis/worktrees.lock'))})
@@ -172,7 +165,7 @@ if lock.exists():
 p=pathlib.Path('.trellis/.runtime/sessions')/(os.environ['TRELLIS_CONTEXT_ID']+'.json')
 print(json.dumps({'current_task':json.loads(p.read_text()),'source':'session:'+os.environ['TRELLIS_CONTEXT_ID']}))
 `);
- await assert.rejects(f.dispatch(),/rendering/);assert.equal(f.replies.length,0);assert.equal(readExecution(c.binding),undefined);
+ await assert.rejects(f.dispatch(),/runtime is missing or modified/);assert.equal(f.replies.length,0);assert.equal(readExecution(c.binding),undefined);
 });
 
 test('target-only task identity mismatch rejects all managed roles without a spawn or lease',async t=>{
@@ -180,4 +173,14 @@ test('target-only task identity mismatch rejects all managed roles without a spa
  writeFileSync(join(c.binding.worktreePath,f.task,'task.json'),JSON.stringify({status:'in_progress',branch:c.binding.branch,id:'another-task'}));
  for(const role of ['trellis-implement','trellis-check','trellis-research'])await assert.rejects(f.dispatch(role),/conflict/);
  assert.equal(f.replies.length,0);assert.equal(readExecution(c.binding),undefined);
+});
+
+test('supported source/target release mismatch rejects before provider ping/spawn or target CLI execution',async t=>{
+ const f=fixture(t),c=await f.run();await f.run({action:'prepare'});let ping=0;f.bus.on('subagents:rpc:ping',()=>{ping++;});
+ const manifest=join(f.root,'.trellis/.pi-trellis.json'),original=readFileSync(manifest);const changed=JSON.parse(original);changed.runtimeReleaseId='unsupported-release';writeFileSync(manifest,JSON.stringify(changed));await assert.rejects(f.dispatch(),/Unsupported project runtime release/);assert.equal(ping,0);assert.equal(f.replies.length,0);writeFileSync(manifest,original);
+ const target=join(c.binding.worktreePath,'.trellis/.pi-trellis.json'),record=JSON.parse(readFileSync(target));record.runtimeReleaseId='unsupported-target';writeFileSync(target,JSON.stringify(record));await assert.rejects(f.dispatch(),/Unsupported project runtime release/);assert.equal(f.replies.length,0);assert.equal(readExecution(c.binding),undefined);
+});
+
+test('valid multiline dispatch prose retains exact lines on supported real runtime',async t=>{
+ const f=fixture(t),c=await f.run();await f.run({action:'prepare'});await f.call({agent:'trellis-implement',prompt:'First line\n\tSecond line'});assert.match(f.replies[0].prompt,/First line\n\tSecond line/);assert.equal(readExecution(c.binding).agentId,'agent-1');
 });

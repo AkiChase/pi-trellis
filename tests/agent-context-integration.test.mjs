@@ -1,18 +1,17 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import trellis, { __internals } from "../extensions/trellis.ts";
+import { installRuntimeFixture, mockPython } from "./runtime-fixture.mjs";
 import { INJECTED_MARKER } from "../lib/task-context.ts";
 
 function setup(t) {
   const root = mkdtempSync(join(tmpdir(), "pi-trellis-integration-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const put = (path, content) => { mkdirSync(join(root, path, ".."), { recursive: true }); writeFileSync(join(root, path), content); };
-  put(".trellis/scripts/task.py", "import os,json,pathlib\np=pathlib.Path('.trellis/.runtime/sessions')/(os.environ['TRELLIS_CONTEXT_ID']+'.json')\nif 'finish' in __import__('sys').argv:\n p.unlink(missing_ok=True); print('{}')\nelse:\n print('{}')");
-  put(".trellis/scripts/common/active_task.py", "import os,json\nfrom types import SimpleNamespace\ndef set_active_task(task,root):\n p=root/'.trellis/.runtime/sessions'/(os.environ['TRELLIS_CONTEXT_ID']+'.json')\n p.parent.mkdir(parents=True,exist_ok=True)\n p.write_text(json.dumps({'current_task':task}))\n return SimpleNamespace(task_path=task)\n");
-  put(".trellis/scripts/get_context.py", "import os,json\nprint(json.dumps({'developer':os.environ.get('TRELLIS_CONTEXT_ID')}))");
+  installRuntimeFixture(root);
   for (const name of ["a", "b"]) {
     const dir = `.trellis/tasks/${name}`;
     put(`${dir}/task.json`, JSON.stringify({ status: "in_progress", title: name }));
@@ -20,7 +19,7 @@ function setup(t) {
     put(`${dir}/implement.jsonl`, JSON.stringify({ file: `${dir}/prd.md` }));
   }
   const handlers = new Map(), messages = [], tools = new Map();
-  const pi = { events: { on: () => () => {}, emit: () => {} }, registerTool: (tool) => tools.set(tool.name, tool), on: (name, handler) => handlers.set(name, handler), sendMessage: (message) => messages.push(message), getAllTools: () => [{ name: "Agent" }] };
+  const pi = { events: { on: () => () => {}, emit: () => {} }, registerCommand: () => {}, registerTool: (tool) => tools.set(tool.name, tool), on: (name, handler) => handlers.set(name, handler), sendMessage: (message) => messages.push(message), getAllTools: () => [{ name: "Agent" }] };
   trellis(pi);
   const ctx = (name) => ({ cwd: root, hasUI: false, sessionManager: { getSessionId: () => name, getSessionFile: () => undefined }, ui: {} });
   const pointer = (context, task) => put(`.trellis/.runtime/sessions/${__internals.contextKey(root, context)}.json`, JSON.stringify({ current_task: `.trellis/tasks/${task}` }));
@@ -34,8 +33,15 @@ test("two sessions in one project keep keys, CLI context cache, and dispatch tas
   f.pointer(a, "a"); f.pointer(b, "b");
   const aKey = __internals.contextKey(f.root, a), bKey = __internals.contextKey(f.root, b);
   assert.notEqual(aKey, bKey);
+  const requests = [];
+  mockPython(t, f.root, (args, options) => {
+    if (!args[0].endsWith('get_context.py')) return;
+    requests.push(options.env.TRELLIS_CONTEXT_ID);
+    return { stdout: JSON.stringify({ developer: options.env.TRELLIS_CONTEXT_ID }) };
+  });
   const [ac, bc] = await Promise.all([__internals.loadContext(f.root, aKey), __internals.loadContext(f.root, bKey)]);
   assert.equal(ac.developer, aKey); assert.equal(bc.developer, bKey);
+  assert.deepEqual(requests.sort(), [aKey, bKey].sort());
   const ai = { subagent_type: "trellis-implement", prompt: "implement" }, bi = { subagent_type: "trellis-implement", prompt: "implement" };
   await Promise.all([f.call(a, ai), f.call(b, bi)]);
   assert.match(ai.prompt, /a requirements/); assert.doesNotMatch(ai.prompt, /b requirements/);
@@ -68,7 +74,7 @@ test("failed child binding isolates key before error; parent pointer is never in
   const f = setup(t), parent = f.ctx('owner'), child = f.ctx('failed-child');
   f.pointer(parent,'a');
   const parentKey = __internals.contextKey(f.root,parent);
-  f.put('.trellis/scripts/common/active_task.py', 'raise RuntimeError("binding unavailable")');
+  mockPython(t, f.root, args => args[0] === '-c' ? { code: 1 } : undefined);
   await f.handlers.get('before_agent_start')({prompt:`Active task: .trellis/tasks/a\nTrellis context id: ${parentKey}\n\nwork`,systemPromptOptions:{sections:{}}},child);
   const childKey = __internals.contextKey(f.root,child);
   assert.notEqual(childKey,parentKey);
@@ -112,16 +118,13 @@ test("bound task ordinary Agent gate blocks before spawn; read-only exploration 
   assert.equal(exploration.prompt, "read-only search");
 });
 
-test("hash-guard deployment updates untouched old copies and preserves user customizations", (t) => {
+test("session startup never deploys or upgrades project agent definitions", async (t) => {
   const f = setup(t);
-  const old = "old generated agent";
-  f.put(".pi/agents/trellis-check.md", old);
-  f.put(".pi/agents/trellis-research.md", "user customized research");
-  f.put(".pi/.pi-trellis-hashes.json", JSON.stringify({ "trellis-check.md": __internals.shortHash(old), "trellis-research.md": "oldhash" }));
-  __internals.deployAgents(f.root, f.ctx("deploy"));
-  assert.match(readFileSync(join(f.root, ".pi/agents/trellis-check.md"), "utf8"), /Check Agent/);
-  assert.equal(readFileSync(join(f.root, ".pi/agents/trellis-research.md"), "utf8"), "user customized research");
-  assert.match(readFileSync(join(f.root, ".pi/agents/trellis-implement.md"), "utf8"), /Implement Agent/);
+  f.put(".pi/agents/trellis-check.md", "custom or older role");
+  await f.handlers.get("session_start")({}, f.ctx("deploy"));
+  assert.equal(readFileSync(join(f.root, ".pi/agents/trellis-check.md"), "utf8"), "custom or older role");
+  assert.equal(readFileSync(join(f.root, ".pi/agents/trellis-implement.md"), "utf8"), readFileSync(new URL("../agents/trellis-implement.md", import.meta.url), "utf8"));
+  assert.ok(!f.handlers.has("resources_discover"));
 });
 
 for (const source of ['session-fallback:foreign', 'session:foreign', undefined]) {
@@ -130,7 +133,7 @@ for (const source of ['session-fallback:foreign', 'session:foreign', undefined])
     const display = [];
     ctx.hasUI = true;
     ctx.ui = { theme: { fg: (_color,text) => text, bold: text => text }, setWidget: (_key,lines) => display.push(lines), setStatus: (_key,value) => display.push(value) };
-    f.put('.trellis/scripts/task.py', `print(${JSON.stringify(JSON.stringify({current_task:{dir:'.trellis/tasks/b',status:'in_progress'},source}))})`);
+    mockPython(t, f.root, args => args[0].endsWith('task.py') ? { stdout: JSON.stringify({current_task:{dir:'.trellis/tasks/b',status:'in_progress'},source}) } : undefined);
     await f.handlers.get('before_agent_start')({prompt:'inspect',systemPromptOptions:{sections:{}}},ctx);
     await f.handlers.get('agent_end')({},ctx);
     assert.ok(display.length > 0);
@@ -147,7 +150,7 @@ test('matching CLI session source is accepted; stale and errored tasks are rejec
   for (const extra of [{}, {stale:true}, {error:{reason:'invalid_json'}}]) {
     const f = setup(t), ctx = f.ctx('matching');
     const key = __internals.contextKey(f.root,ctx);
-    f.put('.trellis/scripts/task.py', `print(${JSON.stringify(JSON.stringify({current_task:{dir:'.trellis/tasks/a',status:'in_progress'},source:`session:${key}`,...extra}))})`);
+    mockPython(t, f.root, args => args[0].endsWith('task.py') ? { stdout: JSON.stringify({current_task:{dir:'.trellis/tasks/a',status:'in_progress'},source:`session:${key}`,...extra}) } : undefined);
     const input = {subagent_type:'trellis-implement',prompt:'work'};
     await f.call(ctx,input);
     assert.equal(input.prompt.includes('a requirements'), !extra.stale && !extra.error);
@@ -157,6 +160,7 @@ test('matching CLI session source is accepted; stale and errored tasks are rejec
 
 test('only execution tool registered; overview discovers fixed CLI and missing deployment needs explicit install',t=>{
  const f=setup(t);assert.deepEqual([...f.tools.keys()],['trellis_dispatch']);
+ rmSync(join(f.root,'.trellis/scripts/worktree.py'));
  const overview=__internals.renderOverview(f.root,'key',{});assert.match(overview,/python3 \.trellis\/scripts\/worktree\.py/);assert.match(overview,/not deployed/);assert.doesNotMatch(overview,/trellis_worktree/);
  f.put('.trellis/scripts/worktree.py','# deployed');assert.match(__internals.renderOverview(f.root,'key',{}),/Dispatch\/stop: trellis_dispatch/);
 });

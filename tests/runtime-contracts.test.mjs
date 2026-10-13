@@ -7,7 +7,7 @@ import { join, resolve } from 'node:path';
 import test from 'node:test';
 import trellis, { __internals } from '../extensions/trellis.ts';
 
-
+import { installRuntimeFixture } from "./runtime-fixture.mjs";
 
 const python = execFileSync('which', [process.env.TRELLIS_PYTHON || 'python3'], {encoding:'utf8'}).trim();
 function fixture(t) {
@@ -109,7 +109,7 @@ test('supported entrypoints run without trellis and suppress all bytecode/update
 });
 
 test('real runtime child binding/finish cannot resurrect from repeated dispatch header; failed binding never borrows parent',async t=>{
- const f=fixture(t);const path=f.task();const handlers=new Map(),messages=[];
+ const f=fixture(t);rmSync(join(f.root,'.trellis'),{recursive:true});installRuntimeFixture(f.root);const path=f.task();const handlers=new Map(),messages=[];
  trellis({events:{on:()=>()=>{},emit:()=>{}},registerCommand: () => {}, registerTool:()=>{},on:(name,fn)=>handlers.set(name,fn),sendMessage:m=>messages.push(m),getAllTools:()=>[]});
  const ctx=name=>({cwd:f.root,hasUI:false,sessionManager:{getSessionId:()=>name,getSessionFile:()=>undefined},ui:{}});
  const parent=ctx('runtime-parent'),child=ctx('runtime-child'),parentKey=__internals.contextKey(f.root,parent);f.pointer(parentKey,path);

@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { verifyRuntime } from "./initialization/engine.ts";
 import type { WorktreeBinding } from "./bindings.ts";
 
 export interface MaterialSummary {
@@ -17,11 +18,21 @@ interface WorktreeQuery {
 }
 
 /** Python owns Git identity and readiness. Read-only even inside the host source lock. */
-export function queryWorktree(cwd: string, task?: string, ready = false, signal?: AbortSignal): Promise<WorktreeQuery> {
+export function queryWorktree(cwd: string, task?: string, ready = false, signal?: AbortSignal, supportedRelease = false): Promise<WorktreeQuery> {
 	const script = join(dirname(dirname(fileURLToPath(import.meta.url))), "runtime/query-worktree.py");
 	const args = ["-B", script, "--cwd", cwd];
 	if (task !== undefined) args.push("--task", task);
 	if (ready) args.push("--ready");
+	if (ready && supportedRelease) {
+		// Resolve the binding without executing target task.py before verifying its release.
+		return queryWorktree(cwd, task, false, signal).then(result => {
+			if (result.binding?.worktreePath && !verifyRuntime(result.binding.worktreePath)) throw new Error("Supported target runtime manifest required before dispatch");
+			return executeQuery(cwd, args, signal);
+		});
+	}
+	return executeQuery(cwd, args, signal);
+}
+function executeQuery(cwd: string, args: string[], signal?: AbortSignal): Promise<WorktreeQuery> {
 	return new Promise((done, reject) => execFile(process.env.TRELLIS_PYTHON || (process.platform === "win32" ? "python" : "python3"), args, {
 		cwd, env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1" }, signal, timeout: 30000, maxBuffer: 1024 * 1024,
 	}, (error, stdout, stderr) => {

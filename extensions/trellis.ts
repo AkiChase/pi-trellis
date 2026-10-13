@@ -5,8 +5,8 @@
  *   M1  session / task context injection via systemPrompt sections + per-turn state message
  *   M2  active-task status in the footer
  *   M3  role-specific JSONL/artifact material handed to trellis-* subagents
- *   M4  agent definitions deployed to .pi/agents/ (hash-guarded)
- *   M5  skill bridge: point pi at skill directories that already exist on disk
+ *   M4  explicit initialization and manifest-managed project resources
+ *   M5  skills load from the Pi package manifest
  *
  * No Trellis runtime implementation is copied into this TypeScript extension.
  * Bundled agent documents retain their upstream license; see docs/trellis-agent-sync.md.
@@ -28,6 +28,8 @@ import { assembleDispatchPrompt, buildTaskContext, INJECTED_MARKER, isTrellisRol
 import { registerDispatchTool } from "../lib/subagent-rpc.ts";
 import { readBinding, readMarker } from "../lib/bindings.ts";
 import { containsPath } from "../lib/config.ts";
+import { registerInitCommand } from "../lib/initialization/command.ts";
+import { checkedPath, verifyRuntime } from "../lib/initialization/engine.ts";
 
 /** The slice of pi's Theme this extension uses. Narrow on purpose: `ctx.ui.theme` is always present, even in the no-op UI. */
 type ThemeColorToken = "accent" | "success" | "warning" | "error" | "muted" | "dim" | "text";
@@ -83,14 +85,6 @@ const STATUS_KEY = "trellis";
 const WIDGET_KEY = "trellis";
 const AGENT_PREFIX = "trellis-";
 const ACTIVE_TASK_MARKER = "Active task:";
-const HASH_FILE = ".pi-trellis-hashes.json";
-
-/** Candidate skill roots, in priority order. Only the first that exists is bridged (M5). */
-const SKILL_DIRS = [
-	join(".agents", "skills"),
-	join(".claude", "skills"),
-	join(".cursor", "skills"),
-];
 
 // ---------------------------------------------------------------------------
 // Module state
@@ -111,12 +105,12 @@ const lastStateSent = new Map<string, string>();
 const contextCache = new Map<string, { at: number; value: Promise<TrellisContext | undefined> }>();
 /** cacheKey -> cached active task, including cached absence. */
 const taskCache = new Map<string, { at: number; value: Promise<ActiveTask | undefined> }>();
+const taskErrors = new Map<string, string>();
 /** root -> parsed workflow.md, invalidated by mtime. */
 const workflowCache = new Map<string, { mtimeMs: number; head: string; states: Map<string, string> }>();
 
 let warnedMissingAgentTool = false;
 let warnedBrokenCli = false;
-const deployedRoots = new Set<string>();
 
 // ---------------------------------------------------------------------------
 // Types (shapes we read, not shapes we own)
@@ -173,8 +167,46 @@ function scriptPath(root: string, name: string): string {
 	return join(root, ".trellis", "scripts", name);
 }
 
-function hasScripts(root: string): boolean {
-	return existsSync(scriptPath(root, "task.py")) && existsSync(scriptPath(root, "get_context.py"));
+function requireRuntime(root: string): void {
+	if (!verifyRuntime(root)) throw new Error("Unsupported Trellis runtime: supported project manifest is missing");
+}
+
+function runtimeDiagnostic(error: unknown): string {
+	return `Trellis runtime execution is blocked: ${String(error)}. Run /trellis-init --check to inspect this project; explicit initialization or reconciliation is required (no automatic migration).`;
+}
+
+/** Recognize known runtime invocations, not arbitrary shell behavior or file reads. */
+function invokesRuntime(command: string): boolean {
+	const tokens = command.match(/"(?:\\.|[^"\\])*"|'[^']*'|[^\s;&|()]+|[;&|()\n]+/g) ?? [];
+	let words: string[] = [];
+	const invocation = (input: string[]): boolean => {
+		const words = input.map(word => word.replace(/^(["'])(.*)\1$/s, "$2"));
+		while (words.length) {
+			if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(words[0]) || ["env", "command", "exec", "sudo", "nohup", "time"].includes(basename(words[0])) || words[0].startsWith("-")) {
+				const option = words.shift();
+				if (["-u", "--unset", "-C", "--chdir"].includes(option ?? "")) words.shift();
+			} else break;
+		}
+		const executable = basename(words[0] ?? "");
+		const script = /^(?:task|get_context|init_developer|get_developer|add_session|worktree)\.py$/;
+		if (script.test(executable)) return true;
+		if (/^python(?:\d+(?:\.\d+)*)?$/.test(executable)) {
+			return words.slice(1).some(word => script.test(basename(word))) || words.some(word => /\b(?:common\.(?:active_task|paths|session_context|packages_context|developer|task_store)|pi_trellis_worktree)\b|\bfrom\s+common\s+import\s+(?:active_task|paths|session_context|packages_context|developer|task_store)\b/.test(word));
+		}
+		if (executable === "trellis" && words.slice(1).some(word => /^(?:task|context|journal|init|worktree)$/.test(word))) return true;
+		if (["bash", "sh", "zsh", "fish"].includes(executable)) {
+			const index = words.findIndex(word => /^-[a-z]*c[a-z]*$/.test(word));
+			return index >= 0 && !!words[index + 1] && invokesRuntime(words[index + 1]);
+		}
+		return false;
+	};
+	for (const token of tokens) {
+		if (/^[;&|()\n]+$/.test(token)) {
+			if (invocation(words)) return true;
+			words = [];
+		} else words.push(token);
+	}
+	return invocation(words);
 }
 
 function shortHash(input: string): string {
@@ -198,6 +230,7 @@ function contextKey(root: string, ctx: ExtensionContext): string {
 	const identity = sessionIdentity(root, ctx);
 	const cached = keyBySession.get(identity);
 	if (cached) return cached;
+	if (pinnedContextId && !/^[A-Za-z0-9_-]{1,128}$/.test(pinnedContextId)) throw new Error("Invalid explicit TRELLIS_CONTEXT_ID");
 	const pinned = pinnedContextId && /^[A-Za-z0-9_-]{1,128}$/.test(pinnedContextId) ? pinnedContextId : undefined;
 	const key = pinned ?? `pi-${shortHash(ctx.sessionManager.getSessionFile() || identity)}`;
 	keyBySession.set(identity, key);
@@ -225,6 +258,7 @@ function runScript(
 function runPython(
 	root: string, key: string, args: string[], timeoutMs = 15000,
 ): Promise<{ code: number; stdout: string } | undefined> {
+	requireRuntime(root);
 	return new Promise((done) => {
 		try {
 			execFile(
@@ -233,7 +267,7 @@ function runPython(
 				{
 					cwd: root,
 					timeout: timeoutMs,
-					env: { ...process.env, TRELLIS_CONTEXT_ID: key },
+					env: { ...process.env, TRELLIS_CONTEXT_ID: key, PYTHONDONTWRITEBYTECODE: "1" },
 					maxBuffer: 8 * 1024 * 1024,
 					windowsHide: true,
 				},
@@ -293,13 +327,21 @@ function loadContext(root: string, key: string): Promise<TrellisContext | undefi
  */
 function readActiveTaskFromDisk(root: string, key: string): ActiveTask | undefined {
 	try {
-		const pointer = join(root, ".trellis", ".runtime", "sessions", `${key}.json`);
+		const pointer = checkedPath(root, `.trellis/.runtime/sessions/${key}.json`);
+		if (existsSync(pointer) && (!lstatSync(pointer).isFile() || lstatSync(pointer).size > 1024 * 1024)) return undefined;
 		if (!existsSync(pointer)) return undefined;
 		const data = parseJson<{ current_task?: unknown }>(readFileSync(pointer, "utf8"));
 		const dir = typeof data?.current_task === "string" ? data.current_task : undefined;
 		if (!dir) return undefined;
 		const record = readTaskRecord(root, dir);
-		const status = typeof record?.status === "string" && record.status ? record.status : "task_error";
+		// Match the fixed runtime's bounded identity fields before exposing a path.
+		// The material loader's object check alone is not task authorization.
+		if (!Object.keys(record).length || !["id", "name", "title", "status"].some(name => Object.hasOwn(record, name))) return undefined;
+		for (const name of ["id", "name", "title", "status"]) {
+			const value = record[name];
+			if (Object.hasOwn(record, name) && (typeof value !== "string" || !value.trim() || value.length > (name === "status" ? 128 : 8192))) return undefined;
+		}
+		const status = typeof record.status === "string" && record.status ? record.status : "task_error";
 		return {
 			dir,
 			status,
@@ -328,26 +370,31 @@ function readActiveTask(root: string, key: string): Promise<ActiveTask | undefin
 	const cached = taskCache.get(cacheKey);
 	if (cached && Date.now() - cached.at < TASK_TTL_MS) return cached.value;
 
-	const value = resolveActiveTask(root, key).catch(() => undefined);
+	const value = resolveActiveTask(root, key).catch(error => { taskErrors.set(cacheKey, String(error)); return undefined; });
 	taskCache.set(cacheKey, { at: Date.now(), value });
 	return value;
 }
 
 function invalidateTask(root: string, key: string): void {
 	taskCache.delete(cacheKeyFor(root, key));
+	taskErrors.delete(cacheKeyFor(root, key));
 }
 
 async function resolveActiveTask(root: string, key: string): Promise<ActiveTask | undefined> {
+	taskErrors.delete(cacheKeyFor(root, key));
 	const fromDisk = readActiveTaskFromDisk(root, key);
 	if (fromDisk) return fromDisk;
 
 	const result = await runScript(root, key, "task.py", ["current", "--json"], 10000);
-	if (!result) return undefined;
+	if (!result) throw new Error("Task CLI is unavailable");
 	const data = parseJson<{
 		current_task?: { dir?: unknown; status?: unknown; title?: unknown; children?: unknown } | null;
-		source?: unknown; stale?: unknown; error?: unknown;
+		source?: unknown; stale?: unknown; error?: unknown; state?: unknown;
 	}>(result.stdout);
-	if (result.code !== 0 || data?.source !== `session:${key}` || data.stale || data.error) return undefined;
+	if (result.code !== 0 || data?.source !== `session:${key}` || data.stale || data.error) {
+		if (data?.error || data?.stale || (result.code !== 0 && !["no-task"].includes(String(data?.state)))) taskErrors.set(cacheKeyFor(root, key), String(data?.error || "Task pointer or CLI is invalid"));
+		return undefined;
+	}
 	const task = data.current_task;
 	if (!task || typeof task.dir !== "string") return undefined;
 	resolveTaskPath(root, task.dir);
@@ -603,17 +650,19 @@ function renderWorkflowSection(head: string): string {
 	].join("\n");
 }
 
-function renderState(root: string, task: ActiveTask | undefined, states: Map<string, string> | undefined): string {
+function renderState(root: string, task: ActiveTask | undefined, states: Map<string, string> | undefined, diagnostic?: string): string {
 	const lines: string[] = [];
 	if (task) {
 		const title = task.title ? ` — ${task.title}` : "";
 		lines.push(`${ACTIVE_TASK_MARKER} ${task.dir}${title}`);
 		lines.push(`Status: ${task.status}`);
+	} else if (diagnostic) {
+		lines.push(`Status: task_error\nTask diagnostic: ${diagnostic}`);
 	} else {
 		lines.push("No active task for this session.");
 	}
 
-	const breadcrumb = states?.get(task ? task.status : "no_task");
+	const breadcrumb = states?.get(diagnostic ? "task_error" : task ? task.status : "no_task");
 	if (breadcrumb) lines.push("", breadcrumb);
 
 	if (task) {
@@ -707,131 +756,6 @@ function renderWidget(theme: ExtensionTheme, task: ActiveTask | undefined, count
 // M4 — agent definitions
 // ---------------------------------------------------------------------------
 
-/**
- * Copy bundled agent definitions into `<root>/.pi/agents/`.
- *
- * pi package manifests cannot declare agents and pi-subagents reads them from
- * disk (custom-agents.js:25-43), so the extension deploys them at runtime.
- * A file the user edited is never overwritten: that is the supported way to
- * customize an agent per project.
- */
-function deployAgents(root: string, ctx: ExtensionContext): void {
-	if (deployedRoots.has(root)) return;
-	deployedRoots.add(root);
-
-	const sourceDir = join(packageDir(), "agents");
-	if (!existsSync(sourceDir)) return;
-
-	let files: string[];
-	try {
-		files = readdirSync(sourceDir).filter((name) => name.endsWith(".md"));
-	} catch {
-		return;
-	}
-	if (files.length === 0) return;
-
-	const targetDir = join(root, ".pi", "agents");
-	const hashFile = join(root, ".pi", HASH_FILE);
-	let recorded: Record<string, string> = {};
-	try {
-		if (existsSync(hashFile)) {
-			recorded = parseJson<Record<string, string>>(readFileSync(hashFile, "utf8")) ?? {};
-		}
-	} catch {
-		recorded = {};
-	}
-
-	const skipped: string[] = [];
-	let wrote = false;
-
-	for (const name of files) {
-		try {
-			const content = readFileSync(join(sourceDir, name), "utf8");
-			const packageHash = shortHash(content);
-			const target = join(targetDir, name);
-
-			if (!existsSync(target)) {
-				mkdirSync(targetDir, { recursive: true });
-				writeFileSync(target, content, "utf8");
-				recorded[name] = packageHash;
-				wrote = true;
-				continue;
-			}
-
-			const currentHash = shortHash(readFileSync(target, "utf8"));
-			if (currentHash === packageHash) {
-				if (recorded[name] !== packageHash) {
-					recorded[name] = packageHash;
-					wrote = true;
-				}
-				continue;
-			}
-			if (recorded[name] !== undefined && currentHash === recorded[name]) {
-				// Untouched copy of an older package version — safe to update.
-				writeFileSync(target, content, "utf8");
-				recorded[name] = packageHash;
-				wrote = true;
-				continue;
-			}
-			skipped.push(name);
-		} catch {
-			// A single unreadable/unwritable file must not stop the others.
-		}
-	}
-
-	if (wrote) {
-		try {
-			mkdirSync(dirname(hashFile), { recursive: true });
-			writeFileSync(hashFile, `${JSON.stringify(recorded, null, 2)}\n`, "utf8");
-		} catch {
-			// Losing the manifest only costs us the "safe to update" fast path.
-		}
-	}
-
-	if (skipped.length > 0 && ctx.hasUI) {
-		ctx.ui?.notify?.(
-			`pi-trellis: keeping your edited ${skipped.join(", ")} in .pi/agents/ (package version not applied)`,
-			"info",
-		);
-	}
-}
-
-// ---------------------------------------------------------------------------
-// M5 — skill bridge
-// ---------------------------------------------------------------------------
-
-/**
- * Point pi at Trellis skills that already exist in the project.
- *
- * `trellis init` writes skills per platform, and none of its default targets
- * are directories pi discovers (design doc §3.11). Rather than generating a
- * fourth copy, hand pi the files that are already there. Only `trellis-*`
- * skills are bridged — the rest of a platform directory is not ours to lift.
- */
-function bridgeSkills(root: string): string[] {
-	for (const relative of SKILL_DIRS) {
-		const dir = join(root, relative);
-		if (!existsSync(dir)) continue;
-
-		// pi discovers `.agents/skills/` natively; bridging it would only create
-		// name collisions with itself.
-		if (relative === SKILL_DIRS[0]) return [];
-
-		try {
-			const paths: string[] = [];
-			for (const entry of readdirSync(dir)) {
-				if (!entry.startsWith(AGENT_PREFIX)) continue;
-				const file = join(dir, entry, "SKILL.md");
-				if (existsSync(file)) paths.push(file);
-			}
-			return paths;
-		} catch {
-			return [];
-		}
-	}
-	return [];
-}
-
 // ---------------------------------------------------------------------------
 // Shared per-event work
 // ---------------------------------------------------------------------------
@@ -845,7 +769,8 @@ interface Session {
 
 function session(ctx: ExtensionContext): Session | undefined {
 	const root = findRoot(ctx.cwd);
-	if (!root || !hasScripts(root)) return undefined;
+	if (!root) return undefined;
+	requireRuntime(root);
 	const key = contextKey(root, ctx);
 	return { root, key, cacheKey: `${sessionIdentity(root, ctx)}::${key}`, identity: sessionIdentity(root, ctx) };
 }
@@ -936,14 +861,17 @@ export const __internals = {
 	statusColor,
 	readUnfinishedTaskCount,
 	readActiveTaskFromDisk,
-	bridgeSkills,
 	contextKey,
 	loadContext,
-	deployAgents,
 	shortHash,
 };
 
 export default function (pi: ExtensionAPI): void {
+	registerInitCommand(pi, async (ctx, root) => {
+		contextCache.clear(); taskCache.clear(); taskErrors.clear(); workflowCache.delete(root);
+		sectionCache.clear(); lastStateSent.clear();
+		await refreshDisplay(ctx);
+	});
 	registerDispatchTool(pi, async (ctx) => {
 		const current = session(ctx);
 		return current ? (await sessionTask(current))?.dir : undefined;
@@ -952,13 +880,14 @@ export default function (pi: ExtensionAPI): void {
 	// ---- M1 / M4 / M2: session bootstrap -----------------------------------
 
 	pi.on("session_start", async (_event, ctx) => {
-		const current = session(ctx);
+		let current: Session | undefined;
+		try { current = session(ctx); }
+		catch (error) { if (ctx.hasUI) ctx.ui.notify(runtimeDiagnostic(error), "error"); clearDisplay(ctx); return; }
 		if (!current) {
 			if (ctx.hasUI) clearDisplay(ctx);
 			return;
 		}
 
-		deployAgents(current.root, ctx);
 
 		// Behavioural version check: if the CLI contract moved, say so once
 		// instead of degrading silently.
@@ -1039,7 +968,7 @@ export default function (pi: ExtensionAPI): void {
 			// Volatile state never enters the prompt: a section that changes every
 			// turn invalidates the provider's prefix cache from byte zero.
 			const task = await sessionTask(current);
-			const state = renderState(current.root, task, loadWorkflow(current.root)?.states);
+			const state = renderState(current.root, task, loadWorkflow(current.root)?.states, taskErrors.get(cacheKeyFor(current.root, current.key)));
 			if (lastStateSent.get(current.cacheKey) !== state) {
 				lastStateSent.set(current.cacheKey, state);
 				pi.sendMessage({
@@ -1048,19 +977,38 @@ export default function (pi: ExtensionAPI): void {
 					display: false,
 				});
 			}
-		} catch {
-			// A failed injection costs context, not the session.
+		} catch (error) {
+			// Preserve the diagnostic rather than making invalid runtime look task-less.
+			const content = `Status: task_error\nTrellis context diagnostic: ${runtimeDiagnostic(error)}`;
+			const identity = `${ctx.cwd}::${ctx.sessionManager.getSessionId()}::error`;
+			if (lastStateSent.get(identity) !== content) {
+				lastStateSent.set(identity, content);
+				pi.sendMessage({ customType: STATE_MESSAGE_TYPE, content, display: false });
+			}
 		}
 	});
 
 	// ---- M3 / session isolation: tool_call ---------------------------------
 
 	pi.on("tool_call", async (event, ctx) => {
+		// Discovery is not authorization. Unsupported roots still allow ordinary
+		// read/search commands and non-Trellis agents, but cannot execute runtime.
+		const root = findRoot(ctx.cwd);
+		if (!root) return;
+		try { requireRuntime(root); }
+		catch (error) {
+			const input = event.input as { command?: unknown; subagent_type?: unknown };
+			if ((["bash", "bash_bg", "monitor"].includes(event.toolName) && typeof input.command === "string" && invokesRuntime(input.command)) ||
+				(event.toolName === "Agent" && isTrellisRole(input.subagent_type))) {
+				return { block: true, reason: `${runtimeDiagnostic(error)} No command or child was started.` };
+			}
+			return;
+		}
 		try {
 			const current = session(ctx);
 			if (!current) return;
 
-			if (event.toolName === "bash") {
+			if (["bash", "bash_bg", "monitor"].includes(event.toolName)) {
 				const input = event.input as { command?: unknown };
 				if (typeof input.command !== "string") return;
 				// Scope every shell, including indirect CLI invocations, without a process-global mutation.
@@ -1095,9 +1043,13 @@ export default function (pi: ExtensionAPI): void {
 				prompt: input.prompt, taskDir: task.dir, contextId: current.key, role: input.subagent_type, context,
 			});
 		} catch (error) {
+			if (["bash", "bash_bg", "monitor"].includes(event.toolName) && typeof (event.input as { command?: unknown }).command === "string") {
+				return { block: true, reason: `Trellis runtime/context cannot be verified: ${String(error)}. No command was started.` };
+			}
 			if (event.toolName === "Agent") {
 				const input = event.input as { subagent_type?: unknown; prompt?: unknown };
 				if (isTrellisRole(input.subagent_type) && typeof input.prompt === "string") {
+					if (/runtime|manifest|TRELLIS_CONTEXT_ID/i.test(String(error))) return { block: true, reason: `Trellis runtime/context cannot be verified: ${String(error)}. No child was started.` };
 					input.prompt = `${input.prompt.replaceAll(INJECTED_MARKER, "")}\n\npi-trellis could not load task materials: ${String(error)}. Use the context-loading fallback before working.`;
 				}
 			}
@@ -1108,11 +1060,15 @@ export default function (pi: ExtensionAPI): void {
 
 	pi.on("tool_result", async (event, ctx) => {
 		try {
-			if (event.toolName !== "bash") return;
+			if (!["bash", "bash_bg", "monitor"].includes(event.toolName)) return;
 			const command = (event.input as { command?: unknown }).command;
-			if (typeof command !== "string" || !/task\.py/.test(command)) return;
+			if (typeof command !== "string" || !/(?:task|get_context|init_developer|add_session)\.py/.test(command)) return;
 			const current = session(ctx);
-			if (current) invalidateTask(current.root, current.key);
+			if (current) {
+				invalidateTask(current.root, current.key);
+				contextCache.delete(cacheKeyFor(current.root, current.key));
+				sectionCache.delete(current.cacheKey); lastStateSent.delete(current.cacheKey);
+			}
 			await refreshDisplay(ctx, current);
 		} catch {
 			// ignore
@@ -1123,30 +1079,22 @@ export default function (pi: ExtensionAPI): void {
 		await refreshDisplay(ctx);
 	});
 
-	// ---- M5: skill bridge --------------------------------------------------
-
-	pi.on("resources_discover", (event) => {
-		try {
-			const root = findRoot(event.cwd);
-			if (!root) return {};
-			const skillPaths = bridgeSkills(root);
-			return skillPaths.length > 0 ? { skillPaths } : {};
-		} catch {
-			return {};
-		}
-	});
-
 	// ---- Cleanup -----------------------------------------------------------
 
 	pi.on("session_shutdown", (_event, ctx) => {
 		clearDisplay(ctx);
-		const current = session(ctx);
-		if (current) {
-			keyBySession.delete(current.identity);
-			taskBySession.delete(current.identity);
-			roleBySession.delete(current.identity);
-			sectionCache.delete(current.cacheKey);
-			lastStateSent.delete(current.cacheKey);
+		const root = findRoot(ctx.cwd);
+		if (!root) return;
+		// Cleanup is bookkeeping, not runtime execution; unsupported roots must
+		// not throw here or retain a previously supported session's binding memo.
+		const identity = sessionIdentity(root, ctx), key = keyBySession.get(identity);
+		keyBySession.delete(identity);
+		taskBySession.delete(identity);
+		roleBySession.delete(identity);
+		if (key) {
+			const cacheKey = `${identity}::${key}`;
+			sectionCache.delete(cacheKey);
+			lastStateSent.delete(cacheKey);
 		}
 	});
 }

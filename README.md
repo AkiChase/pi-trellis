@@ -2,7 +2,7 @@
 
 A project-local [pi](https://pi.dev) extension for [Trellis](https://www.npmjs.com/package/@mindfoldhq/trellis) projects.
 
-It replaces the pi adapter layer that `trellis init --pi` generates with one installed package. The three bundled agents use Trellis 0.6.17's generated Claude Code roles as their baseline, with documented Pi tool, context, and correctness adaptations. See [agent provenance and synchronization](docs/trellis-agent-sync.md).
+It supplies an explicit Pi-native initializer plus a fixed project runtime in one package. The three bundled agents use Trellis 0.6.17's generated Claude Code roles as their baseline, with documented Pi tool, context, and correctness adaptations. See [agent provenance and synchronization](docs/trellis-agent-sync.md).
 
 ## What it does
 
@@ -12,11 +12,39 @@ It replaces the pi adapter layer that `trellis init --pi` generates with one ins
 | **Task display** | A persistent themed line above the editor: `▸ trellis(3) · 00-bootstrap-guidelines · in_progress · prd ✓ design · impl ·`. Shows the project-wide unfinished task count even without an active session task, refreshed when a session starts, when a turn ends, and immediately after a `task.py` bash result. Switch it to the footer chip or turn it off with `TRELLIS_PI_STATUS`. |
 | **Session isolation** | Derives a separate `TRELLIS_CONTEXT_ID` per session/root and passes it explicitly to CLI/bash calls. Dispatched children bind the explicit task under their own key without lifecycle hooks; they never reuse the dispatcher's pointer. No shared-process environment mutation. |
 | **Subagent context** | Claude-based `trellis-implement`, `trellis-check`, and `trellis-research` agents adapted for Pi. Ordinary `Agent` dispatch loads role JSONL references and task artifacts with byte budgets and fallback diagnostics. |
-| **Skill bridge** | Points pi at the Trellis skills already on disk (`.claude/skills/trellis-*` and friends), which pi otherwise cannot see. No files are copied. |
+| **Package skills** | Ten curated Pi skills load through `pi.skills`; there is no project copy or extension skill bridge. |
 
-What it deliberately does **not** do: implement subagents (that is [`@tintinweb/pi-subagents`](https://github.com/tintinweb/pi-subagents)' job), install anything globally, or write slash commands.
+What it deliberately does **not** do: implement subagents (that is [`@tintinweb/pi-subagents`](https://github.com/tintinweb/pi-subagents)' job), install anything globally, or install dependencies during project initialization.
 
-## Install
+## Initialize a new project
+
+Install the package using Pi, grant project trust when applicable, then use the English native command:
+
+```text
+/trellis-init
+/trellis-init --user "Your Name"
+/trellis-init --check
+/trellis-init --help
+```
+
+No global Trellis CLI is required. Python 3.10+ is required. `--user` skips name selection,
+not the final confirmation. Interactive and RPC native dialogs support initialization;
+headless invocation reports status and instructions without writing.
+
+Fresh initialization creates a fixed runtime, Pi roles, editable workflow/config/spec entry,
+identity/workspace and `00-bootstrap-guidelines`. It selects no active task and runs no
+hooks, model turn, Git action or dependency installation. Supported clones missing local
+identity can reuse historical usernames/journals and create/reuse `00-join-<slug>`;
+existing different identity is a conflict, not a silent switch. No frontend/backend rules,
+project-type detection, multiple-package setup, remote templates or general upgrades.
+
+`.trellis/.pi-trellis.json` records the installed runtime release, hashes/modes and resource
+provenance separately from the package baseline. Unknown collisions and customized root
+blocks are rejected before writes. Initialization uses a local lock and bounded operation
+record; interrupted publication preserves files and retries only identical recorded outputs.
+This is per-file atomic publication, not an all-files transaction. See [initialization contract](docs/initialization.md).
+
+## Legacy installer (pending repository migration)
 
 ```bash
 # 1. Trellis core + Claude Code skills, without the --pi adapter layer
@@ -76,28 +104,22 @@ Existing host behavior has macOS/Linux evidence. The native management CLI is ve
 
 ## Agent definitions and `.gitignore`
 
-On first start the extension copies the bundled `trellis-implement.md`, `trellis-check.md` and `trellis-research.md` into `.pi/agents/`, then records their hashes in `.pi/.pi-trellis-hashes.json`. Their baseline is Trellis 0.6.17's Claude Code definitions, with explicit Pi adaptations:
+Explicit `/trellis-init` publishes the bundled `trellis-implement.md`, `trellis-check.md` and `trellis-research.md` into `.pi/agents/`, then records their full hashes/modes in `.trellis/.pi-trellis.json`. Session startup never deploys or upgrades roles. Their baseline is Trellis 0.6.17's Claude Code definitions, with explicit Pi adaptations:
 
 - **implement** reads task artifacts and `implement.jsonl`, implements and validates, and does not commit, push, or merge.
 - **check** reviews committed changes against an explicit review base, staged/unstaged changes and new files; fixes clear issues within scope and reruns validation on the final version. It is not a read-only audit agent.
 - **research** reads code and documentation and writes findings only under the active task's `research/` directory. Standalone read-only exploration can still happen in the main session without creating a task.
 
-**Edit those files freely.** A file whose content no longer matches the recorded hash is never overwritten — that is the supported way to customize an agent for your project. A file you have not touched is updated when the package ships changed definitions. Existing customized files are preserved, so inspect them if they still contain the old read-only check/research rules.
+**Edit those files freely.** A file whose content no longer matches the recorded hash is never overwritten — that is the supported way to customize an agent for your project. New package versions do not silently replace even untouched definitions; general upgrade is not part of init. Existing customized files are preserved, so inspect them if they still contain the old read-only check/research rules.
 
 Whether they belong in git is your call:
 
-- **Commit them** to share agent definitions with your team. Package upgrades will show up as diffs.
-- **Ignore them** (`/.pi/agents/trellis-*.md`, `/.pi/.pi-trellis-hashes.json`) and let everyone generate their own. Everyone then needs the package installed.
+- **Commit them** to share agent definitions with your team. Keep these roles and the initialization manifest in the committed baseline.
+- **Do not ignore the runtime manifest**: a clone needs it to recognize the supported release. Initialization does not regenerate missing/custom roles on session startup.
 
 ## Known limitations
 
-**pi cannot see Trellis skills, and this extension only works around it.** `trellis init` writes skills per platform; its default targets (`.claude/skills/`, `.cursor/skills/`) are not directories pi discovers. Skill text is not vendored here; the bundled agent definitions are upstream-generated documents, not skills. The bridge hands pi the `trellis-*` skills that your own Trellis install already wrote, from the first directory that exists:
-
-1. `.agents/skills/` — pi finds these natively, so the bridge stays out of the way
-2. `.claude/skills/`
-3. `.cursor/skills/`
-
-Falling back to 2 or 3 means the skill text was rendered for another platform: it refers to `/trellis:continue` and similar slash commands, **which do not exist in pi**. Read those as "follow the matching flow in `.trellis/workflow.md`". For neutral text instead, install with `--neutral-skills` (or run `trellis init --codex` yourself), which makes Trellis write `.agents/skills/` — at the cost of a `.codex/` directory.
+**Skills load from the package.** `pi.skills: ["skills"]` exposes ten curated skills with complete references. `/skill:trellis-start` and `/skill:trellis-continue` are real skill commands, not `/trellis:*` aliases. Pi's resource filters and trust rules determine what actually loads. A project `autoload:false` entry is a delta: empty arrays do nothing, explicit `-path` exclusions disable resources. Normal package entries with `extensions: []` disable that resource type. The adapter readiness guard uses Pi's actual resolver without installing missing sources.
 
 **The workflow section is an excerpt.** Only the stable head of `.trellis/workflow.md` is injected (about 10 KB), with platform blocks that do not name Pi removed. Per-phase detail is loaded on demand via `get_context.py --mode phase --step <N.N>`; the model is told so.
 
@@ -203,6 +225,21 @@ is unaffected either way — the display is just a display.
 - **Subagent sessions may load this extension too.** The dispatch supplies the task/context identity and role materials; the child uses these facts instead of inheriting a mutable process-global pointer. Child-side fallback reads JSONL/artifacts when complete injection is unavailable. No task materials are added a second time to the system prompt.
 - **Optional discovery/UI degrades safely.** Missing `.trellis/` or unusable CLI context does not take the session down. Dispatch material errors are visible and keep fallback active; they are not presented as complete injection. Only ordinary Agent calls are patched, not hidden RPC dispatch.
 
+## Fixed runtime source (deployment not automatic)
+
+`runtime/` contains the supported task/context/journal/developer Python import
+closure derived from **Trellis 0.6.16**, plus the unchanged original native
+worktree implementation moved from `python/`. The adapted agent documents have
+an independent **0.6.17** baseline. [Runtime provenance and contracts](docs/runtime-baseline.md)
+and `resources/runtime-baseline.json` record exact source/output hashes, licenses,
+Python syntax minimum and a content-derived release ID. No global `trellis`
+probe or installation-time textual patch is used by this fixed runtime.
+
+This package-source change does **not** deploy the new runtime to an existing
+project. The installer above remains legacy pending the initialization/migration
+work; existing generated `.trellis/scripts` have not been changed. Project
+commands still execute `.trellis/scripts/`, not package-source `runtime/`.
+
 ## Development checks
 
 Pi supplies `@earendil-works/pi-tui` as a `*` peer dependency; it is not bundled
@@ -216,6 +253,8 @@ export PI_TRELLIS_TEST_HOST=/path/to/installed/pi/node_modules
 env -u TRELLIS_CONTEXT_ID npm test
 # Focused direct-TS tests need the same preload:
 env -u TRELLIS_CONTEXT_ID node --import ./tests/host-tui.mjs --test tests/task-display.test.mjs tests/agent-context-integration.test.mjs
+# Full real runtime copies in disposable projects (same host preload):
+env -u TRELLIS_CONTEXT_ID node --import ./tests/host-tui.mjs --test tests/runtime-contracts.test.mjs
 # Native standard-library unit tests (also included in npm test):
 python3 -B -m unittest discover -s tests/python -p 'test_*.py'
 node scripts/sync-agents.mjs <fixed-version-generated-.claude/agents> --check
@@ -227,6 +266,6 @@ Repeat `--provider` to test standalone pi-subagents and a vendored agent-tasks i
 
 ## License
 
-The original and newly written pi-trellis runtime code is licensed under [MIT](LICENSE). The bundled `agents/trellis-*.md` documents are adapted from `@mindfoldhq/trellis@0.6.17` Claude Code assets, whose package declares `AGPL-3.0-only`; they retain that upstream license, reproduced in [licenses/trellis-AGPL-3.0.txt](licenses/trellis-AGPL-3.0.txt). See [provenance](docs/trellis-agent-sync.md) for generation commands, adaptations and checksums.
+Original pi-trellis integration and native worktree code is licensed under [MIT](LICENSE); maintained derivatives of Trellis runtime code retain AGPL as described below. The bundled `agents/trellis-*.md` documents are adapted from `@mindfoldhq/trellis@0.6.17` Claude Code assets, whose package declares `AGPL-3.0-only`; they retain that upstream license, reproduced in [licenses/trellis-AGPL-3.0.txt](licenses/trellis-AGPL-3.0.txt). See [provenance](docs/trellis-agent-sync.md) for generation commands, adaptations and checksums.
 
-No Trellis runtime implementation is copied into this extension. Runtime integration uses the `task.py` / `get_context.py` CLIs, `TRELLIS_CONTEXT_ID`, and documented paths under `.trellis/`. Do not describe the complete package as containing no upstream Trellis material or as MIT-only.
+The fixed Trellis-derived runtime entries and `runtime/common/` retain **AGPL-3.0-only** attribution from the verified 0.6.16 baseline; the native worktree modules remain **MIT**. Source and adapted output hashes are in [runtime-baseline.json](resources/runtime-baseline.json). Existing project integration still uses the `task.py` / `get_context.py` CLIs, `TRELLIS_CONTEXT_ID`, and paths under `.trellis/`. Do not describe the complete package as containing no upstream Trellis material or as MIT-only.
