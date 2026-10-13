@@ -55,7 +55,7 @@ npm test
 | research 禁止任意 Git 操作 | 允许只读 status/diff/log，禁止修改仓库 |
 | research 不得比较/批评实现 | 被明确要求时可以记录证据、风险和 trade-offs，不实施修改 |
 
-三个角色都使用 `isolation: off`，避免 provider 自动创建不含当前未提交任务材料的临时工作树。这里没有实现任务级 worktree 管理；未来目录派发使用 worktree 计划。
+三个角色都使用 `isolation: off`，避免 provider 自动创建不含当前未提交任务材料的临时工作树。任务级 worktree 创建/准备/派发由 pi-trellis 管理工具实现，角色文本本身不管理生命周期；当前功能和边界见 [Worktree 计划](plans/worktree-support.md)。
 
 **工具限制不是 shell 沙箱。** `extensions: true` 意味着 provider 继承已配置扩展，内建工具白名单不会自动约束所有 extension/MCP 工具。本包不硬编码搜索服务、自动安装 MCP 或伪造外部研究成果；没有外部工具时如实报告只完成本地研究。调用者仍须审查所加载的扩展与技能。
 

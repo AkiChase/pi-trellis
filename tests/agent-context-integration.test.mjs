@@ -18,13 +18,13 @@ function setup(t) {
     put(`${dir}/prd.md`, `${name} requirements`);
     put(`${dir}/implement.jsonl`, JSON.stringify({ file: `${dir}/prd.md` }));
   }
-  const handlers = new Map(), messages = [];
-  const pi = { on: (name, handler) => handlers.set(name, handler), sendMessage: (message) => messages.push(message), getAllTools: () => [{ name: "Agent" }] };
+  const handlers = new Map(), messages = [], tools = new Map();
+  const pi = { events: { on: () => () => {}, emit: () => {} }, registerTool: (tool) => tools.set(tool.name, tool), on: (name, handler) => handlers.set(name, handler), sendMessage: (message) => messages.push(message), getAllTools: () => [{ name: "Agent" }] };
   trellis(pi);
   const ctx = (name) => ({ cwd: root, hasUI: false, sessionManager: { getSessionId: () => name, getSessionFile: () => undefined }, ui: {} });
   const pointer = (context, task) => put(`.trellis/.runtime/sessions/${__internals.contextKey(root, context)}.json`, JSON.stringify({ current_task: `.trellis/tasks/${task}` }));
   const call = (context, input, toolName = "Agent") => handlers.get("tool_call")({ toolName, toolCallId: "test", input }, context);
-  return { root, put, ctx, pointer, call, handlers, messages };
+  return { root, put, ctx, pointer, call, handlers, messages, tools };
 }
 
 test("two sessions in one project keep keys, CLI context cache, and dispatch task materials separate", async (t) => {
@@ -76,6 +76,19 @@ test("no task and missing materials retain fallback; other agents and read-only 
   const temporary = { subagent_type: "trellis-implement", prompt: "implement", isolation: "worktree" };
   const blocked = await f.call(ctx, temporary); assert.equal(blocked.block, true);
 });
+test("bound task ordinary Agent gate blocks before spawn; read-only exploration remains available", async (t) => {
+  const f = setup(t), ctx = f.ctx("bound");
+  f.pointer(ctx, "a");
+  f.put(".trellis/.runtime/pi-trellis/binding.json", "invalid marker");
+  const input = { subagent_type: "trellis-implement", prompt: "implement" };
+  const result = await f.call(ctx, input);
+  assert.equal(result.block, true);
+  assert.match(result.reason, /marker cannot be verified/);
+  const exploration = { subagent_type: "Explore", prompt: "read-only search" };
+  assert.equal(await f.call(ctx, exploration), undefined);
+  assert.equal(exploration.prompt, "read-only search");
+});
+
 test("hash-guard deployment updates untouched old copies and preserves user customizations", (t) => {
   const f = setup(t);
   const old = "old generated agent";

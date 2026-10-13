@@ -1,10 +1,31 @@
 # pi-trellis 任务级 Worktree 支持实施计划
 
-状态：设计与执行顺序已确认，尚未开始 worktree 代码实施。
+状态：W1–W5 首版核心实现与离线集成验收已完成；未提交、未部署到日常环境。保留下面的设计计划及分阶段记录，限制见当前交付范围。
 
-前置计划：[Claude Code 版 Agent 适配](claude-agent-adaptation.md)。A1/A2 已实施：当前为 Claude 角色基线加明确 Pi 适配，共享加载器已接普通 Agent；S0 双 provider 的离线真实运行机制检查通过。真实模型角色行为及 worktree W0–W5 尚未验收/实施。
+前置计划：[Claude Code 版 Agent 适配](claude-agent-adaptation.md)。A1/A2 和 S0 离线验证已完成；简化真实模型冒烟已验证 trellis-implement → trellis-check 在同一个真实 Git worktree 中实现、自修复并通过测试，源 staged/unstaged/untracked 内容与 index 不动。research/截断 fallback 和完整绑定生命周期不在该冒烟覆盖范围内。
 
 本文整合前面的实施方案，并按最新决定收缩工作流适配范围：**不修改 Trellis 的默认 workflow，不注入第二套执行流程，只增加工作树管理和目录派发能力，通过工具说明与派发校验衔接现有流程。**任务材料注入属于前置计划的共享能力，不等于另一套工作流。
+
+## 当前交付范围：首版核心闭环
+
+- `trellis_worktree`：create/bind/status/prepare/stop/recover/remove。create/bind 默认 preview，确认才写；创建先 unprepared，prepare 验证后 ready。
+- `prepare`：源任务必须已 in_progress，只复制当前 task artifacts 与 JSONL 引用的 task-local 文件；外部规范/代码保持固定基线，差异必须明确处理。target task.json 的 branch 改为绑定分支，不修改 source task。目标 CLI start/current 绑定与校验独立 context，预览披露 after_start hooks。
+- `trellis_dispatch`：ready/身份/任务状态/工具配置/占用校验后，以公开 cwd RPC 派发，复用 A2 加载器。超预算仍可使用带诊断的 child fallback；结构性材料错误拒绝执行。返回原 agent ID，结果/steering/通知由 provider 负责。
+- W4：有绑定的普通 Agent 启动前被阻止，不偷偷 spawn；原 workflow 和阶段定义不改。状态只增加 worktree 事实，不自动推进阶段。
+- W5：执行记录持久化，早到结束事件能关联；timeout/shutdown 保守标 unknown，阻止盲目重派。显式 recover 只释放死进程执行，不猜 stale lock。check 最终文件快照改变后标 stale，completed 不等于验收通过。
+- 清理默认 preview，拒绝当前目录、脏代码/未保存 task artifacts、活跃/unknown 执行与未保存提交；明确 integratedInto 后普通 Git remove，无force/branch删除，失效目标可显式解除绑定。
+
+首版限制与边界：
+
+- 只绑定安全完整任务 slug、branch-backed Git worktree，不绑定 detached。
+- 派发必须来自真实 source-root host/cwd，且 adapter 在 source/user settings 中持久配置（不能只有主会话一次性 -e），确保 child 重新加载上下文；这是共同 provider 角色发现的可验证边界，不改 provider 来绕过。管理调用可从可信 bound target 回源。
+- 自定义代理保留，但派发要求明确 isolation: off、extensions: true 与角色必需 tools。更灵活的 selector 组合不在首版支持内。
+- source/target runtime 和管理目录须忽略，runtime/目标任务store不得symlink源目录；不自动修改 ignore/安装依赖/执行额外初始化 hooks。
+- 不声称第三方入口全部可拦截，也不声称 worktree 是 shell/OS 沙箱；生命周期事件丢失或进程未退出时优先保留 unknown，不保证强制杀死第三方不响应取消的代码。
+
+验证：`npm test` **57/57 通过**，严格 TypeScript noEmit、agent 固定来源再生成、包内容和 Markdown 链接检查通过。实际 Pi/Trellis 集成 driver 保留在 `/tmp/pi-trellis-integrated-smoke.mjs`；临时夹具测试不读取个人配置或联网调用模型。
+
+验证证据：Git临时仓库回归、严格 TypeScript、真实 Pi1.1 loader/tools + 实际 Trellis0.6.17 CLI + create→prepare→implement→check→status→dirty-remove拒绝，通过 `/tmp/pi-trellis-integrated-smoke.mjs`。provider执行使用离线scripted响应；前置真实模型implement/check的简化冒烟已通过，不重复扩大在线矩阵。产品不修改provider、不部署宿主、不初始化本仓库.trellis、不自动提交/推送。
 
 ## 0. 前置依赖与两个计划的执行顺序
 
@@ -460,6 +481,8 @@ W0 如发现共同公开接口无法满足必要契约，报告阻碍并调整�
 | 执行层安排检查/修复 | 主 agent 按原 workflow 决定下一步 |
 | 普通 Agent 的透明重定向设想 | 明确不接管；门禁只阻止并纠正，派发由新工具执行 |
 
-截至本次同步，Claude 角色适配、共享加载器和普通 Agent 注入已实现；S0 双 provider 实际 parser/runner/loader/RPC 与结果/steering 的离线机制验证通过。真实模型行为及 Git worktree 集成仍待验收，worktree 功能尚未实施。实际来源/差异见 [同步记录](../trellis-agent-sync.md)。
+截至本次同步，前置 agent 适配已提交为 `4f7aead`。简化真实角色/worktree 冒烟证据保留在 `/tmp/pi-trellis-smoke.gfoY0Z/`（model mp-responses/gpt-6.1-sol-coding；只修改 clamp 代码，3/3 tests）。首轮 generic fallback 不作为角色验收证据，已修正临时 host cwd 和 no-fallback 后重跑通过；不修改 provider。
 
-用户只授权 Agent 适配实施；启动 worktree 实施仍需另行确认，不因前置代码完成自动继续 W1–W5。
+W1–W5 首版核心已按用户“连续逐步执行，只有需决策时再问”的授权完成。实现/测试记录见当前交付范围；历史W1曾为unprepared-only，现在prepare/RPC/占用/stop/recover/remove已接通。未提交Git或安装到日常环境。
+
+正常代码交付之后，提交/推送和实际部署仍由用户决定。无需再逐阶段询问，但不会把实现授权扩展为发布或强制清理授权。

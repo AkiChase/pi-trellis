@@ -100,7 +100,35 @@ Falling back to 2 or 3 means the skill text was rendered for another platform: i
 
 **External research is configuration-dependent.** Agent files inherit configured extensions/skills, not a particular web service. Without actual search/MCP tools, research reports that external search was unavailable. Built-in tool allowlists and role instructions are not a shell sandbox or a restriction on every extension tool.
 
-**Task-level worktree support is not implemented yet.** Bundled agents use `isolation: off` to avoid provider-owned temporary worktrees losing uncommitted task materials. The planned worktree tools will create and validate an existing task directory before cwd dispatch.
+**Task-level worktree management.** `trellis_worktree` previews and manages creation/binding, task-material preparation, status, provider stop, recovery and safe removal. `trellis_dispatch` sends a role to the existing ready directory. No temporary subagent isolation, automatic phase advancement, commits, merges or branch deletion.
+
+### Worktree usage
+
+Source `.gitignore` must explicitly ignore `/.worktree/` (or your configured directory) and `/.trellis/.runtime/`. The target base must also ignore its runtime. The extension checks this; it never edits `.gitignore` silently. Optional `.pi/pi-trellis.json` (relative paths resolve from source root):
+
+```json
+{ "worktree": { "directory": ".worktree" } }
+```
+
+Call `trellis_worktree` with `{ "action": "create", "task": ".trellis/tasks/<full-slug>" }` to preview the source, target, branch and pinned commit. After user approval, repeat with `"confirm": true`. For a user-created registered worktree, use `action: "bind"` and `path`. `action: "status"` is read-only and reports missing/mismatched bindings without recreating them.
+
+Creates never copy staged/unstaged/untracked source code, commit, install, or delete anything. New configuration affects new creates only; existing bindings keep their absolute path.
+
+After create/bind, use `action: "prepare"` (preview, then confirm). Source task must already be `in_progress`. Preparation copies only task artifacts and task-local referenced research; specs/code/scripts stay at the target baseline. Conflicts or source spec differences are reported, never silently overwritten. It runs **target** `task.py start`, including configured `after_start` hooks, then validates an independent target pointer and branch. Successful preparation marks `ready`.
+
+Dispatch from a Pi host opened at the source project root:
+
+```json
+{ "agent": "trellis-implement", "task": ".trellis/tasks/<full-slug>", "prompt": "Implement the approved task" }
+```
+
+Pass this to `trellis_dispatch`; use its returned ID with existing result and steering tools. The main agent chooses when to dispatch check to the same directory. Ordinary Agent calls for a bound task are blocked before starting; `completed` means the agent ended, not acceptance. Check snapshot status becomes stale after later file changes.
+
+`action: "stop"` requests the provider to stop; the lease remains until a terminal event. Timeout/restart ambiguity retains an `unknown` lease and code. Explicit `recover` resets preparation and releases an execution only after its owner process has exited; live owners must be stopped through the provider. Stale lock files need manual inspection, not automatic deletion.
+
+`remove` previews ignored-file risks and requires confirmation, a clean worktree and `integratedInto` (the user-approved reference preserving its commits). It uses ordinary `git worktree remove`, never force-removes or deletes the branch. A manually removed target can be explicitly unbound. Task artifacts often keep a prepared tree dirty: preserve/commit/archive them through the normal approved workflow before cleanup.
+
+**Limits:** first version accepts branch-backed worktrees and strict bundled-style role config (`isolation: off`, `extensions: true`, required tools). Customized incompatible files are kept and rejected, not replaced. Managed dispatch requires the actual host/source cwd to match and pi-trellis persistently configured in source/user settings (not just a parent-only `-e`) so children can reload the adapter. Worktrees and role rules are not an OS sandbox; third-party RPC/workflow launches are outside this tool's occupancy gate.
 
 ## Environment variables
 

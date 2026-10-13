@@ -1,8 +1,8 @@
 # pi-trellis Claude Code 版 Agent 适配实施计划
 
-状态：2026-10-12 已获实施授权；A1/A2 代码已实现，S0 真实离线机制验证通过；真实语言模型的角色行为验收未执行。
+状态：A1/A2 和简化真实模型 implement/check 验收已完成；research 与截断 fallback 模型质量未验证。后续 W1–W5 首版 worktree 核心闭环已实现并通过实际 Pi/Trellis 离线集成。
 
-关联计划：[任务级 Worktree 支持](worktree-support.md)。当前基线已切换为 Trellis 0.6.17 Claude Code 角色并做明确 Pi 适配，来源/差异见 [同步记录](../trellis-agent-sync.md)。worktree 功能仍未实施。
+关联计划：[任务级 Worktree 支持](worktree-support.md)。当前基线为 Trellis 0.6.17 Claude 角色加明确 Pi 适配，来源/差异见 [同步记录](../trellis-agent-sync.md)。worktree 材料准备与派发复用本计划的共享加载器，不另造角色或流程。
 
 ## 1. 目标与边界
 
@@ -239,7 +239,7 @@ check 的最终验证版本必须包含它自身的修复，两个计划采用�
 - S0：真实公共 RPC 检查已通过：目标 cwd、不存在目录拒绝、真实 agent ID、原 get_subagent_result 与 steer_subagent 能操作该 ID。产品运行时代码不导入 provider 源码；可选测试显式读取本机 provider。
 - 当前测试：`npm test` **26/26 通过**；严格 TypeScript noEmit 检查通过；`node scripts/sync-agents.mjs <generated-.claude/agents> --check` 通过；包内容、Markdown 链接和 `git diff --check` 通过。双 provider 真实离线测试还执行了 check 的 edit 与修复后 shell 验证，以及 research 搜索 fixture 调用。
 - 可选真实 provider 验证曾因测试夹具的 host alias、父 ctx、tool wrapper、模型响应数量等错误失败，修正后重新运行通过；未改 provider 产品代码。
-- 真实模型行为验收 **未执行**：实际 provider 使用 scripted offline responses，不宣称验证了模型自主 fallback、范围内自修复及外部研究质量。A 运行机制交付与模型行为验收分开记录。
+- 初次交付未执行真实模型行为验收；后续按用户简化要求，在临时真实 Git worktree 中用当前 mp-responses/gpt-6.1-sol-coding 和 preset provider 实际运行 implement → 手动植入错误 → check，自修复后 3/3 测试通过、源暂存/未暂存/新增内容与 index 不动。research 和截断 fallback 不在本次简化覆盖范围内，不扩大为全角色保证。证据：`/tmp/pi-trellis-smoke.gfoY0Z/report.json`。
 
 可复现真实 provider 检查（不会使用个人模型凭据）：
 
@@ -250,4 +250,4 @@ node tests/provider-contracts.mjs \
   --provider <isolated-pi-subagents-0.21.0-root>
 ```
 
-此次没有实施 worktree、修改 provider、安装到宿主项目或提交 Git。W0/W5 仍需验证真实 Git worktree/准备事务，不能用已有普通目标目录的 S0 测试代替。
+Agent 适配已提交为 `4f7aead`；后续 W1–W5 首版核心已实现，详见关联计划。未修改 provider、安装到宿主或自动提交/推送。共享材料加载器被管理派发直接复用；真实 Pi/Trellis CLI 的离线完整链路验证与此前真实模型冒烟分开记录，不夸大为所有模型/插件都保证遵守职责。

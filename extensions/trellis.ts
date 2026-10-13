@@ -23,6 +23,9 @@ import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { assembleDispatchPrompt, buildTaskContext, INJECTED_MARKER, isTrellisRole, parseDispatchFacts, readTaskRecord, resolveTaskPath } from "../lib/task-context.ts";
+import { registerWorktreeTool } from "../lib/worktree-tool.ts";
+import { registerDispatchTool } from "../lib/subagent-rpc.ts";
+import { readBinding, readMarker } from "../lib/bindings.ts";
 
 /** The slice of pi's Theme this extension uses. Narrow on purpose: `ctx.ui.theme` is always present, even in the no-op UI. */
 type ThemeColorToken = "accent" | "success" | "warning" | "error" | "muted" | "dim" | "text";
@@ -548,6 +551,10 @@ function renderState(root: string, task: ActiveTask | undefined, states: Map<str
 	if (breadcrumb) lines.push("", breadcrumb);
 
 	if (task) {
+		try {
+			const binding = readBinding(root, task.dir) ?? readMarker(root);
+			if (binding) lines.push(`Task worktree: ${binding.worktreePath} (${binding.preparationState})`);
+		} catch { lines.push("Task worktree binding needs inspection."); }
 		lines.push(
 			"",
 			`Task artifacts: ${task.dir}/prd.md, ${task.dir}/design.md, ${task.dir}/implement.md (whichever exist).`,
@@ -845,6 +852,15 @@ export const __internals = {
 };
 
 export default function (pi: ExtensionAPI): void {
+	registerWorktreeTool(pi, async (ctx) => {
+		const current = session(ctx);
+		return current ? (await sessionTask(current))?.dir : undefined;
+	});
+	registerDispatchTool(pi, async (ctx) => {
+		const current = session(ctx);
+		return current ? (await sessionTask(current))?.dir : undefined;
+	});
+
 	// ---- M1 / M4 / M2: session bootstrap -----------------------------------
 
 	pi.on("session_start", async (_event, ctx) => {
@@ -964,8 +980,17 @@ export default function (pi: ExtensionAPI): void {
 			if (!isTrellisRole(input.subagent_type) || typeof input.prompt !== "string") return;
 			// Ordinary Agent cannot promise task materials from a separately-created temporary tree.
 			if (input.isolation === "worktree") return { block: true, reason: "pi-trellis task agents need the current prepared checkout. Temporary worktree isolation cannot see its uncommitted task materials; no agent was started." };
+			if (isTrellisRole(input.subagent_type)) {
+				try { if (readMarker(current.root)) return { block: true, reason: "This is a managed task worktree. Dispatch through trellis_dispatch from the source host so directory occupancy is reserved; no ordinary child was started." }; }
+				catch (error) { return { block: true, reason: `Worktree marker cannot be verified: ${String(error)}. No child was started.` }; }
+			}
 			const facts = parseDispatchFacts(input.prompt);
 			const task = facts ? { dir: facts.taskDir } : await sessionTask(current);
+			if (task) {
+				try {
+					if (readBinding(current.root, task.dir) || readMarker(current.root)) return { block: true, reason: "This task is bound to a worktree. Ordinary Agent cannot select or reserve its directory; use trellis_worktree prepare then trellis_dispatch. No child was started." };
+				} catch (error) { return { block: true, reason: `Worktree binding cannot be verified: ${String(error)}. No child was started.` }; }
+			}
 			if (!task) {
 				// No material loaded: caller-provided marker must not suppress the child's fallback.
 				input.prompt = input.prompt.replaceAll(INJECTED_MARKER, "");
