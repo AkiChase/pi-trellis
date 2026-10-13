@@ -10,12 +10,8 @@ This project is managed by Trellis. The working knowledge you need lives under `
 - `.trellis/workspace/` — per-developer journals and session traces
 - `.trellis/tasks/` — active and archived tasks (PRDs, research, jsonl context)
 
-If a Trellis command is available on your platform (e.g. `/trellis:finish-work`, `/trellis:continue`), prefer it over manual steps. Not every platform exposes every command.
+Pi skills are supplied by the installed pi-trellis package. Use `/skill:trellis-continue` and `/skill:trellis-finish-work` when appropriate; `/trellis-init` initializes a new project or sets local developer identity on a supported clone. Role definitions live in `.pi/agents/`.
 
-If you're using Codex or another agent-capable tool, additional project-scoped helpers may live in:
-- `.agents/skills/` — reusable Trellis skills
-- `.codex/agents/` — optional custom subagents
-
-Managed by Trellis. Edits outside this block are preserved; edits inside may be overwritten by a future `trellis update`.
+Project guidelines, tasks, workspace history and configuration are user-owned. The fixed runtime and its provenance are managed by pi-trellis; do not run upstream `trellis update` to replace this distribution's scripts.
 
 <!-- TRELLIS:END -->

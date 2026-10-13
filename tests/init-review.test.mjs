@@ -34,9 +34,9 @@ for(const attack of ['unknown runtime','changed runtime','overwrite identity','o
 for(const attack of ['unknown template','wrong source','wrong initial template hash','missing role']) {
  test(`resource manifest rejects ${attack} without running or writing`,t=>{
   const f=fixture(t);apply(plan(f.root,'Dev'));const file=join(f.root,'.trellis/.pi-trellis.json'),m=JSON.parse(readFileSync(file));
-  if(attack==='unknown template')m.files['user.txt']={sha256:digest('x'),mode:0o644,kind:'template',source:'user.txt'};
+  if(attack==='unknown template')m.templates['user.txt']={sha256:digest('x'),mode:0o644,origin:'package-default',source:'user.txt'};
   if(attack==='wrong source')m.files['.trellis/scripts/task.py'].source=null;
-  if(attack==='wrong initial template hash')m.files['.trellis/workflow.md'].sha256=digest('not shipped');
+  if(attack==='wrong initial template hash')m.templates['.trellis/workflow.md'].sha256=digest('not shipped');
   if(attack==='missing role')delete m.files['.pi/agents/trellis-check.md'];
   f.put('.trellis/.pi-trellis.json',JSON.stringify(m));const before=f.snapshot();assert.throws(()=>verifyRuntime(f.root));assert.equal(inspect(f.root).state,'conflict');assert.deepEqual(f.snapshot(),before);
  });

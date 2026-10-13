@@ -44,59 +44,30 @@ blocks are rejected before writes. Initialization uses a local lock and bounded 
 record; interrupted publication preserves files and retries only identical recorded outputs.
 This is per-file atomic publication, not an all-files transaction. See [initialization contract](docs/initialization.md).
 
-## Legacy installer (pending repository migration)
+## Install
 
 ```bash
-# 1. Trellis core + Claude Code skills, without the --pi adapter layer
-trellis init --claude -u <your-name>
-
-# 2. this extension
 pi install -l --approve git:github.com/AkiChase/pi-trellis
-
-# 3. first start asks for project trust — approve once
 pi
+# In Pi, grant project trust and run /trellis-init.
 ```
 
-That installs the extension only. For the native worktree CLI and default project-local Trellis safety patch, use the repository's installer below. It also does the
-preflight `pi install` cannot — verifying pi, the Trellis version, python3 and
-`.trellis/scripts/`, probing `get_context.py`, reporting which skill directory
-will be bridged, and warning when the project also carries a generated
-`trellis init --pi` adapter:
+Installing the package exposes the extension and bundled skills. It does not
+initialize project files. `/trellis-init` explicitly deploys the fixed Python
+runtime and role definitions after reviewing and confirming the plan.
 
-```bash
-# instead of step 2
-git clone --depth 1 https://github.com/AkiChase/pi-trellis /tmp/pi-trellis
-/tmp/pi-trellis/scripts/install.sh
+`scripts/install.sh` is an optional thin wrapper around the same local package
+installation. `--source <spec>` selects a source, `--check` checks Pi availability
+without writes, and `--dry-run` prints the installation command. Neither mode
+runs project scripts. Obsolete `--neutral-skills` and `--no-patch` are rejected.
+No global Trellis CLI or install-time patch is required.
 
-# or, after installing, from the copy pi cloned
-.pi/git/github.com/AkiChase/pi-trellis/scripts/install.sh --check
-```
-
-| Flag | Effect |
-|---|---|
-| `--source <spec>` | What to install. Defaults to the git source; pass a path for a local checkout. |
-| `--neutral-skills` | Also run `trellis init --codex` so Trellis writes platform-neutral skills to `.agents/skills/`, the directory pi discovers natively. Adds a `.codex/` directory. |
-| `--no-patch` | Skip only the active_task.py safety patch; still deploy the native CLI. |
-| `--check` | Run the checks only, including CLI deployment and patch status; install/write nothing. Use it to diagnose an existing project. |
-| `--dry-run` | Print what would happen, change nothing. |
-
-The installer separately deploys `worktree.py` and the private `pi_trellis_worktree/` modules into `.trellis/scripts/`. This standard-library CLI remains usable without Node or the original package directory. `.trellis/scripts/.pi-trellis-worktree.json` records full content digests: only recorded, unmodified copies can update; unknown/customized or incomplete files refuse replacement. Check/dry-run do not write; repeated deployment preserves bytes and modes. Deployment is not a multi-file transaction; interrupted updates require explicit inspection. No CLI invocation or prepare operation deploys/repairs files automatically. Commit the entry, modules and manifest with the project baseline. Reload/restart Pi after updating the extension to replace its tool registrations.
-
-The independent safety patch changes only `.trellis/scripts/common/active_task.py`: an identified session with no pointer returns no task, single-session inference becomes opt-in for unidentified read-only callers, and `finish` deletes only the current session's pointer. Failed deletion never authorizes an `after_finish` hook. Reinstallation is idempotent; unknown code fails before any script replacement. The patch uses Python's standard library, validates syntax and preserves permissions. No global Trellis files are changed. `--dry-run` previews without writing; `--no-patch` skips this step. Commit the resulting project script changes as part of your baseline. Worktree preparation neither patches nor copies scripts.
-
-The extension also rejects CLI task results unless their source is exactly `session:<current context id>` and they are neither stale nor errored. This protection remains active with `--no-patch` or direct `pi install`; it does not fix direct calls to an unpatched `task.py finish`. After `trellis update`, rerun the installer/check if the script was replaced. Uninstalling the extension does not undo project script changes.
-
-Uninstall:
-
-```bash
-pi uninstall -l git:github.com/AkiChase/pi-trellis
-rm -rf .pi/agents/trellis-*.md .pi/.pi-trellis-hashes.json
-```
+Remove the package with `pi remove -l git:github.com/AkiChase/pi-trellis`.
+Project runtime, configuration and history remain; removal never deletes them.
 
 ### Requirements
 
 - pi ≥ 1.1.0
-- Trellis ≥ 0.6 (uses `task.py` / `get_context.py` and `.trellis/.runtime/sessions/`)
 - Python ≥ 3.10 on `PATH` (override with `TRELLIS_PYTHON`)
 - a subagent extension for the `trellis-*` agents — `pi install @tintinweb/pi-subagents`. Without one, everything else still works; you get one warning at startup.
 
@@ -220,7 +191,7 @@ is unaffected either way — the display is just a display.
 
 ## Design notes
 
-- **`trellis update` never touches `.pi/`.** Trellis detects configured platforms from its own hash manifest, not from directories that happen to exist. A project that never ran `trellis init --pi` has no `.pi/*` entries in that manifest, so pi is never considered configured.
+- **Project data and runtime have different owners.** Workflow/config/spec/history remain project content; fixed scripts and their release manifest are managed by pi-trellis. Upstream `trellis update` is not a supported update path.
 - **Prompt sections are memoized for the process lifetime.** A system-prompt section that changes between turns invalidates the provider's prefix cache from byte zero. Volatile state travels as a custom message instead, and only when it actually changed.
 - **Subagent sessions may load this extension too.** The dispatch supplies the task/context identity and role materials; the child uses these facts instead of inheriting a mutable process-global pointer. Child-side fallback reads JSONL/artifacts when complete injection is unavailable. No task materials are added a second time to the system prompt.
 - **Optional discovery/UI degrades safely.** Missing `.trellis/` or unusable CLI context does not take the session down. Dispatch material errors are visible and keep fallback active; they are not presented as complete injection. Only ordinary Agent calls are patched, not hidden RPC dispatch.
@@ -235,10 +206,11 @@ and `resources/runtime-baseline.json` record exact source/output hashes, license
 Python syntax minimum and a content-derived release ID. No global `trellis`
 probe or installation-time textual patch is used by this fixed runtime.
 
-This package-source change does **not** deploy the new runtime to an existing
-project. The installer above remains legacy pending the initialization/migration
-work; existing generated `.trellis/scripts` have not been changed. Project
-commands still execute `.trellis/scripts/`, not package-source `runtime/`.
+Installation alone does **not** deploy runtime. New projects use the confirmed
+`/trellis-init` flow; this repository was explicitly migrated while retaining its
+existing guidelines, configuration, tasks and history. Project commands execute
+`.trellis/scripts/`, not package-source `runtime/`. No general legacy project
+migration or automatic runtime upgrade is provided.
 
 ## Development checks
 

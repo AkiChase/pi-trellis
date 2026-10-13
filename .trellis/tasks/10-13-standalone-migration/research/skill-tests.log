@@ -1,0 +1,12 @@
+✔ ten curated package skills and complete bounded reference set have accurate hashes and no excluded commands/paths (11.203792ms)
+✔ real Pi resource loader discovers package skills once and loads init extension in a project without scripts (49.532708ms)
+✔ real Pi package resource filters and autoload:false project delta govern adapter readiness without installing missing packages (30.937916ms)
+✔ npm package closure includes all fixed runtime/templates/skills/agents/licenses without project-only dependency (594.270167ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1178.667542

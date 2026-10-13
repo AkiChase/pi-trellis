@@ -8,7 +8,7 @@ Use this layer for `scripts/install.sh`, `scripts/patch-trellis.py`, `scripts/sy
 
 | Guide | Scope |
 | --- | --- |
-| [Installation and Patching](installation-and-patching.md) | Preflight, read-only modes, explicit opt-out, exact/atomic Python patch and rejected inputs |
+| [Installation and Patching](installation-and-patching.md) | Pi-only installation, explicit initialization, resource ownership and protected deployment |
 | [Agent Sync and Provenance](agent-sync-and-provenance.md) | Fixed Claude baseline, adaptation, checksums, deployed customization and license boundaries |
 
 ## Pre-Development Checklist
@@ -16,7 +16,7 @@ Use this layer for `scripts/install.sh`, `scripts/patch-trellis.py`, `scripts/sy
 - Read the approved task artifacts, [shared guides](../guides/index.md) and the relevant topic here.
 - Read the complete script and corresponding tests before changing an option, replacement anchor or output document.
 - Identify whether the operation edits package source, a disposable generated baseline, or a user project. Installation/regeneration in a real project needs separate approval.
-- For deployment changes also read `extensions/trellis.ts:deployAgents()` and [Session and Context](../extension/session-and-context.md).
+- For deployment changes also read `lib/initialization/engine.ts` and [Session and Context](../extension/session-and-context.md).
 - Check the source manifest and provenance together; historical plan wording is not the current runtime contract.
 
 ## Quality Check

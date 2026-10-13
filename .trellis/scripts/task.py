@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# SPDX-License-Identifier: AGPL-3.0-only
+# Derived from @mindfoldhq/trellis 0.6.16 (Mindfold LLC).
+# Maintained/adapted for Pi by pi-trellis; see resources/runtime-baseline.json.
 """
 Task Management Script.
 
@@ -25,9 +28,11 @@ Usage:
 
 from __future__ import annotations
 
+import sys
+sys.dont_write_bytecode = True
+
 import argparse
 import json
-import sys
 from pathlib import Path
 
 from common.log import Colors, colored
@@ -92,10 +97,8 @@ def _record_start_state(
     keeps `branch` trustworthy at archive time — a task whose branch is only
     ever set by hand tends to reach archive with `branch: null`.
 
-    Tolerant on purpose — a broken task.json does not fail `start`, because the
-    session pointer is the point of the command. But the read overwrites the
-    file it just read, so no failure may be silent: without a message the
-    absent status line looks like the task simply was not in planning.
+    Start validates identity and task record before binding. A concurrent
+    record read/write failure is reported without hiding the diagnostic.
     """
     data, reason = read_json_checked(task_json_path)
     if data is None:
@@ -172,6 +175,12 @@ def cmd_start(args: argparse.Namespace) -> int:
     """Set active task."""
     repo_root = get_repo_root()
     task_input = args.dir
+    try:
+        if not resolve_context_key():
+            raise ValueError("Session identity required; set TRELLIS_CONTEXT_ID before start")
+    except ValueError as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
 
     if not task_input:
         print(colored("Error: task directory or name required", Colors.RED))
@@ -189,6 +198,12 @@ def cmd_start(args: argparse.Namespace) -> int:
     if not full_path.is_dir():
         print(colored(f"Error: Task not found: {task_input}", Colors.RED))
         print("Hint: Use task name (e.g., 'my-task') or full path (e.g., '.trellis/tasks/01-31-my-task')")
+        return 1
+
+    from common.task_records import read_task_record
+    data, error = read_task_record(full_path, repo_root)
+    if error:
+        print(f"Error: {error}", file=sys.stderr)
         return 1
 
     # Context-manifest gate (#573): a seeded-but-uncurated implement/check
@@ -232,28 +247,6 @@ def cmd_start(args: argparse.Namespace) -> int:
 
     task_json_path = full_path / FILE_TASK_JSON
 
-    if not resolve_context_key():
-        # Degraded mode: no session identity available.
-        # Hook didn't inject TRELLIS_CONTEXT_ID (common on Windows + Claude Code,
-        # --continue resume path, fork distribution, hooks disabled, etc.). Skip
-        # per-session pointer write; AI continues based on conversation context.
-        print(colored(
-            "ℹ Session identity not available; active-task pointer not persisted "
-            "this session (degraded mode). AI continues based on conversation context.",
-            Colors.YELLOW,
-        ))
-        print(colored(
-            "Hint: run inside an AI IDE/session that exposes session identity, "
-            "or set TRELLIS_CONTEXT_ID before running task.py start.",
-            Colors.YELLOW,
-        ))
-
-        # Still flip task.json status: planning → in_progress so downstream phases proceed.
-        if task_json_path.is_file():
-            _record_start_state(task_json_path, repo_root, " (degraded)")
-            run_task_hooks("after_start", task_json_path, repo_root)
-        return 0
-
     active = set_active_task(task_dir, repo_root)
     if active:
         print(colored(f"✓ Current task set to: {task_dir}", Colors.GREEN))
@@ -273,85 +266,53 @@ def cmd_start(args: argparse.Namespace) -> int:
 
 
 def cmd_finish(args: argparse.Namespace) -> int:
-    """Clear active task."""
     repo_root = get_repo_root()
-    active = clear_active_task(repo_root)
-    current = active.task_path
-
-    if not current:
-        print(colored("No current task set", Colors.YELLOW))
+    try:
+        active = clear_active_task(repo_root)
+    except (ValueError, RuntimeError) as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
+    if active.error:
+        print(f"Cleared own invalid pointer; no hooks run: {active.error}", file=sys.stderr)
         return 0
-
-    # Resolve task.json path before clearing
-    task_json_path = repo_root / current / FILE_TASK_JSON
-
-    print(colored(f"✓ Cleared current task (was: {current})", Colors.GREEN))
+    if not active.valid:
+        print("No current task set")
+        return 0
+    print(f"Cleared current task (was: {active.task_path})")
     print(f"Source: {active.source}")
-
-    if task_json_path.is_file():
-        run_task_hooks("after_finish", task_json_path, repo_root)
+    run_task_hooks("after_finish", repo_root / active.task_path / FILE_TASK_JSON, repo_root)
     return 0
 
-
 def cmd_current(args: argparse.Namespace) -> int:
-    """Show active task."""
     repo_root = get_repo_root()
     active = resolve_active_task(repo_root)
-
+    task_obj = None
+    if active.valid:
+        from common.task_records import read_task_record, task_projection
+        data, error = read_task_record(repo_root / active.task_path, repo_root)
+        if error:
+            from dataclasses import replace
+            active = replace(active, task_path=None, stale=True, error=error, state="invalid-task")
+        else:
+            task_obj = {"dir": active.task_path, **task_projection(data)}
     if getattr(args, "json", False):
-        task_obj = None
-        read_error = None
-        if active.task_path:
-            task_json_path = repo_root / active.task_path / FILE_TASK_JSON
-            data, reason = read_json_checked(task_json_path)
-            if data is None:
-                # Without this, a corrupt task.json emits null for every field
-                # — indistinguishable from a task whose fields really are null.
-                problem, hint = describe_json_read_failure(task_json_path, reason)
-                read_error = {
-                    "file": str(task_json_path),
-                    "reason": reason,
-                    "message": f"{problem}. {hint}",
-                }
-                data = {}
-            task_obj = {
-                "dir": active.task_path,
-                "id": data.get("id") or data.get("name"),
-                "title": data.get("title"),
-                "status": data.get("status"),
-                "parent": data.get("parent"),
-                "children": data.get("children", []),
-                "branch": data.get("branch"),
-                "base_branch": data.get("base_branch"),
-            }
-        payload = {
-            "current_task": task_obj,
-            "source": active.source,
-            "stale": active.stale,
-        }
-        # Only present when the read failed, so the healthy shape is unchanged.
-        if read_error:
-            payload["error"] = read_error
+        payload = {"current_task": task_obj, "source": active.source,
+                   "stale": active.stale, "state": active.state}
+        if active.error:
+            payload["error"] = {"message": active.error}
+            payload["raw_ref"] = active.raw_ref
         print(json.dumps(payload, ensure_ascii=False))
-        return 0 if active.task_path else 1
-
-    if args.source:
+    elif args.source:
         print(f"Current task: {active.task_path or '(none)'}")
         print(f"Source: {active.source}")
-        if active.stale:
-            print("State: stale")
-        return 0 if active.task_path else 1
-
-    if active.task_path:
+        print(f"State: {active.state}")
+        if active.error:
+            print(f"Error: {active.error}", file=sys.stderr)
+    elif active.valid:
         print(active.task_path)
-        return 0
-
-    return 1
-
-
-# =============================================================================
-# Command: list
-# =============================================================================
+    elif active.error:
+        print(f"Error: {active.error}", file=sys.stderr)
+    return 0 if active.valid else 1
 
 def _display_status(t, all_statuses: dict) -> str:
     """Return the status label to show for a task in `list` output.

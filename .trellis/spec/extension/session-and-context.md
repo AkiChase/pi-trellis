@@ -18,7 +18,7 @@ if (result.code !== 0 || data?.source !== `session:${key}` || data.stale || data
 }
 ```
 
-This is the guard in `resolveActiveTask()`. Foreign/missing/session-fallback provenance must not enter display, state or dispatch materials. These extension guards do not repair direct `finish` calls to unpatched Python; see [Installation and Patching](../scripts/installation-and-patching.md).
+This is the guard in `resolveActiveTask()`. Foreign/missing/session-fallback provenance must not enter display, state or dispatch materials. The fixed Python runtime applies the same task authorization rules; unsupported/missing/incomplete manifests block script execution and produce task_error. See [Installation and Patching](../scripts/installation-and-patching.md).
 
 ## Child Binding Is Not Parent Pointer Inheritance
 

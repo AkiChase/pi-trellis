@@ -30,12 +30,38 @@ runtime release identity. `resources/template-baseline.json` and
 `resources/skill-baseline.json` record curated resource hashes/licensing;
 `docs/agent-baseline.json` is the independent adapted-role source record.
 
-Project `.trellis/.pi-trellis.json` schemaVersion 1 records `runtimeReleaseId`
-and installed relative paths with full `sha256`, `mode`, `kind`, `source`.
-Runtime bytes/modes must match before supported dispatch; template initial
-hashes are diagnostic, not permission to overwrite edits. Roles publish only
-in approved init, never automatically at startup. Unknown/custom definitions
-collide during fresh init and are preserved. Clone identity setup leaves them alone.
+Project `.trellis/.pi-trellis.json` **schemaVersion 2** has exactly four fields:
+`schemaVersion`, `runtimeReleaseId`, `files`, `templates`. This replaces the
+unreleased schema 1; there is no schema-1 fallback or general migration API.
+The independent runtime release ID/baseline schema remains unchanged.
+
+- `files` contains exactly the 32 runtime and three role paths. Each record has
+  exactly `sha256`, `mode`, `kind` (`runtime` or `agent`), `source`; all four
+  values must match the package baseline. Runtime disk bytes/modes are checked
+  before supported execution. Role publication remains approved-init-only;
+  identity setup preserves deployed roles, including later customizations.
+- `templates` contains exactly the eight known workflow/config/ignore/workspace
+  index/spec entry/thinking-guide targets, never arbitrary paths. Every record
+  has exactly `origin`, `sha256`, `mode`, `source`. Fresh init emits only
+  `package-default`, with exact package initial hash, mode 0644 and canonical
+  `resources/templates/...` source. A false canonical hash/mode/source is rejected.
+- `preserved-project` describes content retained by a separately reviewed,
+  one-time repository migration, not content installed from the package. It
+  records the actual initial lowercase 64-hex SHA-256 and integer mode 0–0777,
+  or **both** `sha256: null` and `mode: null` for an absent target. Its `source`
+  is exactly `{kind: "project-snapshot", revision: <null or lowercase 40/64-hex>}`.
+  The revision identifies the diagnostic snapshot, not a file/executable or
+  authority to fetch, read or write content. Unknown fields, malformed hashes,
+  modes, mixed nulls, source labels/revisions and unknown targets are rejected.
+
+Template provenance is a bounded initial declaration, not authentication of
+historical deployment or permission to overwrite user edits; current template
+bytes need not match it, and an initially absent target may remain absent.
+Managed template paths/ancestors still reject symlinks/nonregular targets.
+Public init cannot request preserved provenance or initialize a manifest-less
+legacy project. Supported clone identity setup preserves the entire existing
+manifest and project templates. Unknown/custom role definitions collide during
+fresh init and are preserved.
 
 Root AGENTS/ignore blocks append only when absent or reuse exact known blocks;
 custom/repeated/malformed/unknown markers conflict. Outside bytes and original
@@ -50,9 +76,12 @@ reconstruct runtime/role/template/identity/task bytes from package resources and
 the shared runtime skeletons. Non-root actions can only create missing files;
 root actions must append the exact canonical block while proving the original
 prefix hash, retaining mode and rejecting duplicate/conflicting blocks/attributes.
-The exact manifest resource set, source paths, kinds, initial hashes and modes
-are validated; editable template fingerprints do not require current template
-bytes to remain unchanged. Required outputs are checked before final manifest
+The exact fixed resource set/source/kind/hash/mode and separate bounded template
+provenance are validated. Fresh initialization/recovery additionally requires
+**canonical package-default** template and manifest outputs, not merely a valid
+installed manifest. Preserved provenance cannot authorize a template action,
+arbitrary output, identity-time template write or legacy initialization.
+Required outputs are checked before final manifest
 publication and completion. An incomplete operation blocks runtime verification
 even if its manifest has already been published.
 

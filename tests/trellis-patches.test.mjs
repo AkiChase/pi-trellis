@@ -141,24 +141,21 @@ test('unknown/ambiguous code and external script symlinks fail without modifying
   assert.deepEqual(readFileSync(outside), original);
 });
 
-test('installer defaults to patch, --no-patch opts out, and check/dry-run do not mutate', t => {
-  for (const args of [[], ['--no-patch'], ['--check'], ['--dry-run'], ['--check','--neutral-skills'], ['--dry-run','--no-patch']]) {
+test('installer only installs Pi package; read-only modes and obsolete flags do not mutate project scripts', t => {
+  for (const args of [[], ['--check'], ['--dry-run'], ['--neutral-skills'], ['--no-patch']]) {
     const f = fixture(t), original = readFileSync(f.file);
     const bin = join(f.root, 'bin'); mkdirSync(bin);
-    for (const [name, body] of [['pi', 'echo 1.1.0'], ['trellis', 'echo 0.6.17']]) {
-      const path = join(bin, name); writeFileSync(path, `#!/bin/sh\n${body}\n`); chmodSync(path, 0o755);
-    }
-    writeFileSync(join(f.root, '.trellis/scripts/task.py'), "print('{}')");
-    writeFileSync(join(f.root, '.trellis/scripts/get_context.py'), "print('{}')");
+    const path = join(bin, 'pi'); writeFileSync(path, '#!/bin/sh\nprintf "%s\\n" "$*" >> "' + join(f.root,'pi-calls') + '"\n'); chmodSync(path, 0o755);
     const result = spawnSync('bash', [resolve('scripts/install.sh'), ...args], {
       cwd: f.root, env: { ...process.env, PATH: `${bin}:${process.env.PATH}` }, encoding: 'utf8',
     });
-    assert.equal(result.status, 0, result.stderr);
-    if (!args.length) assert.notDeepEqual(readFileSync(f.file), original);
-    else assert.deepEqual(readFileSync(f.file), original);
-    const readonly=args.includes('--check') || args.includes('--dry-run');
-    assert.equal(existsSync(join(f.root,'.trellis/scripts/worktree.py')), !readonly);
-    assert.equal(existsSync(join(f.root,'.trellis/scripts/pi_trellis_worktree/manager.py')), !readonly);
+    const obsolete=args.includes('--neutral-skills') || args.includes('--no-patch');
+    assert.equal(result.status, obsolete ? 1 : 0, result.stderr);
+    assert.deepEqual(readFileSync(f.file), original);
+    assert.equal(existsSync(join(f.root,'pi-calls')), args.length===0);
+    if (!args.length) assert.match(readFileSync(join(f.root,'pi-calls'),'utf8'), /install -l --approve git:github.com\/AkiChase\/pi-trellis/);
+    assert.ok(!existsSync(join(f.root,'.trellis/scripts/worktree.py')));
     assert.ok(!existsSync(join(f.root,'.codex')));
+    assert.match(result.stdout+result.stderr,/trellis-init/);
   }
 });

@@ -1,0 +1,2135 @@
+{
+  "说明": "阻塞前只读快照；未部署、未删除，不是覆盖/恢复授权。快照文件自身不在记录中。",
+  "head": "2e8e73cc18eaf937a41ec023a3fbd9f295642496",
+  "status": "?? .trellis/tasks/10-13-standalone-migration/\n",
+  "records": {
+    ".trellis/tasks": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/tasks/10-13-pi-trellis-standalone": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/tasks/10-13-pi-trellis-standalone/check.jsonl": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "b69e96a3b8334bae350b8aa77c04eef529077cd8964ae8b679b9229b203aab8c",
+      "bytes": 1185
+    },
+    ".trellis/tasks/10-13-pi-trellis-standalone/design.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "19f50ed325571da101e5d2fc01ddf65d98dd3318aca6531171714b4e885d65b2",
+      "bytes": 20268
+    },
+    ".trellis/tasks/10-13-pi-trellis-standalone/implement.jsonl": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "b69e96a3b8334bae350b8aa77c04eef529077cd8964ae8b679b9229b203aab8c",
+      "bytes": 1185
+    },
+    ".trellis/tasks/10-13-pi-trellis-standalone/implement.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "df485130bb492041a96e2b09264d29568a4d2871d44edc489452d874f193f917",
+      "bytes": 10189
+    },
+    ".trellis/tasks/10-13-pi-trellis-standalone/prd.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "c37ec606231db322df0ae66a91aec46a9f6d13a989b5130770904e9a02e18e64",
+      "bytes": 8621
+    },
+    ".trellis/tasks/10-13-pi-trellis-standalone/research": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/tasks/10-13-pi-trellis-standalone/research/execution-authorization.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "9b121cb58bab6ed043dc2450753d954c49b67d24fd4c59483efcaab8a8582004",
+      "bytes": 1760
+    },
+    ".trellis/tasks/10-13-pi-trellis-standalone/research/init-wizard-ux.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "7a3e31fb51116b22fe29eea4d00d8f07ca55dd1cea83dd684ac3a283f6d9dcee",
+      "bytes": 4361
+    },
+    ".trellis/tasks/10-13-pi-trellis-standalone/research/upstream-init-audit.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "83e8da019b34b35d85df54a92180872465b6a9c5831c7ef97ca50e6d7351b4ab",
+      "bytes": 5421
+    },
+    ".trellis/tasks/10-13-pi-trellis-standalone/task.json": {
+      "kind": "file",
+      "mode": 384,
+      "sha256": "cc8c07fed073f999c920a29d679300e2c15e5e37faca06e102e71b88b30d92cb",
+      "bytes": 771
+    },
+    ".trellis/tasks/10-13-standalone-init": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/tasks/10-13-standalone-init/check.jsonl": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "2a2db90bba98a6519daa34731b23e1e72d77ca7bd592b5c4017bd52b746f86b3",
+      "bytes": 985
+    },
+    ".trellis/tasks/10-13-standalone-init/design.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "cc180595736e2bf36f0f07fcad60a3a3924a2929fc06e3252d51f7a48ec8f91d",
+      "bytes": 5098
+    },
+    ".trellis/tasks/10-13-standalone-init/implement.jsonl": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "2a2db90bba98a6519daa34731b23e1e72d77ca7bd592b5c4017bd52b746f86b3",
+      "bytes": 985
+    },
+    ".trellis/tasks/10-13-standalone-init/implement.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "879141d073a77e5936e96d950913ca31fd4232cd6d44fd0c73fe52d039061129",
+      "bytes": 2009
+    },
+    ".trellis/tasks/10-13-standalone-init/prd.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "b55dc2bc03ffb7c96848a94a3be0c00f9becccd36b8b86018cab28b8eac850cd",
+      "bytes": 1180
+    },
+    ".trellis/tasks/10-13-standalone-init/research": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/tasks/10-13-standalone-init/research/check-legacy-probe.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "79ec3b8dd997632f081587c3e8816ade3a5b2f5017c8426aacd373a948d67a7b",
+      "bytes": 1220
+    },
+    ".trellis/tasks/10-13-standalone-init/research/check-results.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "12ebdcac628829daa605e246bd9e799920fe2525661f21846ed23df2e54fc58e",
+      "bytes": 7974
+    },
+    ".trellis/tasks/10-13-standalone-init/research/final-guard-check.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "8dcf91f652d280c3b67c352eb7708c6592bce4d68fbb301d69a87adf12a37ddf",
+      "bytes": 7112
+    },
+    ".trellis/tasks/10-13-standalone-init/research/final-integration-results.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "2a81463cc8b175a7606c10870f93fc7f89e02b9fd4b92c2e5a1d9f4ab7700831",
+      "bytes": 984
+    },
+    ".trellis/tasks/10-13-standalone-init/research/implementation-decisions.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "63c207386e7e09e09da946a2bb09b61ff27e0f70001257551b4ead8a9ef6170e",
+      "bytes": 2313
+    },
+    ".trellis/tasks/10-13-standalone-init/research/implementation-results.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "9230ae1dcc007d66a6058c2f6cc3115737571df752241023cc9ffcebcab8d7b6",
+      "bytes": 6304
+    },
+    ".trellis/tasks/10-13-standalone-init/research/init-template-inventory.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "4234fa0e33e944607a27b8806d479da77508c22e61bb60d0faab36711beb1144",
+      "bytes": 16281
+    },
+    ".trellis/tasks/10-13-standalone-init/research/unsupported-runtime-fix.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "104f30966a3363e30f514a66204756e4403952b99dcd33f6e760fb06130db0d9",
+      "bytes": 6000
+    },
+    ".trellis/tasks/10-13-standalone-init/task.json": {
+      "kind": "file",
+      "mode": 384,
+      "sha256": "54fe8378eb38e8f4d8b8d9c57a6256b3793012d2cb0ee8667b2da2f648f84207",
+      "bytes": 675
+    },
+    ".trellis/tasks/10-13-standalone-migration": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/tasks/10-13-standalone-migration/check.jsonl": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "2a2db90bba98a6519daa34731b23e1e72d77ca7bd592b5c4017bd52b746f86b3",
+      "bytes": 985
+    },
+    ".trellis/tasks/10-13-standalone-migration/design.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "67b5dd3ab4a29fe05932515f69fc2a8e636d252ad265981a58192bee30b67b61",
+      "bytes": 2732
+    },
+    ".trellis/tasks/10-13-standalone-migration/implement.jsonl": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "2a2db90bba98a6519daa34731b23e1e72d77ca7bd592b5c4017bd52b746f86b3",
+      "bytes": 985
+    },
+    ".trellis/tasks/10-13-standalone-migration/implement.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "30ef54aef4f01edc575ed7f0fb0f95c744397dd514c07fc31238c6ef8fef6a07",
+      "bytes": 1720
+    },
+    ".trellis/tasks/10-13-standalone-migration/prd.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "6794dd1d17e1bba35ff419fff11732d6de276b1650dcd1c98a85522eb58f079d",
+      "bytes": 1116
+    },
+    ".trellis/tasks/10-13-standalone-migration/research": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/tasks/10-13-standalone-migration/research/migration-inventory.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "81302d54f737671faeb577dddb679f517d85760e0bc8c50f7f0798f90e2b849e",
+      "bytes": 7378
+    },
+    ".trellis/tasks/10-13-standalone-migration/task.json": {
+      "kind": "file",
+      "mode": 384,
+      "sha256": "3f2377b8ff050f2aefd065a891bceef2be4dc5859bb2476eeb0415caf640372d",
+      "bytes": 684
+    },
+    ".trellis/tasks/10-13-standalone-runtime": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/tasks/10-13-standalone-runtime/check.jsonl": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "e775fe7953c8bbc575e1c11233af2596385f0d224f6259b7d283125f51fabeda",
+      "bytes": 903
+    },
+    ".trellis/tasks/10-13-standalone-runtime/design.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "625ed772c5e53aa17acabd2b287ef88d7de5008aa074f78c204c7a6d14b2a476",
+      "bytes": 4134
+    },
+    ".trellis/tasks/10-13-standalone-runtime/implement.jsonl": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "e775fe7953c8bbc575e1c11233af2596385f0d224f6259b7d283125f51fabeda",
+      "bytes": 903
+    },
+    ".trellis/tasks/10-13-standalone-runtime/implement.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "ed53297a51d91c14168215d9d615b5f0e324948e7e17c55944edd32f755972fa",
+      "bytes": 2440
+    },
+    ".trellis/tasks/10-13-standalone-runtime/prd.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "b5a87ca53218ac78546a2ffaa354430012f86cc184ca2fe11fc8a38dd22ae57a",
+      "bytes": 1158
+    },
+    ".trellis/tasks/10-13-standalone-runtime/research": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/tasks/10-13-standalone-runtime/research/check-focused.log": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "8843d097b7360fb6c8b969628f0fcdac41361786c394c72937e2d95f272f3b6b",
+      "bytes": 2725
+    },
+    ".trellis/tasks/10-13-standalone-runtime/research/check-full.log": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "d5a4b1cff3c2969137aa3050497f539f5ba9c2cf630b4f5c2d40d3ffb4d9d688",
+      "bytes": 17825
+    },
+    ".trellis/tasks/10-13-standalone-runtime/research/check-mutants.log": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "cd03a4e23fc1e78eb2b1390b4820a87a66631095ac6ec1fb886c657190335483",
+      "bytes": 497
+    },
+    ".trellis/tasks/10-13-standalone-runtime/research/check-results.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "c23a02206130fe9834f6ba24c0a88570bb154a562c911af5aded723369bf4f9d",
+      "bytes": 8172
+    },
+    ".trellis/tasks/10-13-standalone-runtime/research/implementation-results.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "9292cd2cdcf4a7ca5b3d458fe0ff707c93697c7d7961b48428b1287993adf729",
+      "bytes": 6202
+    },
+    ".trellis/tasks/10-13-standalone-runtime/research/runtime-focused.log": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "44ce360d4bf35b1f26d94425a8e51e8364faec5fbb1a472e6e60b88b51ce94cc",
+      "bytes": 1985
+    },
+    ".trellis/tasks/10-13-standalone-runtime/research/runtime-full.log": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "bcd9ae6adf9712150ac77cac476b9f0d735dd46420e56e47fb699d8726633ef8",
+      "bytes": 17100
+    },
+    ".trellis/tasks/10-13-standalone-runtime/research/runtime-red.log": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "c6efb2a2508645990643e1c578c5454627aead5abcdd0c3ad303d94b77562c31",
+      "bytes": 12527
+    },
+    ".trellis/tasks/10-13-standalone-runtime/research/source-baseline.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "bc2a9728cd21afa3dc8c180b9c275d2b6774669a299245eb88237072f44b5fbc",
+      "bytes": 3431
+    },
+    ".trellis/tasks/10-13-standalone-runtime/research/staged-commit-verification.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "d9b771e7e9f2aa3de8bfd344ca6833a833f0b2821e0b7a64d6bf596e088ac147",
+      "bytes": 1457
+    },
+    ".trellis/tasks/10-13-standalone-runtime/task.json": {
+      "kind": "file",
+      "mode": 384,
+      "sha256": "e1a47691ad4b6955f77ccd92462c6972ea13a0490ad8821d70c93631e150d112",
+      "bytes": 692
+    },
+    ".trellis/tasks/archive": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/tasks/archive/2026-10": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/tasks/archive/2026-10/00-bootstrap-guidelines": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/tasks/archive/2026-10/00-bootstrap-guidelines/check.jsonl": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "2008da8a8630cb0fa4ecef206296ccdc18f34ee1f8e447a0e301f0ef5f34de38",
+      "bytes": 229
+    },
+    ".trellis/tasks/archive/2026-10/00-bootstrap-guidelines/design.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "bf06c0cdbd826bfc85b8a23330aef1a4e2d3e723fd24bb3f3b7837bbbd1fc274",
+      "bytes": 4154
+    },
+    ".trellis/tasks/archive/2026-10/00-bootstrap-guidelines/implement.jsonl": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "70bf8cfb48f69847b3e17050af478e870bc4a07b7b53fba2e482421427dcca6a",
+      "bytes": 208
+    },
+    ".trellis/tasks/archive/2026-10/00-bootstrap-guidelines/implement.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "dcef9cdce5d67be84173577ccc711441430d5689f39ed0fb12f8ea039ca5283f",
+      "bytes": 3932
+    },
+    ".trellis/tasks/archive/2026-10/00-bootstrap-guidelines/prd.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "cd23fad9bf516951c1b25bc529d48ce34bd1d3669ba910622f8714f57f7b7614",
+      "bytes": 3837
+    },
+    ".trellis/tasks/archive/2026-10/00-bootstrap-guidelines/research": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/tasks/archive/2026-10/00-bootstrap-guidelines/research/check-review.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "6de11b5d320b72248330b7f052dd498f4a170dfa465dab7462c4458c96fee9b3",
+      "bytes": 4961
+    },
+    ".trellis/tasks/archive/2026-10/00-bootstrap-guidelines/research/original-spec": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/tasks/archive/2026-10/00-bootstrap-guidelines/research/original-spec/frontend": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/tasks/archive/2026-10/00-bootstrap-guidelines/research/original-spec/frontend/component-guidelines.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "7ca6ea4f9305a8267b7570505f9ebf6030bb5911cbe3f2a135cfb7ebd402805b",
+      "bytes": 878
+    },
+    ".trellis/tasks/archive/2026-10/00-bootstrap-guidelines/research/original-spec/frontend/directory-structure.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "731713ac66d21f383bb49fb19d30888aa8db9e50acb5c77329fa4b98546cd7bc",
+      "bytes": 745
+    },
+    ".trellis/tasks/archive/2026-10/00-bootstrap-guidelines/research/original-spec/frontend/hook-guidelines.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "49801cb1eb7c779e9b01cdeabcd47dd0bc12be018405fc248646cf8a829aaf6c",
+      "bytes": 745
+    },
+    ".trellis/tasks/archive/2026-10/00-bootstrap-guidelines/research/original-spec/frontend/index.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "adc1694bfef9c77bc01cec36589d9f05a97178cc5d5d965bdf324a555048ceb7",
+      "bytes": 1318
+    },
+    ".trellis/tasks/archive/2026-10/00-bootstrap-guidelines/research/original-spec/frontend/quality-guidelines.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "ac5a4da858d93492cbb4c721b164850b625f38696905e463e8feb5968eae78bc",
+      "bytes": 748
+    },
+    ".trellis/tasks/archive/2026-10/00-bootstrap-guidelines/research/original-spec/frontend/state-management.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "a007d40daba4db27f1fcfad8d6192d5de2cd385f4bbbd0161a39a3e4c0dd6c1b",
+      "bytes": 796
+    },
+    ".trellis/tasks/archive/2026-10/00-bootstrap-guidelines/research/original-spec/frontend/type-safety.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "1ced8d3ea4f5e6e63599a5a606db52fa86b3973046db57d550ed2964a8d4c40f",
+      "bytes": 741
+    },
+    ".trellis/tasks/archive/2026-10/00-bootstrap-guidelines/research/original-spec/guides": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/tasks/archive/2026-10/00-bootstrap-guidelines/research/original-spec/guides/code-reuse-thinking-guide.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "86fd10dc10916c00309714aa2275234f01b0ad40d21a485d43b3422e7ca79397",
+      "bytes": 7381
+    },
+    ".trellis/tasks/archive/2026-10/00-bootstrap-guidelines/research/original-spec/guides/cross-layer-thinking-guide.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "4c54130c02a7b8bc43f9a012e0837f798f43e2d137d6bc6d7498d2adb0bac3f4",
+      "bytes": 14979
+    },
+    ".trellis/tasks/archive/2026-10/00-bootstrap-guidelines/research/original-spec/guides/index.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "aa45e5d0f245aae0b34677b121f7d083620308b4b87cda929bd134c77d1f61fd",
+      "bytes": 3680
+    },
+    ".trellis/tasks/archive/2026-10/00-bootstrap-guidelines/research/outside-scope-baseline.json": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "18912c12a98be10ca8ff9b74e0ff6f32e1f8cf743addaa8b6e2cc902a642b943",
+      "bytes": 15212
+    },
+    ".trellis/tasks/archive/2026-10/00-bootstrap-guidelines/research/repository-evidence.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "13c28d7b4705ba932b8c3c7168ea55d3e0c952ed3fb4465495ee98d9be0b83d4",
+      "bytes": 3586
+    },
+    ".trellis/tasks/archive/2026-10/00-bootstrap-guidelines/research/source-review-findings.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "74ff237e0b90859f68aa1f561442036c8b3a1837f63a188e65fdc77dee9eae5d",
+      "bytes": 8314
+    },
+    ".trellis/tasks/archive/2026-10/00-bootstrap-guidelines/research/trellis-protected-baseline.json": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "445b956c3bd01e0c782bba8e6ef6102d9136577c22fd422d55f8fa237c92ac86",
+      "bytes": 6709
+    },
+    ".trellis/tasks/archive/2026-10/00-bootstrap-guidelines/research/validate_specs.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "e44a15adfc45b2d940c46068821d021f7d5cd0c5fda95cdf3eb1fbaa03d1eb90",
+      "bytes": 3390
+    },
+    ".trellis/tasks/archive/2026-10/00-bootstrap-guidelines/research/validation-results.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "a2060bda576a914859473e921ad7e0f29d024164572b7c02b683899dde7430d4",
+      "bytes": 3024
+    },
+    ".trellis/tasks/archive/2026-10/00-bootstrap-guidelines/task.json": {
+      "kind": "file",
+      "mode": 384,
+      "sha256": "88619ba7d49a3a773b36ac10436e36f58c5a75f147751036ecabd256f0feb32b",
+      "bytes": 973
+    },
+    ".trellis/tasks/archive/2026-10/10-13-persistent-task-display": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/tasks/archive/2026-10/10-13-persistent-task-display/check.jsonl": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "0247020dca5cc0baa282912ede0d8c995b42d2d3e9391e838cee7ecf0a0e8fea",
+      "bytes": 112
+    },
+    ".trellis/tasks/archive/2026-10/10-13-persistent-task-display/implement.jsonl": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "151f1069169ca423578b79b362debe347d2f8a63f60afd16e25da5ef2dc8b710",
+      "bytes": 223
+    },
+    ".trellis/tasks/archive/2026-10/10-13-persistent-task-display/prd.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "b20edaaa7c23486d5dad16b38d88d0ec97f4c62f3aac6f974f4fc41cefdb435d",
+      "bytes": 4190
+    },
+    ".trellis/tasks/archive/2026-10/10-13-persistent-task-display/research": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/tasks/archive/2026-10/10-13-persistent-task-display/research/check-results.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "2b8ea3c4613f618a89fa79f857225fcd0c085ce12ba471713355181937d08cd3",
+      "bytes": 10793
+    },
+    ".trellis/tasks/archive/2026-10/10-13-persistent-task-display/research/implementation-results.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "8b5f0a3249584f18ff4c745237dca6d8f784c00350f0db8819dcc0c272063996",
+      "bytes": 6085
+    },
+    ".trellis/tasks/archive/2026-10/10-13-persistent-task-display/research/width-check-results.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "7eefda6643e0c345c33be82d0fc250933f695202fc99c5e38317f16575f76a86",
+      "bytes": 11912
+    },
+    ".trellis/tasks/archive/2026-10/10-13-persistent-task-display/research/width-fix-results.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "bc6edfc25c38c8de4967e818aa4bc1eec2e3fba0ca8791f24d450bc96b12a494",
+      "bytes": 10486
+    },
+    ".trellis/tasks/archive/2026-10/10-13-persistent-task-display/task.json": {
+      "kind": "file",
+      "mode": 384,
+      "sha256": "ce4dc09cfbb7d58b32aaaa96745bccc3fe7dd8567835a4fabbb210495dfca755",
+      "bytes": 694
+    },
+    ".trellis/tasks/archive/2026-10/10-13-worktree-empty-strings": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/tasks/archive/2026-10/10-13-worktree-empty-strings/check.jsonl": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "721e66f666a60943178ecce2dd2fe1e2c3f2792c87ec6faafba82336c32a46d2",
+      "bytes": 770
+    },
+    ".trellis/tasks/archive/2026-10/10-13-worktree-empty-strings/design.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "613eb1bf9cd9d636d7efa1787af21ad8cc2b00e477ebb26253d04d18d6c36111",
+      "bytes": 7468
+    },
+    ".trellis/tasks/archive/2026-10/10-13-worktree-empty-strings/implement.jsonl": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "7d0778d457399557536074c8612ba9a9c5d8c919bb46c3b88664c8dd4b1ad5d6",
+      "bytes": 779
+    },
+    ".trellis/tasks/archive/2026-10/10-13-worktree-empty-strings/implement.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "e04bb4a50914f211c31250de3e7113109534812a6f95455b044cb8815c5bbc17",
+      "bytes": 17038
+    },
+    ".trellis/tasks/archive/2026-10/10-13-worktree-empty-strings/prd.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "f636eaf7a8bfe5d6f08a9b0a105a7cfd7b290055394f819cc2ac70b6d9e1a615",
+      "bytes": 6462
+    },
+    ".trellis/tasks/archive/2026-10/10-13-worktree-empty-strings/task.json": {
+      "kind": "file",
+      "mode": 384,
+      "sha256": "802dc250abf9c50d35fb8a860ab61e8f2ae93aa3e59e07b5a4eaedfb1d39af5b",
+      "bytes": 687
+    },
+    ".trellis/tasks/archive/2026-10/10-13-worktree-material-sync": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/tasks/archive/2026-10/10-13-worktree-material-sync/check.jsonl": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "6e10c38369facaedc49e2a50ce2208010935ecdfe73555795b3f86492b5e73a6",
+      "bytes": 627
+    },
+    ".trellis/tasks/archive/2026-10/10-13-worktree-material-sync/design.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "8879f702ab60913e572a884e4659030942ceff729578072dd6493c5433c045b0",
+      "bytes": 7995
+    },
+    ".trellis/tasks/archive/2026-10/10-13-worktree-material-sync/implement.jsonl": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "99194db1025bba31cbcb285cde4b71855e0a4c60d9f9acd5c141beb890e7a4e0",
+      "bytes": 766
+    },
+    ".trellis/tasks/archive/2026-10/10-13-worktree-material-sync/implement.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "3d3c2e6314627a5f5b5b69e258165238ef10fb54adc5de0ff7260037c398932e",
+      "bytes": 6167
+    },
+    ".trellis/tasks/archive/2026-10/10-13-worktree-material-sync/prd.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "51d3f44e8789fac614a20383de4a05e6453156c9174044f44bf60d7ffdc936cd",
+      "bytes": 5183
+    },
+    ".trellis/tasks/archive/2026-10/10-13-worktree-material-sync/research": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/tasks/archive/2026-10/10-13-worktree-material-sync/research/check-results.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "4967f4d076e3df817a4db9a866eeebd6087e86b2a25b23e3cc439330202a5c7b",
+      "bytes": 8418
+    },
+    ".trellis/tasks/archive/2026-10/10-13-worktree-material-sync/research/implementation-results.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "d4b412d64dcf3a1a3391451c36ab5d732a695b64672a7070914be4e9c5c7f6dc",
+      "bytes": 7971
+    },
+    ".trellis/tasks/archive/2026-10/10-13-worktree-material-sync/research/material-sync.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "2d8e76304eb1727bedaf2c20cedf915f67d366693ce47449af908962ac2ce341",
+      "bytes": 29489
+    },
+    ".trellis/tasks/archive/2026-10/10-13-worktree-material-sync/research/protocol-discovery.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "8894a418c586f096393bdc981362dc4c683c019c1e607039389b5b341288ae27",
+      "bytes": 3076
+    },
+    ".trellis/tasks/archive/2026-10/10-13-worktree-material-sync/task.json": {
+      "kind": "file",
+      "mode": 384,
+      "sha256": "0cdf9b101b020527d5dc37c28cbf2eea34a26acc56c57a193c192914f956c568",
+      "bytes": 715
+    },
+    ".trellis/spec": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/spec/extension": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/spec/extension/architecture.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "e467baaba036676fb5b6ecf0e85182bb847363527bb8dd4596beefc7ca453004",
+      "bytes": 8686
+    },
+    ".trellis/spec/extension/index.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "16ddcf15b10abb7a8f042248f567887047ccac0d5617d90a205e33996fa24e29",
+      "bytes": 2087
+    },
+    ".trellis/spec/extension/quality-guidelines.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "ba2813b55ab53b44f1ab6c04e17e762482531b124eeae8618fac0179144707ea",
+      "bytes": 7502
+    },
+    ".trellis/spec/extension/session-and-context.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "6ac9241ad6c6fd3f05be24ca72e2c363e86ca97e3f91f331aa7cdb1099c06480",
+      "bytes": 9485
+    },
+    ".trellis/spec/extension/worktree-lifecycle.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "1f80a328d7e0535386e2f84ce3a43179ec5f172cc761aae84d08216cb871b119",
+      "bytes": 23651
+    },
+    ".trellis/spec/guides": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/spec/guides/code-reuse-thinking-guide.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "8acb30527e6624708a5ec30694d70013c4f0fe1b0870a180ba434c79f2972181",
+      "bytes": 5230
+    },
+    ".trellis/spec/guides/cross-layer-thinking-guide.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "cee37bc4c35e205886b5a17a1e43f21d59b5f5cc8bd30fab7b0a497412d52a73",
+      "bytes": 6667
+    },
+    ".trellis/spec/guides/index.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "97a37b0516b5cca122643173055fc0b734e414a8905ca7a31e25b7be56e15a7c",
+      "bytes": 3321
+    },
+    ".trellis/spec/scripts": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/spec/scripts/agent-sync-and-provenance.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "b5ea2be3b229b241e0fe23b4127f1c9cf4b4681931559a459296fd0fe9a5cd8f",
+      "bytes": 6523
+    },
+    ".trellis/spec/scripts/index.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "e68a5ed0b67e376a00b1a3647e601301d2dc38e1b0df28f3d9e533ffcf755082",
+      "bytes": 2126
+    },
+    ".trellis/spec/scripts/installation-and-patching.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "50353a7a2905653ed0f3e5c2b9c4027b05df37e95fe75beca364c65cb92cd287",
+      "bytes": 8066
+    },
+    ".trellis/workspace": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/workspace/akichase": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/workspace/akichase/index.md": {
+      "kind": "file",
+      "mode": 384,
+      "sha256": "994d15c3e5f378fcc4bc82e097a745a7c430793b47242abc1fad8d5d7ff1e994",
+      "bytes": 1107
+    },
+    ".trellis/workspace/akichase/journal-1.md": {
+      "kind": "file",
+      "mode": 384,
+      "sha256": "28c85e6c467ec378c3ef9255ba3471f087eee7cb3badd9086f6b90eb5141c841",
+      "bytes": 3474
+    },
+    ".trellis/workspace/index.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "9f9d685df377e8272d2341b89cd097431b284bb378b3e12b33985a4e6b9c544c",
+      "bytes": 2310
+    },
+    ".trellis/.runtime": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/.runtime/sessions": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/.runtime/sessions/pi-22bab078a73f.json": {
+      "kind": "file",
+      "mode": 384,
+      "sha256": "16a8e6563168adfd5137eebb6e272a243d0cfbdcabbed680df8f29718a6586a6",
+      "bytes": 155
+    },
+    ".trellis/.runtime/sessions/pi-child-1c184ff6d8a5.json": {
+      "kind": "file",
+      "mode": 384,
+      "sha256": "451f0ecbb1989da6e9c5d1653eab4aadcc9fca7840ed00967c37603fd87608e4",
+      "bytes": 150
+    },
+    ".trellis/.runtime/sessions/pi-child-5b3cc0f2382b.json": {
+      "kind": "file",
+      "mode": 384,
+      "sha256": "6c4f6671cb5139c307723ce7e4c557f82033e0c7fc184dcace351e9bfb7d6bf9",
+      "bytes": 153
+    },
+    ".trellis/.runtime/sessions/pi-child-a3b34abc2552.json": {
+      "kind": "file",
+      "mode": 384,
+      "sha256": "6aa25648a6d8cc1ef21e48ce60cb0974478114a07075c06cbcb9878a087ed27a",
+      "bytes": 150
+    },
+    ".trellis/.runtime/sessions/pi-child-ab0b1f377cc8.json": {
+      "kind": "file",
+      "mode": 384,
+      "sha256": "1354ece08c0ab8210e4563b57ddcd431c8b61b57c6bf7783554e540313806f7e",
+      "bytes": 150
+    },
+    ".trellis/.runtime/sessions/pi-child-b30363a71b38.json": {
+      "kind": "file",
+      "mode": 384,
+      "sha256": "be05a21adec67f3dcc51cf1d1066fede8a83c9bffb49ce6ace9abbdbe291a3cb",
+      "bytes": 150
+    },
+    ".trellis/.runtime/sessions/pi-child-cc8aa3d5e779.json": {
+      "kind": "file",
+      "mode": 384,
+      "sha256": "6af425e86ce7d636abf5010835e9fdbd40efcfe456563b0ae2fb2e98667f7c77",
+      "bytes": 155
+    },
+    ".trellis/.runtime/sessions/pi-child-deec622c2bb7.json": {
+      "kind": "file",
+      "mode": 384,
+      "sha256": "d8819c0130d07431dd6097e5123d4207ae6b0b7881bb4d07c371baa8cb426e9f",
+      "bytes": 153
+    },
+    ".trellis/.runtime/update-check-pi-0ca4a0ef242b.marker": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "77c2ca150b61c7330da139378ffd3940d093f1bd74a1294689345d27e15b5124",
+      "bytes": 8
+    },
+    ".trellis/.developer": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "bf784c0f8c3405099425eab64dee27319dad90881f6e2632d8dd72a49ddbb9ed",
+      "bytes": 56
+    },
+    ".trellis/config.yaml": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "a966e6d374e9e6ff283cf761ccd99631323ee1754856cef51ad154ca0afb9dfa",
+      "bytes": 7027
+    },
+    ".trellis/workflow.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "eb4508a4f6792f3d53705c1f9e7d21807dabd774543bd7b01f56372a704f6ad0",
+      "bytes": 39348
+    },
+    ".trellis/scripts": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/scripts/__init__.py": {
+      "kind": "file",
+      "mode": 493,
+      "sha256": "1242be5b972094c2e141aecbe81a4efd478f6534e3d5e28306374e6a18fcf46c",
+      "bytes": 105
+    },
+    ".trellis/scripts/add_session.py": {
+      "kind": "file",
+      "mode": 493,
+      "sha256": "f61a452ec5f7eece8d7e0f0dd56ce5851166cbc83ca4822e30acbb36eeb5896f",
+      "bytes": 57458
+    },
+    ".trellis/scripts/common": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/scripts/common/__init__.py": {
+      "kind": "file",
+      "mode": 493,
+      "sha256": "f258cd873681dc5a4d71db0dd71d10fd78656de55bec96418d6702503c16e87d",
+      "bytes": 2810
+    },
+    ".trellis/scripts/common/__pycache__": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/scripts/common/__pycache__/__init__.cpython-314.pyc": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "a5512038aa163019a75713bba097091b73c464dd5e98b3d1d0506f50093a973d",
+      "bytes": 3155
+    },
+    ".trellis/scripts/common/__pycache__/active_task.cpython-314.pyc": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "49c095b833f494fb6f6785daa2c6ac99e13d8673e08dd9d1659323d40c358d7e",
+      "bytes": 36454
+    },
+    ".trellis/scripts/common/__pycache__/config.cpython-314.pyc": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "b7dc27d3430c61340f8b8bf3aa841bf801c951fc085c6e6c0dcbd43450b6be16",
+      "bytes": 20548
+    },
+    ".trellis/scripts/common/__pycache__/developer.cpython-314.pyc": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "7fa0746727b336125f797f20cf41ef63e31c532e6f54ef70289d4e1c0132daa3",
+      "bytes": 6672
+    },
+    ".trellis/scripts/common/__pycache__/git.cpython-314.pyc": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "d8ddb0fa72757ec20e455e1415c6dc4962576d3633ffbfcb22ba0b2ad5af336a",
+      "bytes": 9967
+    },
+    ".trellis/scripts/common/__pycache__/git_context.cpython-314.pyc": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "f44036eeb9ccb77cc8f3b841275a65277bf2d51cabecbebdf8bb7f3c821a5862",
+      "bytes": 3884
+    },
+    ".trellis/scripts/common/__pycache__/io.cpython-314.pyc": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "385789db1061db8941e3a2c35126b633ff4025e48d2b91c311bb5c924df9333d",
+      "bytes": 7383
+    },
+    ".trellis/scripts/common/__pycache__/log.cpython-314.pyc": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "bca3adc0807cef74fd94af6bd14c0211007e54e4c8b01be9d13635e456632298",
+      "bytes": 3034
+    },
+    ".trellis/scripts/common/__pycache__/packages_context.cpython-314.pyc": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "e4178671166a3639dbbb4334a9fc13454fd62c59cfeada940121f0d8bed3895b",
+      "bytes": 10496
+    },
+    ".trellis/scripts/common/__pycache__/paths.cpython-314.pyc": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "0b514d31730dfdcf3d90c2069c493d3bb0722dfa5e098510230a3b2169f09ebe",
+      "bytes": 18494
+    },
+    ".trellis/scripts/common/__pycache__/safe_commit.cpython-314.pyc": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "615b8ef56f0f0d737926447da52bfba0919d9e12b963a0abeaf18be0acd8aba5",
+      "bytes": 13463
+    },
+    ".trellis/scripts/common/__pycache__/session_context.cpython-314.pyc": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "b0ae6597a66ed64097af638f30f3dfb48c391871204a2cbfc6f8492b21a21b26",
+      "bytes": 37849
+    },
+    ".trellis/scripts/common/__pycache__/task_context.cpython-314.pyc": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "f9c81867548617fe076837f6a1cd8920c4f214a9ac7d0506046c923c5b91527f",
+      "bytes": 20059
+    },
+    ".trellis/scripts/common/__pycache__/task_store.cpython-314.pyc": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "91701debd19ec076c2332c693fc6091c5bb901d349b7cf034cdfa2d99d5dee7a",
+      "bytes": 76002
+    },
+    ".trellis/scripts/common/__pycache__/task_utils.cpython-314.pyc": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "602ca57f18a7e1a89acb5642e9fecb677c94eb694d0268fe9cecccef6b076e49",
+      "bytes": 20926
+    },
+    ".trellis/scripts/common/__pycache__/tasks.cpython-314.pyc": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "69181c45ef86929c9540ec6ec6234f7845fbf67938263ab3bec5065ac223231e",
+      "bytes": 5607
+    },
+    ".trellis/scripts/common/__pycache__/trellis_config.cpython-314.pyc": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "ac33c31ae0ef87ca88b89109d0785d163f1fab077ebebe425df0e9be19300da4",
+      "bytes": 11518
+    },
+    ".trellis/scripts/common/__pycache__/types.cpython-314.pyc": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "43fb19e4811e2e7b74f02f9b10f55906ad8c23840a1ad619a5aa9993a06866f9",
+      "bytes": 4467
+    },
+    ".trellis/scripts/common/__pycache__/workflow_phase.cpython-314.pyc": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "1a404c17bd715ac0252091a4a7279f1fee6a54519e20acc016de8d25433c774b",
+      "bytes": 9917
+    },
+    ".trellis/scripts/common/active_task.py": {
+      "kind": "file",
+      "mode": 493,
+      "sha256": "f52715bbcc0677607055903e799674d7d50d6fcbab413a8f453c4e4efc954726",
+      "bytes": 31978
+    },
+    ".trellis/scripts/common/cli_adapter.py": {
+      "kind": "file",
+      "mode": 493,
+      "sha256": "5d6bd9d6f5c631e7e792db7dd343351317f9643bc87b73a9a98abd51cefb4307",
+      "bytes": 33397
+    },
+    ".trellis/scripts/common/config.py": {
+      "kind": "file",
+      "mode": 493,
+      "sha256": "9a042d6f0e25a33a567510760e87c1e389af14a41faf1daeb1190a00f3df7f5e",
+      "bytes": 15702
+    },
+    ".trellis/scripts/common/developer.py": {
+      "kind": "file",
+      "mode": 493,
+      "sha256": "a0f61bb58063e2f4cb357bcb2c22fd5a6f1241286398beaa7130b2a8994a4afa",
+      "bytes": 5231
+    },
+    ".trellis/scripts/common/git.py": {
+      "kind": "file",
+      "mode": 493,
+      "sha256": "5605b71662e524b47632030d9db9245121a5cba85b5521eeb524ed464d840ff5",
+      "bytes": 7308
+    },
+    ".trellis/scripts/common/git_context.py": {
+      "kind": "file",
+      "mode": 493,
+      "sha256": "fa30ced454f1a91ffc9f8b2abeb32225e3447cbdc90bad783797374eba07265d",
+      "bytes": 3074
+    },
+    ".trellis/scripts/common/io.py": {
+      "kind": "file",
+      "mode": 493,
+      "sha256": "5dd8b9e297125ff58543a9bd4790c03ae1aca1d37b9e2ca60c4ffb47601c1cbb",
+      "bytes": 5651
+    },
+    ".trellis/scripts/common/log.py": {
+      "kind": "file",
+      "mode": 493,
+      "sha256": "471df6895cfac80f995edebbf9974f6b7440634b7a688f28b8331c868bc0f3cf",
+      "bytes": 1119
+    },
+    ".trellis/scripts/common/packages_context.py": {
+      "kind": "file",
+      "mode": 493,
+      "sha256": "efe158d7c99c2268851d0216fbb08de22836e418a8dbeb73575b8cc249eed7b7",
+      "bytes": 7868
+    },
+    ".trellis/scripts/common/paths.py": {
+      "kind": "file",
+      "mode": 493,
+      "sha256": "d8586d4d3f9bb2dd46b7f11b0f038b5340d283f41b6fa2c76bb8235c13bbb0b7",
+      "bytes": 16415
+    },
+    ".trellis/scripts/common/safe_commit.py": {
+      "kind": "file",
+      "mode": 493,
+      "sha256": "262ad740552279fe6ec6a2a9865b2965ce2448577cf973a4d702dfe2f5f91f04",
+      "bytes": 11841
+    },
+    ".trellis/scripts/common/session_context.py": {
+      "kind": "file",
+      "mode": 493,
+      "sha256": "3379ef1766e4e5ca77cbb7c040dbba3883fcca2548580299e3b38dbf22f4f7d5",
+      "bytes": 28219
+    },
+    ".trellis/scripts/common/task_context.py": {
+      "kind": "file",
+      "mode": 493,
+      "sha256": "245e654713e6030f9e7b5cee474efc06343ecc0d7f66f6455098874239355ce3",
+      "bytes": 16753
+    },
+    ".trellis/scripts/common/task_queue.py": {
+      "kind": "file",
+      "mode": 493,
+      "sha256": "0be61f713462b1fe4574927c82fc4704e678afe72dcb9813543aedf2f9e9e0c5",
+      "bytes": 5009
+    },
+    ".trellis/scripts/common/task_store.py": {
+      "kind": "file",
+      "mode": 493,
+      "sha256": "5712b0405e1fd0c2b7be5e5fbd420fa6eec2c49c8e4cf2b8fc69b7d2e4aeb016",
+      "bytes": 73008
+    },
+    ".trellis/scripts/common/task_utils.py": {
+      "kind": "file",
+      "mode": 493,
+      "sha256": "35f544317a95e98d05fe089794071482175739e8c1f3b3b0228dae48602ffe90",
+      "bytes": 18507
+    },
+    ".trellis/scripts/common/tasks.py": {
+      "kind": "file",
+      "mode": 493,
+      "sha256": "87aca6b73ec4524450cfff8e2ae561b1f2e53bd62a185f036a7a2d484d90c8a2",
+      "bytes": 3814
+    },
+    ".trellis/scripts/common/trellis_config.py": {
+      "kind": "file",
+      "mode": 493,
+      "sha256": "f1fc705ec463b0b9c163672dc9e50f10d29da967775a1900429205f7c4fcb51c",
+      "bytes": 8322
+    },
+    ".trellis/scripts/common/types.py": {
+      "kind": "file",
+      "mode": 493,
+      "sha256": "9962081cc2608fb9d1deb32c6880e336f62cdca6b338e7ae813304701e155ee9",
+      "bytes": 2951
+    },
+    ".trellis/scripts/common/workflow_phase.py": {
+      "kind": "file",
+      "mode": 493,
+      "sha256": "146b69c1ec0e628aeb720d3e34d8333f16050225037fe4233da9bbc4d4ac99c1",
+      "bytes": 8113
+    },
+    ".trellis/scripts/get_context.py": {
+      "kind": "file",
+      "mode": 493,
+      "sha256": "ca5bf9e90bdb1d75d3de182b95f820f9d108ab28793d29097b24fd71315adcf5",
+      "bytes": 320
+    },
+    ".trellis/scripts/get_developer.py": {
+      "kind": "file",
+      "mode": 493,
+      "sha256": "84c27076323c3e0f2c9c8ed16e8aa865e225d902a187c37e20ee1a46e7142d8f",
+      "bytes": 446
+    },
+    ".trellis/scripts/hooks": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".trellis/scripts/hooks/linear_sync.py": {
+      "kind": "file",
+      "mode": 493,
+      "sha256": "e09cc4ce4699aada908808718698f33f705a3edf55c4dcf8f777ad892f80ca79",
+      "bytes": 7680
+    },
+    ".trellis/scripts/init_developer.py": {
+      "kind": "file",
+      "mode": 493,
+      "sha256": "f9e6c0d882406e81c8cd6b1c5abb204b0befc0069ff89cf650cd536a80f8c60e",
+      "bytes": 1055
+    },
+    ".trellis/scripts/task.py": {
+      "kind": "file",
+      "mode": 493,
+      "sha256": "b415e0a2dbc9e8cba1ada0c7997999aaaaea0eec96d3419db640830e88e84cfe",
+      "bytes": 31810
+    },
+    ".trellis/.version": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "a0dfc0b7c9462a77cdd38a47c563a9bcc025f626258b590ef0417052e06fc47d",
+      "bytes": 6
+    },
+    ".trellis/.template-hashes.json": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "5e4cc63f23d38995339e684fb1496b0d947e76b863b88b9ce30b8aa91a7eed0f",
+      "bytes": 10859
+    },
+    ".agents": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".agents/skills": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".agents/skills/trellis-before-dev": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".agents/skills/trellis-before-dev/SKILL.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "00c9d1c83bc318e91b27a019bc954c2957cfad907ff20d854b596f16cad2c0f3",
+      "bytes": 2642
+    },
+    ".agents/skills/trellis-brainstorm": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".agents/skills/trellis-brainstorm/SKILL.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "17d9bf209730c14f584eb97f38198d0683ad3f8da982d9a6e6d4e84c853f9a94",
+      "bytes": 10621
+    },
+    ".agents/skills/trellis-break-loop": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".agents/skills/trellis-break-loop/SKILL.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "f5a93699832f29dee443b53c135a7459519b371f689af191d15c29e8ee5c7bde",
+      "bytes": 6963
+    },
+    ".agents/skills/trellis-channel": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".agents/skills/trellis-channel/SKILL.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "ff84801c511a736da018b4b1149348ebc9a16b7fc18d905ec10cfa7acbf269a3",
+      "bytes": 4872
+    },
+    ".agents/skills/trellis-channel/references": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".agents/skills/trellis-channel/references/command-reference.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "c4df3d940d89814310bfdaded20e84dd1d6b96786f6772688de7a123338d3c8e",
+      "bytes": 17365
+    },
+    ".agents/skills/trellis-channel/references/forum.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "407db39e8ebde47cea8637e3069bdb3d76ba42b43ed1d08ba97a56f26dbcfcb4",
+      "bytes": 7970
+    },
+    ".agents/skills/trellis-channel/references/progress-debugging.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "93b021fd8d5d3d4ee54952c40424ab91ca57c2ab8032bfbfc3b5c5e22f1464cd",
+      "bytes": 8496
+    },
+    ".agents/skills/trellis-channel/references/workers.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "d4481b2858bca82050cb8d131916da8a2ccc3857f199cdb9ced8bb41d592e2a7",
+      "bytes": 11151
+    },
+    ".agents/skills/trellis-channel/references/workflows.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "0782d602efde6e94a7d7d7950fd605eedc9a1f5a523908284e76b628fd618fd4",
+      "bytes": 4488
+    },
+    ".agents/skills/trellis-check": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".agents/skills/trellis-check/SKILL.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "dfb0600e95c19c7a83200465b6a92a5514ec9778ba4083efa881bed541cc74a8",
+      "bytes": 3760
+    },
+    ".agents/skills/trellis-continue": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".agents/skills/trellis-continue/SKILL.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "2b948434883636a1f1e2a4ad5b8a3d7dc2edc93ed05da6bca82882e8c024e22b",
+      "bytes": 2685
+    },
+    ".agents/skills/trellis-finish-work": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".agents/skills/trellis-finish-work/SKILL.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "161060fbcd44f787440d3a5c297a9f5223ea7774bb3021a50e376875a9ac5b2d",
+      "bytes": 3699
+    },
+    ".agents/skills/trellis-meta": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".agents/skills/trellis-meta/SKILL.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "ee7bcfd0023def62688339c4b63c50f2fbeea12a34eb89e8bb63a992b58cb168",
+      "bytes": 12848
+    },
+    ".agents/skills/trellis-meta/references": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".agents/skills/trellis-meta/references/customize-local": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".agents/skills/trellis-meta/references/customize-local/add-project-local-conventions.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "86009ccb5d0373f399582da0bc570c4e5c6053c3c764857424ff93384f0e04e5",
+      "bytes": 2508
+    },
+    ".agents/skills/trellis-meta/references/customize-local/change-agents.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "4216ac3cc570038fd8ce3319a85932bb537fea9e0a7f4d11fa315cfa645c9c85",
+      "bytes": 2663
+    },
+    ".agents/skills/trellis-meta/references/customize-local/change-context-loading.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "350d319dc1ab99609ddbf52cf8c06c71bd97ba1a29ce2eac8b97d0bb192938bf",
+      "bytes": 3306
+    },
+    ".agents/skills/trellis-meta/references/customize-local/change-hooks.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "4c18b134f05d5ba1609c517ec94c97c9442b5f0670aa2211c487c31ed2a4f358",
+      "bytes": 2334
+    },
+    ".agents/skills/trellis-meta/references/customize-local/change-skills-or-commands.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "5b942e9f512e049a75e8dd9e8cc4d49786f6da61b22afc82bb447acf808f9fe2",
+      "bytes": 6957
+    },
+    ".agents/skills/trellis-meta/references/customize-local/change-spec-structure.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "31eccaad7097d96e66a45c1b4caea1ba4f2e54b7814184c3ebf82c87dafc4841",
+      "bytes": 2387
+    },
+    ".agents/skills/trellis-meta/references/customize-local/change-task-lifecycle.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "60ff9efb93604b87a461a4af30322d76750402a51e40f31531a7ff88d309996d",
+      "bytes": 4597
+    },
+    ".agents/skills/trellis-meta/references/customize-local/change-workflow.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "43fa780a2ca580de121b10893d49b99f978873deebbf45008c466e5ac6651519",
+      "bytes": 4284
+    },
+    ".agents/skills/trellis-meta/references/customize-local/overview.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "ce8f09e9f93ce9a48500763fb3a4db2b3908a5fbf4f985ab71dacebb404cf8f4",
+      "bytes": 2868
+    },
+    ".agents/skills/trellis-meta/references/local-architecture": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".agents/skills/trellis-meta/references/local-architecture/bundled-skills.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "aa6a0bf83060205ee4ea621c467fb900a7db06b4476a4ad472cc4e248c887389",
+      "bytes": 12466
+    },
+    ".agents/skills/trellis-meta/references/local-architecture/context-injection.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "b1ebaac467bf0195e2a21f2f8492a8b7c91ff3e0f9312f853468cda0255df1c7",
+      "bytes": 4098
+    },
+    ".agents/skills/trellis-meta/references/local-architecture/generated-files.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "7eb2d452eddb4f4226f7578c2ec6d5ee0434ed172ba4c36107cc8bdff7554dc6",
+      "bytes": 3937
+    },
+    ".agents/skills/trellis-meta/references/local-architecture/multi-agent-channel.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "56e5070474aeca872e2d70c46feea5aaafecd3d3ec052c3f7b1877358dca62e9",
+      "bytes": 6785
+    },
+    ".agents/skills/trellis-meta/references/local-architecture/overview.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "50638fd9eaaba2e0edf2f2a84d920578d5b2fb7934031b174e417d3dc510b2a6",
+      "bytes": 3747
+    },
+    ".agents/skills/trellis-meta/references/local-architecture/spec-system.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "b8d8a6a0888b44a232c8f50161b9e20e903cf621ad7be4021715ab6fab226f47",
+      "bytes": 3435
+    },
+    ".agents/skills/trellis-meta/references/local-architecture/task-system.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "b154568e74f1c738a51633df9f2503f416b3afa5f309325224422162e0b707e4",
+      "bytes": 6251
+    },
+    ".agents/skills/trellis-meta/references/local-architecture/workflow.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "cfcdc6e4468a5d9c816e929fcca01640cd41cfdaaa4824118b40a8e460c927b6",
+      "bytes": 3756
+    },
+    ".agents/skills/trellis-meta/references/local-architecture/workspace-memory.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "e6427b46aba744563c2444b30df4043cd856561b7709ec2dece26095416421fd",
+      "bytes": 2766
+    },
+    ".agents/skills/trellis-meta/references/platform-files": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".agents/skills/trellis-meta/references/platform-files/agents.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "b806b1f0de6dfc74720014aee15ede767a58925b2b3b964f2e557ed39a65bbc0",
+      "bytes": 4031
+    },
+    ".agents/skills/trellis-meta/references/platform-files/hooks-and-settings.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "91e9855e418673bcd7770411e24e28390738b123532eef000beba0a29cf154e1",
+      "bytes": 4429
+    },
+    ".agents/skills/trellis-meta/references/platform-files/overview.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "1aec9087ccedd56a213af877b5db474131aa4b4789b6ac0e8da73b058aa43bd4",
+      "bytes": 3535
+    },
+    ".agents/skills/trellis-meta/references/platform-files/platform-map.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "3c0d4546461c06d1aaf006276e34e250e0ca7bbb5b853fb45c58114cebca4042",
+      "bytes": 7160
+    },
+    ".agents/skills/trellis-meta/references/platform-files/skills-and-commands.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "e39831d860bd27a04e7757f7bd941ab83b3c5b11ad4460cec03975b655f26cc3",
+      "bytes": 4037
+    },
+    ".agents/skills/trellis-session-insight": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".agents/skills/trellis-session-insight/SKILL.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "d20f1d20c6946e26ba6f848b9a016d9a16c803d87501462e5b11a2ced6f56643",
+      "bytes": 6682
+    },
+    ".agents/skills/trellis-session-insight/references": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".agents/skills/trellis-session-insight/references/cli-quick-reference.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "c520353fe3fc00b9702ed4f780647c8fbd6d342e66527a03647f533a9fe09779",
+      "bytes": 6834
+    },
+    ".agents/skills/trellis-session-insight/references/triggering-patterns.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "121ecd23be83d1567e8ce15c366a81073d7a2b1d3ad616fce235c07ca1f1cc20",
+      "bytes": 4058
+    },
+    ".agents/skills/trellis-spec-bootstrap": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".agents/skills/trellis-spec-bootstrap/SKILL.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "97bfa68c06cebb558eb4464bc1b81f7d2d56040d75baa8de1ee5ad90cca0196a",
+      "bytes": 2679
+    },
+    ".agents/skills/trellis-spec-bootstrap/references": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".agents/skills/trellis-spec-bootstrap/references/mcp-setup.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "df542fc8f279edd38046d26a7c8151804b708f57b24d4aa2733cea587a88c65e",
+      "bytes": 2766
+    },
+    ".agents/skills/trellis-spec-bootstrap/references/repository-analysis.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "0dae98d774f6e34559b9f3442888ac43e3a8af110c37cbefc49ce256986858b6",
+      "bytes": 2745
+    },
+    ".agents/skills/trellis-spec-bootstrap/references/spec-task-planning.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "ef493d028c3b0807a8a534bb71fb92a68129f273db763ad27ceb464a522e799d",
+      "bytes": 2231
+    },
+    ".agents/skills/trellis-spec-bootstrap/references/spec-writing.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "e9800fe9ed4a4cd87062ea1829cf2caa8d170ec15e141678a6a30e74c497f47d",
+      "bytes": 2176
+    },
+    ".agents/skills/trellis-start": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".agents/skills/trellis-start/SKILL.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "79a5ba7a2aff3c72e06d7f4cd6942dc4f4f4092dd40f9c8e94f1838024a81e4d",
+      "bytes": 2832
+    },
+    ".agents/skills/trellis-update-spec": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".agents/skills/trellis-update-spec/SKILL.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "003ce08a3404aeb50998029392c4d4e57b626edf526d3ebd585032bb92dcbb96",
+      "bytes": 10109
+    },
+    ".pi/agents": {
+      "kind": "directory",
+      "mode": 493
+    },
+    ".pi/agents/trellis-check.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "afe276bcb225cb3e718e9b498d7b201c3666f1c3868fffe8dd6fe1c77f5553a2",
+      "bytes": 6269
+    },
+    ".pi/agents/trellis-implement.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "4f7192a3118eccc92699efe1fed9cf8368e2d9b50028682ba30652e855b04d8a",
+      "bytes": 5315
+    },
+    ".pi/agents/trellis-research.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "fe9ba44ec6b216a7c697a13af054f8bc42beeb3821b4332e17ee34fd4acfcb18",
+      "bytes": 5440
+    },
+    "AGENTS.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "6cacfe99748b435d0660c2463c697bc323d53798aecf3492283ca8eac1b29682",
+      "bytes": 1073
+    },
+    "runtime": {
+      "kind": "directory",
+      "mode": 493
+    },
+    "runtime/add_session.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "432c29b3adcd3510f86b63803f6ecefc3901f3ee623ffda3e0b693ad83ca730c",
+      "bytes": 57359
+    },
+    "runtime/common": {
+      "kind": "directory",
+      "mode": 493
+    },
+    "runtime/common/__init__.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "9f5fa711f818cbbfa9bf4c2419b28f64d44a8a6937a88f856afe04dcb870b6e4",
+      "bytes": 2989
+    },
+    "runtime/common/active_task.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "64fa2acc4ba18716f7e718f228a6b60a0bd3fa069582352a2a64934c1206bac5",
+      "bytes": 17382
+    },
+    "runtime/common/config.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "ae8a5004f8d51beb7a82a57def07eb2db49331be45a50d47d88304b1e9d27283",
+      "bytes": 15881
+    },
+    "runtime/common/developer.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "1f0b22891166da83b1e213dcc1ce91d51182b7d475751bf91bc4d487c30fc836",
+      "bytes": 7249
+    },
+    "runtime/common/git.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "6d93ac9085c6811ed75c92c75929741f92b1774365df508bfbc54dae9ce4f5d8",
+      "bytes": 7628
+    },
+    "runtime/common/git_context.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "4d171a2e77f0cbc5c9970ba37e1f159089ace90e21914cf1468e237cf96b33b4",
+      "bytes": 3788
+    },
+    "runtime/common/io.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "02cb0e5cd00711b9c66484bbde30cda11abe034fa7415140cd5c3006b481dde0",
+      "bytes": 6174
+    },
+    "runtime/common/log.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "9349ed14fc3cd61c7a6fdef2a8a26ed29c40d9967315af68a38fcfbdb1f469f7",
+      "bytes": 1298
+    },
+    "runtime/common/packages_context.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "cd5897bbf3f4cab6f1c1495ea876bb644de35b468fae8f10e0cd9e97d5601d6e",
+      "bytes": 8430
+    },
+    "runtime/common/paths.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "ac684efc1a1febfa60c0fa4b49d24d6b08218d25a18febd3a67255e75a9fcacc",
+      "bytes": 14965
+    },
+    "runtime/common/safe_commit.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "edf0d18627fe561e5b475706c84cebd8270e2ab6914438205adeac987a89fea3",
+      "bytes": 8264
+    },
+    "runtime/common/session_context.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "1095bbd8e3e9fce6e8eca56e50ecd24e511282d26ec696ff305d3d82f29ba752",
+      "bytes": 23519
+    },
+    "runtime/common/task_context.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "d7d2c096cd8a909d5f0c6b7c2c5a76e9bcf3b3f26afa5834ab1c0befa737e9bc",
+      "bytes": 16959
+    },
+    "runtime/common/task_records.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "036a46fd0b558a67f4e25f38d9741fab8a90cd7879e8419893ac65eb8a58c880",
+      "bytes": 4723
+    },
+    "runtime/common/task_store.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "121b0e27fd00cc5de87d918e1255c6be7eea32555d970f40e4aa526710e5b3a3",
+      "bytes": 74582
+    },
+    "runtime/common/task_utils.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "89f9aa4709848d5ea69b31f1f079ca0743c8425fb98bab15edba3c376e81462b",
+      "bytes": 19760
+    },
+    "runtime/common/tasks.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "88159cb42455e07af03aa716d1596ad76ed6647b82075dc01c492ec44809f87b",
+      "bytes": 4193
+    },
+    "runtime/common/trellis_config.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "750da9420105d3bbeaceb26c41f183556b1df7769f58768e9f1fbc704fef95f4",
+      "bytes": 8501
+    },
+    "runtime/common/types.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "17f464519a109881871d29d8e9b6ff4dafefd89cc711a63301313d43046064d4",
+      "bytes": 3237
+    },
+    "runtime/common/workflow_phase.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "2474a4da63eb26ecd82483b55519f2555b340de4d46de0b8a9940ef283a35175",
+      "bytes": 8292
+    },
+    "runtime/get_context.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "5f0de91be014e6d59b697fb17d9c840b80605a6cbc29a0609b5d4cb4464acf9a",
+      "bytes": 542
+    },
+    "runtime/get_developer.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "db36b4a8d25d2cee5c9f1c0c08941cff1642db3fc99ab396cab8185f2ad46c6f",
+      "bytes": 657
+    },
+    "runtime/init_developer.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "3e044c5788dbb583c86c0963847d756b8a66483d1440aee17473fd1577dee6ad",
+      "bytes": 1007
+    },
+    "runtime/pi_trellis_worktree": {
+      "kind": "directory",
+      "mode": 493
+    },
+    "runtime/pi_trellis_worktree/__init__.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "1d4d0902645668497861fb14b1021af44fe3af3140a24b45ee31fd64a749c1ab",
+      "bytes": 80
+    },
+    "runtime/pi_trellis_worktree/cli.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "452d39cb0cac9974dc5fc6179001936932a4f0754f78ea2cb266b1e00e1e1aef",
+      "bytes": 5116
+    },
+    "runtime/pi_trellis_worktree/manager.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "a846d18428fa5519864607e240a103b9b20185d015f461330b71983b785b4fa2",
+      "bytes": 23107
+    },
+    "runtime/pi_trellis_worktree/materials.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "1e51edfbed879dd5334c01f891bac1a7ffb61ad04df647f8afb2d2a1bc86f428",
+      "bytes": 39261
+    },
+    "runtime/pi_trellis_worktree/records.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "ab1d129e5d598315737f639c0942dc75332b7905595cb5fdb483010d04e0f02a",
+      "bytes": 13625
+    },
+    "runtime/query-worktree.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "d3e99b08f03a182f3f984c35141af300998c4e3fad82dd50ee6e9547bc974139",
+      "bytes": 205
+    },
+    "runtime/task.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "76df7f4256eb9097049a2bdcb830e12021cc43323e9065e12a5356c79c1e1185",
+      "bytes": 30417
+    },
+    "runtime/worktree.py": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "ab50d841d912c717abb54becad9bfdb3f0a160823bd956d74ca77de8a5d8b0e0",
+      "bytes": 563
+    },
+    "resources": {
+      "kind": "directory",
+      "mode": 493
+    },
+    "resources/runtime-baseline.json": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "c2aa4623d35ff230d0a292cdd41a436f1f23bbc665a9f001a793bee8f38bbbb0",
+      "bytes": 15588
+    },
+    "resources/skill-baseline.json": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "c8880be9df119d567cbd959d02a4f3313ffaac291d6a513d7cadc519d964570d",
+      "bytes": 13983
+    },
+    "resources/template-baseline.json": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "0c756d4794be4460477ad82ae884b1f2f53650d503e0a6531fc2a7b1bad2bde5",
+      "bytes": 4017
+    },
+    "resources/templates": {
+      "kind": "directory",
+      "mode": 493
+    },
+    "resources/templates/agents-block.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "ed9c20870317cc1a66488eb2f241be01ad40520f556b3d5579037bf1a89cbcec",
+      "bytes": 667
+    },
+    "resources/templates/config.yaml": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "47a81490107fb215e58cb97fa25cb427340b12a2eeacca58c7a5fe86a37a498d",
+      "bytes": 254
+    },
+    "resources/templates/journal.gitattributes": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "fbf06fcfa02307006a6676e2279507adba5a24a3606eee74be5343df49446d1d",
+      "bytes": 46
+    },
+    "resources/templates/root.gitignore-block.txt": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "d42989a9eb63c7aeb1affac4638f23d967aebfdee2220f0b174c757b40a07622",
+      "bytes": 82
+    },
+    "resources/templates/spec": {
+      "kind": "directory",
+      "mode": 493
+    },
+    "resources/templates/spec/guides": {
+      "kind": "directory",
+      "mode": 493
+    },
+    "resources/templates/spec/guides/code-reuse-thinking-guide.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "0a10e79c7fe87f7d4da29500372fd44fa3778c6f6ed0ac8dae8c10d1dc1b92d6",
+      "bytes": 337
+    },
+    "resources/templates/spec/guides/cross-layer-thinking-guide.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "3aff94cf5d8c4d0015f64e7b83d3a007c9f623657a9721cfea616341423530d8",
+      "bytes": 391
+    },
+    "resources/templates/spec/guides/index.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "61399c91a23c16817653719abd7777a258681aa862dbd2056111514127bf5a8f",
+      "bytes": 321
+    },
+    "resources/templates/spec/index.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "a37d28a4f1055a1f72487cb3c2fbd24e5d10726ad98aa8796be5b3435055f7c6",
+      "bytes": 328
+    },
+    "resources/templates/tasks": {
+      "kind": "directory",
+      "mode": 493
+    },
+    "resources/templates/tasks/bootstrap-prd.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "17c609fafb86bb0639a6e46454cc755062b6ceaa0cd5c1fb2216f6a0f3d77e03",
+      "bytes": 619
+    },
+    "resources/templates/tasks/join-prd.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "a9cb8d940417e46eed6373a226bd0d547d75ff1442b7b9a3f24c7b3ab98db415",
+      "bytes": 519
+    },
+    "resources/templates/trellis.gitignore": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "039c5f993947a09975af17b7946fe5558f11221385078509fd066e69efe2cbf3",
+      "bytes": 63
+    },
+    "resources/templates/workflow.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "125f438bdc16cc1661d6d21104f4036867e811888632f2f14b144c0dfad19ea2",
+      "bytes": 5332
+    },
+    "resources/templates/workspace-index.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "00b569c959ab54052d931b9a56c6573f6b57b7be4af0b07907902f8665ba2771",
+      "bytes": 360
+    },
+    "skills": {
+      "kind": "directory",
+      "mode": 493
+    },
+    "skills/trellis-before-dev": {
+      "kind": "directory",
+      "mode": 493
+    },
+    "skills/trellis-before-dev/SKILL.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "7d8b10c30e283b52d0642bdf125c53e81f67ff39945f0aab687f892d69210aed",
+      "bytes": 3047
+    },
+    "skills/trellis-brainstorm": {
+      "kind": "directory",
+      "mode": 493
+    },
+    "skills/trellis-brainstorm/SKILL.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "e337849ba707cc20d6b46f65f214b50bd301c1ef279e069ea39a850ec71c1721",
+      "bytes": 10938
+    },
+    "skills/trellis-break-loop": {
+      "kind": "directory",
+      "mode": 493
+    },
+    "skills/trellis-break-loop/SKILL.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "d4d874aa2bebc71c3777535c48193bf3b52e3757f630a2cf60ecbb7168c11105",
+      "bytes": 6935
+    },
+    "skills/trellis-check": {
+      "kind": "directory",
+      "mode": 493
+    },
+    "skills/trellis-check/SKILL.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "e1c587a676d6b60bb0022f4d50b73240f3c24fbb2d4e80d1c4e152726f1f2275",
+      "bytes": 4165
+    },
+    "skills/trellis-continue": {
+      "kind": "directory",
+      "mode": 493
+    },
+    "skills/trellis-continue/SKILL.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "ad11c0311fae1714e7df0bb8ff613dcb3aebde73e61e1d6db876b26f38b4ab7b",
+      "bytes": 3073
+    },
+    "skills/trellis-finish-work": {
+      "kind": "directory",
+      "mode": 493
+    },
+    "skills/trellis-finish-work/SKILL.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "4b4bcb788d0f422592b404e8bdbf51c510e52d5352334cc23f52f8f53315a5f9",
+      "bytes": 1809
+    },
+    "skills/trellis-meta": {
+      "kind": "directory",
+      "mode": 493
+    },
+    "skills/trellis-meta/SKILL.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "e5aff3c2dc906b7c3b7217add1cd05599fd8b4048f8881f0188226aacc8f0c75",
+      "bytes": 2457
+    },
+    "skills/trellis-meta/references": {
+      "kind": "directory",
+      "mode": 493
+    },
+    "skills/trellis-meta/references/customize-local": {
+      "kind": "directory",
+      "mode": 493
+    },
+    "skills/trellis-meta/references/customize-local/add-project-local-conventions.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "8048612cdaf602f77a69303087521ee318e8f8c533385ab958008fa07e0fd3f5",
+      "bytes": 250
+    },
+    "skills/trellis-meta/references/customize-local/change-agents.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "825479c6e02b879ab409f6235758e405ec372e0d5435b51cf66de73fc0a6d56e",
+      "bytes": 268
+    },
+    "skills/trellis-meta/references/customize-local/change-context-loading.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "ff96fc4ef11c24ab4f15718686d3ec8277c2d32c40a6d32e71b1790e79427dc4",
+      "bytes": 251
+    },
+    "skills/trellis-meta/references/customize-local/change-hooks.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "9201366ab15d2c279e5819fd6f054b20ae7c6aeeab6edfee21adff0eb0adfd8f",
+      "bytes": 242
+    },
+    "skills/trellis-meta/references/customize-local/change-skills-or-commands.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "ed0c2a06efc4786bf396b7c206402890e5c4f591aa57e89b6f922f51369c1dd2",
+      "bytes": 275
+    },
+    "skills/trellis-meta/references/customize-local/change-spec-structure.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "b1ef157941a0ebdbe32c943742d6d96a853c007dcb504a44d6005bf580987913",
+      "bytes": 248
+    },
+    "skills/trellis-meta/references/customize-local/change-task-lifecycle.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "0a0a74a034a5f842ddc39ff38bf5829b2e5d042276fc2dadc41925df8fe9325d",
+      "bytes": 290
+    },
+    "skills/trellis-meta/references/customize-local/change-workflow.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "b6a1b5b3cd0daa6b85d5ca8cddff1915d4ce1e38c8a61e4cbf520b04b9741467",
+      "bytes": 254
+    },
+    "skills/trellis-meta/references/customize-local/overview.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "9d8bfe2165f71385f2a8453ab88eb2c7946799037ed83529de858d8d84884d4e",
+      "bytes": 276
+    },
+    "skills/trellis-meta/references/local-architecture": {
+      "kind": "directory",
+      "mode": 493
+    },
+    "skills/trellis-meta/references/local-architecture/bundled-skills.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "93f573d020f523ebc0a6e61984590a7e2219e1e5cf2eb90698a3a673ce3f8df5",
+      "bytes": 318
+    },
+    "skills/trellis-meta/references/local-architecture/context-injection.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "03e0093aee6f6ac52a9e8a480e4bed1b55479bf98112e0a7adfdd099101c7770",
+      "bytes": 346
+    },
+    "skills/trellis-meta/references/local-architecture/generated-files.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "1b40bc1fd3d3360d86523136e5adeaf934f5a3f3c7477d4a4f2ad5b65a4cb797",
+      "bytes": 315
+    },
+    "skills/trellis-meta/references/local-architecture/overview.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "4fcb40cf54b43b5e7fc41a99b56fac5b41a7506458460d761a4563d14872ec38",
+      "bytes": 269
+    },
+    "skills/trellis-meta/references/local-architecture/spec-system.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "9b86109f2e8c15cab40b83946d873f074e090fb768b137ade408503b37199e35",
+      "bytes": 271
+    },
+    "skills/trellis-meta/references/local-architecture/task-system.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "03736d6f68e71984f341e2ef204054905ac58c0d2ec23748a9678cab8e151c08",
+      "bytes": 310
+    },
+    "skills/trellis-meta/references/local-architecture/workflow.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "1a3ea55c8d75fa4a8f3ba0fca0a6674b0705beac03ad4b675c4bcf54714b3415",
+      "bytes": 306
+    },
+    "skills/trellis-meta/references/local-architecture/workspace-memory.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "da2eca5ab0914ef15f03f40234731b2eff6bd27d3ba927c1dda12a78bf290791",
+      "bytes": 301
+    },
+    "skills/trellis-meta/references/platform-files": {
+      "kind": "directory",
+      "mode": 493
+    },
+    "skills/trellis-meta/references/platform-files/agents.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "47dfd2c213ec267477c4afeb1ba1cbb9ee2e3a2d563215d0d825b503b5d6a1e6",
+      "bytes": 329
+    },
+    "skills/trellis-meta/references/platform-files/hooks-and-settings.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "15be77470a1f76acb2d485217053aed3b534909dbc5265e924d9a34b5f789283",
+      "bytes": 317
+    },
+    "skills/trellis-meta/references/platform-files/overview.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "68577e9f79a56f9b4864b3a27b3c5d45c817cd51628d23f26b511bbdbe5bec8f",
+      "bytes": 266
+    },
+    "skills/trellis-meta/references/platform-files/platform-map.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "5bea3aa1372265edc5a8b69d599ab1687a05a988db9f9692d2af58c40524f063",
+      "bytes": 298
+    },
+    "skills/trellis-meta/references/platform-files/skills-and-commands.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "a18a7c07477459a120faf23af1a1043500b24bdad2f8e7220217c1b724db6a16",
+      "bytes": 283
+    },
+    "skills/trellis-spec-bootstrap": {
+      "kind": "directory",
+      "mode": 493
+    },
+    "skills/trellis-spec-bootstrap/SKILL.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "7b17015c87e9778cb81b3435c8e5d37755dba508e42c7567fccbc7092244610c",
+      "bytes": 2864
+    },
+    "skills/trellis-spec-bootstrap/references": {
+      "kind": "directory",
+      "mode": 493
+    },
+    "skills/trellis-spec-bootstrap/references/mcp-setup.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "c5d13ce1ddb33380fc1b75765bf5d2c1b371571c15414fc4f71206ebb605e377",
+      "bytes": 483
+    },
+    "skills/trellis-spec-bootstrap/references/repository-analysis.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "6759cd52c05ee041735e5968614c0d3c08036d4960924b312e79a499766af56a",
+      "bytes": 2734
+    },
+    "skills/trellis-spec-bootstrap/references/spec-task-planning.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "c63995dceec9c35a13677de3a8f185ad947ba32864fb8ef432dcd0cf0498c1bf",
+      "bytes": 1533
+    },
+    "skills/trellis-spec-bootstrap/references/spec-writing.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "37c3beed679197e95fea4eb810f8f68a653553f4fdcdf0cceaaec3bb66136928",
+      "bytes": 2151
+    },
+    "skills/trellis-start": {
+      "kind": "directory",
+      "mode": 493
+    },
+    "skills/trellis-start/SKILL.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "7e833a2a4363c7473fe9a3f36753ff307b0ea00f4d4d9c635f1b926c7c3df28e",
+      "bytes": 2941
+    },
+    "skills/trellis-update-spec": {
+      "kind": "directory",
+      "mode": 493
+    },
+    "skills/trellis-update-spec/SKILL.md": {
+      "kind": "file",
+      "mode": 420,
+      "sha256": "ca376a5ce9e01f906819e07a63e96ac027af6059e323e5cdd0a375f7a03a260a",
+      "bytes": 10509
+    }
+  }
+}

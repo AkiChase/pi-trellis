@@ -17,9 +17,9 @@
 
 ## 验收
 
-- [ ] 无 trellis CLI 的新项目初始化可用，预览/取消不写入
-- [ ] 历史用户名复用日志、正确 onboarding，身份冲突不误报成功
-- [ ] skills 随包加载，无初始前后端 spec/multi-package 菜单，失败保护用户内容
+- [x] 无 trellis CLI 的新项目初始化可用，预览/取消不写入
+- [x] 历史用户名复用日志、正确 onboarding，身份冲突不误报成功
+- [x] skills 随包加载，无初始前后端 spec/multi-package 菜单，失败保护用户内容
 
 ## 规划状态
 

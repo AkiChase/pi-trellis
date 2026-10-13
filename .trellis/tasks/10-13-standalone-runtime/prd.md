@@ -17,9 +17,9 @@
 
 ## 验收
 
-- [ ] 来源与许可可追溯，完整运行时无需全局 trellis
-- [ ] 空 session 不借任务，child 不清 parent，无效路径不驱动读取/hooks/提交
-- [ ] journal/archive 不提交无关任务，真实脚本负例回归通过
+- [x] 来源与许可可追溯，完整运行时无需全局 trellis
+- [x] 空 session 不借任务，child 不清 parent，无效路径不驱动读取/hooks/提交
+- [x] journal/archive 不提交无关任务，真实脚本负例回归通过
 
 ## 规划状态
 

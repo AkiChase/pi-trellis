@@ -1,0 +1,10 @@
+{
+  "说明": "仅在自动清理的临时项目模拟，不运行真实仓库init或发布。第三分支仅证明校验语义，不作为迁移建议。",
+  "truthfulError": "Malformed project resource provenance: .trellis/workflow.md",
+  "runtimeOnlyError": "Incomplete or unknown managed resource entries",
+  "canonicalManifestAcceptedDespiteOldTemplateBytes": true,
+  "missingSpecIndex": true,
+  "runtimeFiles": 32,
+  "agentFiles": 3,
+  "templateEntries": 8
+}

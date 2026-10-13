@@ -11,7 +11,7 @@ Use these guides before nontrivial changes in this single-package Pi extension, 
 | [Code Reuse](code-reuse-thinking-guide.md) | Adding a helper/config/state field or repeating material/path/payload logic |
 | [Cross-Layer Boundaries](cross-layer-thinking-guide.md) | Changing identity, file/JSONL shape, RPC/events, preparation or generated-agent behavior |
 | [Extension layer](../extension/index.md) | Runtime ownership and source/test contracts |
-| [Scripts layer](../scripts/index.md) | Installer, focused Python patch and agent provenance |
+| [Scripts layer](../scripts/index.md) | Installation, fixed runtime/resource ownership and agent provenance |
 
 ## Pre-Development Checklist
 

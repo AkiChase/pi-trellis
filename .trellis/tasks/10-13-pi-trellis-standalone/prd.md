@@ -69,13 +69,13 @@
 
 ## 验收标准
 
-- [ ] AC1: 在无全局 `trellis` 的隔离环境中，插件可显式初始化新项目，随后运行支持的 task/context/journal/worktree 流程。
-- [ ] AC2: 初始化预览不写入；确认写入后资源完整，重复操作不破坏用户内容；已有未知/定制文件被明确拒绝或报告。
-- [ ] AC3: 运行时、agents、skills 版本及引用一致，不存在运行不同旧副本而未被检测的支持路径。
-- [ ] AC4: 支持技能不再引导调用 channel/mem/外部 trellis init；Pi 正确发现保留的 skills。
-- [ ] AC5: 本仓库 `.agents/` 按批准迁移删除，所需材料和链接已保留；并行任务、用户状态与其他项目文件不受影响。
-- [ ] AC6: 真实脚本测试证明空 session 不借任务，child 不清 parent，无效任务不授权 hooks/提交/派发，错误与无绑定可区分。
-- [ ] AC7: 固定上游来源、许可证和升级所有权清晰可验证，安装器不再要求外部 Trellis。
+- [x] AC1: 在无全局 `trellis` 的隔离环境中，插件可显式初始化新项目，随后运行支持的 task/context/journal/worktree 流程。
+- [x] AC2: 初始化预览不写入；确认写入后资源完整，重复操作不破坏用户内容；已有未知/定制文件被明确拒绝或报告。
+- [x] AC3: 运行时、agents、skills 版本及引用一致，不存在运行不同旧副本而未被检测的支持路径。
+- [x] AC4: 支持技能不再引导调用 channel/mem/外部 trellis init；Pi 正确发现保留的 skills。
+- [x] AC5: 本仓库 `.agents/` 按批准迁移删除，所需材料和链接已保留；并行任务、用户状态与其他项目文件不受影响。
+- [x] AC6: 真实脚本测试证明空 session 不借任务，child 不清 parent，无效任务不授权 hooks/提交/派发，错误与无绑定可区分。
+- [x] AC7: 固定上游来源、许可证和升级所有权清晰可验证，安装器不再要求外部 Trellis。
 
 ## 已确认的拆分与目录说明
 
@@ -87,3 +87,7 @@
 ## 规划文档状态
 
 PRD 已获用户认可；design.md、implement.md、implement.jsonl/check.jsonl（各 9 条真实上下文）已完成初稿并通过 task validate。技术设计含明确待审阅建议，尚未通过最终规划批准，任务仍 planning；未开始实施或删除本项目 .agents。
+
+## 最终验证说明
+
+运行时 d738148、初始化 2e8e73c 已提交；主会话完成本仓库定向迁移，最终 full288/288、运行时manifest/hash和127项数据保留校验通过。菜单/资源/生命周期使用实际Pi loader与临时fixture验证；未实际安装/reload/真实交互TUI/provider，Python/OS版本矩阵未执行，不能视为这些环境已验收。任务文档旧阶段描述为历史计划，最新统一授权及交付证据优先。

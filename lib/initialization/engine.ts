@@ -15,9 +15,13 @@ const MAX_BYTES = 4 * 1024 * 1024;
 export const digest = (bytes: string | Buffer) => createHash("sha256").update(bytes).digest("hex");
 const json = (value: unknown) => JSON.stringify(value, null, 2) + "\n";
 export interface Fingerprint { sha256: string; mode: number }
+export type TemplateProvenance =
+	| (Fingerprint & { origin: "package-default"; source: string })
+	| ((Fingerprint | { sha256: null; mode: null }) & { origin: "preserved-project"; source: { kind: "project-snapshot"; revision: string | null } });
 export interface InstalledManifest {
-	schemaVersion: 1; runtimeReleaseId: string;
-	files: Record<string, Fingerprint & { kind: "runtime" | "agent" | "template"; source: string }>;
+	schemaVersion: 2; runtimeReleaseId: string;
+	files: Record<string, Fingerprint & { kind: "runtime" | "agent"; source: string }>;
+	templates: Record<string, TemplateProvenance>;
 }
 export interface FileAction {
 	path: string; original: Fingerprint | null; output: string; mode: number;
@@ -108,6 +112,11 @@ function object(value: unknown): value is Record<string, any> {
 function fields(value: unknown, keys: string[], label: string): asserts value is Record<string, any> {
 	if (!object(value) || Object.keys(value).length !== keys.length || keys.some(key => !Object.hasOwn(value, key))) throw new Error(`Malformed ${label} schema`);
 }
+function checkFingerprint(value: Fingerprint | null): void {
+	if (value === null) return;
+	fields(value, ["sha256", "mode"], "fingerprint");
+	if (typeof value.sha256 !== "string" || value.sha256.length !== 64 || !/^[a-f0-9]{64}$/.test(value.sha256) || !Number.isInteger(value.mode) || value.mode < 0 || value.mode > 0o777) throw new Error("Invalid fingerprint");
+}
 function packageResources(): InstalledManifest["files"] {
 	const files: InstalledManifest["files"] = {};
 	for (const [path, record] of Object.entries(runtimeBaseline().files)) {
@@ -120,18 +129,37 @@ function packageResources(): InstalledManifest["files"] {
 		if (sha256 !== agents.files[role]?.adapted) throw new Error(`Package role hash mismatch: ${role}`);
 		files[`.pi/agents/trellis-${role}.md`] = { sha256, mode: 0o644, kind: "agent", source };
 	}
-	for (const [source, target] of Object.entries(templateTargets)) files[target] = { sha256: digest(template(source)), mode: 0o644, kind: "template", source: `resources/templates/${source}` };
 	return files;
 }
+function defaultTemplates(): Record<string, Fingerprint & { origin: "package-default"; source: string }> {
+	return Object.fromEntries(Object.entries(templateTargets).map(([source, target]) => [target, {
+		origin: "package-default", sha256: digest(template(source)), mode: 0o644, source: `resources/templates/${source}`,
+	}]));
+}
 function validateManifest(manifest: unknown): asserts manifest is InstalledManifest {
-	fields(manifest, ["schemaVersion", "runtimeReleaseId", "files"], "project resource manifest");
-	if (manifest.schemaVersion !== 1 || manifest.runtimeReleaseId !== runtimeBaseline().releaseId || !object(manifest.files)) throw new Error("Unsupported project runtime release; explicit upgrade is not available");
+	fields(manifest, ["schemaVersion", "runtimeReleaseId", "files", "templates"], "project resource manifest");
+	if (manifest.schemaVersion !== 2 || manifest.runtimeReleaseId !== runtimeBaseline().releaseId || !object(manifest.files) || !object(manifest.templates)) throw new Error("Unsupported project runtime release; explicit upgrade is not available");
 	const expected = packageResources();
 	if (Object.keys(manifest.files).length !== Object.keys(expected).length) throw new Error("Incomplete or unknown managed resource entries");
 	for (const [path, record] of Object.entries(expected)) {
 		const installed = manifest.files[path];
 		fields(installed, ["sha256", "mode", "kind", "source"], "project resource entry");
 		if (Object.keys(record).some(key => installed[key] !== record[key as keyof typeof record])) throw new Error(`Malformed project resource provenance: ${path}`);
+	}
+	const defaults = defaultTemplates();
+	if (Object.keys(manifest.templates).length !== Object.keys(defaults).length) throw new Error("Incomplete or unknown template provenance entries");
+	for (const [path, record] of Object.entries(defaults)) {
+		const installed = manifest.templates[path];
+		fields(installed, ["origin", "sha256", "mode", "source"], "template provenance");
+		if (installed.origin === "package-default") {
+			if (Object.keys(record).some(key => installed[key] !== record[key as keyof typeof record])) throw new Error(`Malformed package template provenance: ${path}`);
+		} else if (installed.origin === "preserved-project") {
+			// Diagnostic provenance only: no arbitrary source path, executable or output authority.
+			fields(installed.source, ["kind", "revision"], "preserved template source");
+			if (installed.source.kind !== "project-snapshot" || !(installed.source.revision === null || typeof installed.source.revision === "string" && [40, 64].includes(installed.source.revision.length) && !/[^a-f0-9]/.test(installed.source.revision))) throw new Error(`Malformed preserved template source: ${path}`);
+			if (installed.sha256 === null && installed.mode === null) continue;
+			checkFingerprint({ sha256: installed.sha256, mode: installed.mode });
+		} else throw new Error(`Unknown template origin: ${path}`);
 	}
 }
 export function verifyRuntime(root: string): InstalledManifest | undefined {
@@ -150,6 +178,7 @@ function verifiedManifest(root: string): InstalledManifest | undefined {
 		checkedPath(root, path);
 		if (record.kind === "runtime" && !same(fingerprint(root, path), record)) throw new Error(`Project runtime is missing or modified: ${path}`);
 	}
+	for (const path of Object.keys(manifest.templates)) checkedPath(root, path);
 	return manifest;
 }
 function readOperation(root: string): Operation | undefined {
@@ -254,11 +283,6 @@ function validatePlan(plan: InitPlan, verifyExisting = true): void {
 	if (plan.releaseId !== runtimeBaseline().releaseId || typeof plan.taskReused !== "boolean" || typeof plan.workspaceReused !== "boolean") throw new Error("Invalid plan result fields");
 	const expectedTask = `.trellis/tasks/00-${plan.operation === "initialize" ? "bootstrap-guidelines" : `join-${usernameSlug(plan.user)}`}`;
 	if (plan.task !== expectedTask) throw new Error("Initialization plan has an invalid task route");
-	const checkFingerprint = (value: Fingerprint | null) => {
-		if (value === null) return;
-		fields(value, ["sha256", "mode"], "plan fingerprint");
-		if (typeof value.sha256 !== "string" || !/^[a-f0-9]{64}$/.test(value.sha256) || !Number.isInteger(value.mode) || value.mode < 0 || value.mode > 0o777) throw new Error("Invalid plan fingerprint");
-	};
 	const { planHash, ...body } = plan;
 	if (digest(JSON.stringify(body)) !== planHash || Buffer.byteLength(json(plan)) > MAX_BYTES) throw new Error("Initialization plan hash or size is invalid");
 	const seen = new Map<string, FileAction>();
@@ -294,7 +318,9 @@ function validatePlan(plan: InitPlan, verifyExisting = true): void {
 	const resources = packageResources();
 	if (plan.operation === "initialize") {
 		for (const [path, resource] of Object.entries(resources)) requireOutput(path, readFileSync(checkedPath(packageRoot, resource.source)), resource.kind, resource.mode);
-		requireOutput(MANIFEST, json({ schemaVersion: 1, runtimeReleaseId: plan.releaseId, files: resources }), "manifest");
+		const templates = defaultTemplates();
+		for (const [path, resource] of Object.entries(templates)) requireOutput(path, readFileSync(checkedPath(packageRoot, resource.source)), "template", resource.mode);
+		requireOutput(MANIFEST, json({ schemaVersion: 2, runtimeReleaseId: plan.releaseId, files: resources, templates }), "manifest");
 		if (plan.actions.at(-1)?.path !== MANIFEST) throw new Error("Manifest must publish after required outputs");
 		for (const [path, source] of [["AGENTS.md", "agents-block.md"], [".gitignore", "root.gitignore-block.txt"], [".gitattributes", "journal.gitattributes"]]) {
 			allowed.add(path);
@@ -380,6 +406,7 @@ export function plan(rootInput: string, userInput: string): InitPlan | undefined
 			add(target, readFileSync(checkedPath(packageRoot, resource.source)), resource.kind, resource.mode);
 			files[target] = resource;
 		}
+		for (const [source, target] of Object.entries(templateTargets)) add(target, template(source), "template");
 		for (const [path, source, start, end] of [["AGENTS.md", "agents-block.md", "<!-- TRELLIS:START -->", "<!-- TRELLIS:END -->"], [".gitignore", "root.gitignore-block.txt", "# pi-trellis:ignore:start", "# pi-trellis:ignore:end"]]) {
 			add(path, appendBlock(bytes(root, path), template(source), start, end), "root");
 		}
@@ -400,7 +427,7 @@ export function plan(rootInput: string, userInput: string): InitPlan | undefined
 	} catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
 	if (!taskReused) { add(`${task}/task.json`, json(generated.task), "task"); add(`${task}/prd.md`, template(`tasks/${operation === "initialize" ? "bootstrap" : "join"}-prd.md`), "task"); }
 	guards[MANIFEST] = fingerprint(root, MANIFEST);
-	if (operation === "initialize") add(MANIFEST, json({ schemaVersion: 1, runtimeReleaseId: state.releaseId, files } satisfies InstalledManifest), "manifest");
+	if (operation === "initialize") add(MANIFEST, json({ schemaVersion: 2, runtimeReleaseId: state.releaseId, files, templates: defaultTemplates() } satisfies InstalledManifest), "manifest");
 	const body = { schemaVersion: 1 as const, root, user, releaseId: state.releaseId, operation, workspaceReused, task, taskReused, actions, guards };
 	const result = { ...body, planHash: digest(JSON.stringify(body)) }; validatePlan(result); return result;
 }
