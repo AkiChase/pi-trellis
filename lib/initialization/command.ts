@@ -1,7 +1,8 @@
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
+import { applyResourcePlan, resourcePlan, resourceStatus } from "./resources.ts";
 import { inspect, plan, apply, validateUsername, type Inspection, type InitPlan } from "./engine.ts";
 
-export const INIT_HELP = "Usage: /trellis-init [--user <username>] [--check | --help]\nInitializes a new project or sets up identity on a supported clone.\nAll writes require native UI confirmation. No force, upgrade, active task selection, hooks, install or Git actions.";
+export const INIT_HELP = "Usage: /trellis-init [--user <username>] [--check | --help]\nInitializes a new project or sets up identity on a supported clone.\nAll writes require native UI confirmation. Managed resources can be updated or repaired without resetting user data. No force, active task selection, hooks, install or Git actions.";
 export function parseInitArguments(args: string): { user?: string; check: boolean; help: boolean } {
 	if (args.length > 4096) throw new Error("Initialization arguments are too long");
 	const tokens: string[] = [];
@@ -73,17 +74,28 @@ export function registerInitCommand(pi: ExtensionAPI, refresh: (ctx: ExtensionCo
 				const parsed = parseInitArguments(args);
 				if (parsed.help) { notify(INIT_HELP); return; }
 				const state = inspect(ctx.cwd);
-				if (parsed.check || !ctx.hasUI) { notify(statusSummary(state) + (!ctx.hasUI ? "\nUse /trellis-init in interactive or RPC UI to review and confirm writes." : "")); return; }
-				if (state.state === "ready") {
-					if (parsed.user && parsed.user !== state.developer) throw new Error(`Developer conflict: actual ${state.developer}; requested ${parsed.user}. Existing identity preserved.`);
-					if (parsed.user) { notify(statusSummary(state) + "\nAlready ready; no files changed."); return; }
-					if (await ctx.ui.select(statusSummary(state), ["View project status", "Cancel"]) === "View project status") notify(statusSummary(state));
+				if (parsed.check || !ctx.hasUI) { notify(resourceStatus(state.root) + (!ctx.hasUI ? "\nUse /trellis-init in interactive or RPC UI to review and confirm writes." : "")); return; }
+				if (state.developer && parsed.user && parsed.user !== state.developer) throw new Error(`Developer conflict: actual ${state.developer}; requested ${parsed.user}. Existing identity preserved.`);
+				if (state.state === "unsupported") { notify(resourceStatus(state.root), "error"); return; }
+				if (state.state === "ready" && parsed.user) { notify(statusSummary(state) + "\nAlready ready; no files changed."); return; }
+				const menu = ["Update project resources", "Repair missing resources", "View project status", "Cancel"];
+				if (state.state !== "fresh" && state.state !== "incomplete" && state.state !== "supported") {
+					const choice = await ctx.ui.select(statusSummary(state), menu);
+					if (choice === "View project status") { notify(resourceStatus(state.root)); return; }
+					if (choice === "Update project resources" || choice === "Repair missing resources") {
+						const update = resourcePlan(state.root, choice === "Update project resources" ? "update" : "repair");
+						if (update.report.conflicts.length) throw new Error(`Modified managed files are preserved: ${update.report.conflicts.join(", ")}`);
+						if (!update.changes.length && update.manifest.runtimeReleaseId === update.report.installed) { notify(resourceStatus(state.root) + "\nNo updates or repairs required."); return; }
+						const summary = [`Project: ${state.root}`, ...update.changes.map(c => `${c.before ? "Update" : "Restore"}: ${c.path}`), "Identity, tasks, journals and user-modified documents remain unchanged."].join("\n");
+						if (await ctx.ui.confirm("Confirm project resource changes", summary) !== true) return;
+						applyResourcePlan(update); notify(resourceStatus(state.root)); await refresh(ctx, state.root); await ctx.reload(); return;
+					}
 					return;
 				}
 				if (!["fresh", "supported", "incomplete"].includes(state.state)) { notify(statusSummary(state), "error"); return; }
 				const action = state.state === "fresh" ? "Initialize project" : state.state === "incomplete" ? "Retry interrupted initialization" : "Set up developer identity";
 				const choice = await ctx.ui.select(statusSummary(state), [action, ...(state.state !== "fresh" ? ["View project status"] : []), "Cancel"]);
-				if (choice === "View project status") { notify(statusSummary(state)); return; }
+				if (choice === "View project status") { notify(resourceStatus(state.root)); return; }
 				if (choice !== action) return;
 				const user = parsed.user ?? await chooseUsername(state, ctx);
 				if (user === undefined) return;

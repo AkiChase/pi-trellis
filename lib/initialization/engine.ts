@@ -117,7 +117,7 @@ function checkFingerprint(value: Fingerprint | null): void {
 	fields(value, ["sha256", "mode"], "fingerprint");
 	if (typeof value.sha256 !== "string" || value.sha256.length !== 64 || !/^[a-f0-9]{64}$/.test(value.sha256) || !Number.isInteger(value.mode) || value.mode < 0 || value.mode > 0o777) throw new Error("Invalid fingerprint");
 }
-function packageResources(): InstalledManifest["files"] {
+export function packageResources(): InstalledManifest["files"] {
 	const files: InstalledManifest["files"] = {};
 	for (const [path, record] of Object.entries(runtimeBaseline().files)) {
 		const source = `runtime/${path}`;
@@ -131,7 +131,7 @@ function packageResources(): InstalledManifest["files"] {
 	}
 	return files;
 }
-function defaultTemplates(): Record<string, Fingerprint & { origin: "package-default"; source: string }> {
+export function defaultTemplates(): Record<string, Fingerprint & { origin: "package-default"; source: string }> {
 	return Object.fromEntries(Object.entries(templateTargets).map(([source, target]) => [target, {
 		origin: "package-default", sha256: digest(template(source)), mode: 0o644, source: `resources/templates/${source}`,
 	}]));

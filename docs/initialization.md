@@ -5,8 +5,29 @@
 `/trellis-init [--user <name>] [--check | --help]` is registered even without a
 `.trellis` directory. Only native UI confirmation authorizes publication; no-UI
 invocation returns a custom status message without a model turn or writes.
-Unknown/repeated/missing parameters fail first. No force, general upgrade or
-non-interactive write protocol is provided.
+Unknown/repeated/missing parameters fail first. No force, arbitrary upstream
+migration or non-interactive write protocol is provided.
+
+## Managed resource updates and useful status
+
+An initialized project exposes `Update project resources`, `Repair missing resources`,
+`View project status`, and `Cancel`. Resource status lists installed/available runtime
+IDs and individual missing, modified, current, safe-update and preserved-document paths;
+it is not merely a duplicate of the menu summary. Skills load from the installed package.
+
+`lib/initialization/resources.ts` builds a read-only update/repair preview. Only files
+matching their recorded installed fingerprint can be updated; missing owned files can
+be restored. Modified runtime/role files block publication rather than being overwritten.
+Untouched package-default documents can update, while customized/default or originally
+preserved documents remain user content. Existing identity, tasks, logs, session state
+and bootstrap/onboarding tasks are not recreated. Unknown inventory/schema requires
+explicit reconciliation; this is not a general legacy migration API.
+
+Publication requires confirmation, locks and fresh rechecks, and writes the manifest
+last. It is per-file atomic, not a multi-file transaction: interrupted writes are retained;
+retry accepts exact new package bytes as already applied, not arbitrary changes. Old
+completed init records are retained as audit history outside live initialization recovery.
+Successful changes refresh host state and reload resources. `--check` is read-only.
 
 `lib/initialization/engine.ts` owns read-only `inspect()` / `plan()` and approved
 `apply()`. Package runtime source remains in `runtime/`; no external CLI or

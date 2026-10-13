@@ -36,7 +36,9 @@ identity/workspace and `00-bootstrap-guidelines`. It selects no active task and 
 hooks, model turn, Git action or dependency installation. Supported clones missing local
 identity can reuse historical usernames/journals and create/reuse `00-join-<slug>`;
 existing different identity is a conflict, not a silent switch. No frontend/backend rules,
-project-type detection, multiple-package setup, remote templates or general upgrades.
+project-type detection, multiple-package setup, remote templates or arbitrary upstream migration.
+Existing managed projects can review resource updates or restore missing resources
+through `/trellis-init`. Status shows per-file health and installed/available versions.
 
 `.trellis/.pi-trellis.json` records the installed runtime release, hashes/modes and resource
 provenance separately from the package baseline. Unknown collisions and customized root
@@ -81,7 +83,7 @@ Explicit `/trellis-init` publishes the bundled `trellis-implement.md`, `trellis-
 - **check** reviews committed changes against an explicit review base, staged/unstaged changes and new files; fixes clear issues within scope and reruns validation on the final version. It is not a read-only audit agent.
 - **research** reads code and documentation and writes findings only under the active task's `research/` directory. Standalone read-only exploration can still happen in the main session without creating a task.
 
-**Edit those files freely.** A file whose content no longer matches the recorded hash is never overwritten — that is the supported way to customize an agent for your project. New package versions do not silently replace even untouched definitions; general upgrade is not part of init. Existing customized files are preserved, so inspect them if they still contain the old read-only check/research rules.
+**Edit those files freely.** A file whose content no longer matches the recorded hash is never overwritten — that is the supported way to customize an agent for your project. New package versions do not silently replace definitions; `/trellis-init` can review updates to recorded, unmodified resources. Existing customized files are preserved, so inspect them if they still contain the old read-only check/research rules.
 
 Whether they belong in git is your call:
 
@@ -188,6 +190,34 @@ stacked, up to ten lines across all extensions.
 
 `TRELLIS_PI_STATUS=off` and unsupported projects draw nothing. Context injection
 is unaffected either way — the display is just a display.
+
+## Browse task documents
+
+Run `/trellis-task` in Pi's interactive terminal to open a read-only task list,
+with or without a current session task. It reads project task files directly;
+no deployed scripts, model request, task start/switch, or file writes are needed.
+Non-archived tasks (including completed records still in the active store) are
+shown with status colors, parent/child tree lines, and `*` for the current task.
+This browser is separate from the persistent unfinished-task count above.
+
+- **List:** Up/Down selects, Enter opens details, Esc closes. PageUp/PageDown
+  moves by a page. Returning from detail preserves list selection and position.
+- **Detail:** Left/Right switches Overview, PRD, Design, and Implement;
+  Up/Down and PageUp/PageDown scroll the bounded content area. Full titles and
+  paths wrap inside that area. Esc returns to the list.
+- **Refresh:** `r` rereads task records, current-session identity, and documents.
+  Missing, empty, removed, unreadable, and invalid data have distinct notices;
+  incomplete enumeration is not reported as an empty project.
+
+Application labels are English; task titles and document text retain their
+original language. Documents use Pi's active Markdown theme for headings,
+lists/checklists, emphasis, code, quotes, links, and wrapping tables. Images
+remain readable Markdown source (alt text and URL); HTML and diagrams remain
+text rather than executing or fetching resources. Files must be UTF-8 regular
+files inside the selected task directory (safe local symlinks are allowed);
+documents over 2 MiB show a diagnostic instead of a truncated success. RPC,
+print, and JSON modes explain that custom terminal browsing is unavailable.
+Search, editing, lifecycle actions, and archive browsing are not included.
 
 ## Design notes
 

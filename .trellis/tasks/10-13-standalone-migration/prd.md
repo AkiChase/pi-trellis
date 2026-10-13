@@ -24,3 +24,7 @@
 ## 规划状态
 
 子任务 PRD/design/implement/context 已建立；按父任务统一授权与依赖顺序自主实施，进入阶段前仍检查规格、范围和真实交付。
+
+## 用户批准的资源维护补充
+
+已批准由主会话补充已初始化项目的 Update project resources / Repair missing resources。只有受管未修改文件可更新，缺失文件可恢复；用户修改文档/角色不覆盖，身份任务日志不重置。View project status改为每文件健康与安装/可用版本报告，不重复简略菜单状态。此补充属于本发行版维护，不开放任意上游项目迁移。

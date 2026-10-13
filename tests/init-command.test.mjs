@@ -60,3 +60,10 @@ test('username completion quotes Unicode/spaces/quotes reversibly and requires n
  try {const items=await f.commands.get('trellis-init').getArgumentCompletions('--user A');assert.equal(items.length,1);assert.equal(parseInitArguments(items[0].value).user,'A "Quoted" 名字');}finally{process.chdir(cwd);}
  assert.equal(existsSync(join(f.root,'.trellis/.developer')),false);
 });
+
+test('resource management menu repairs with confirmation and status contains per-file health',async t=>{
+ const f=fixture(t);apply(plan(f.root,'Dev'));rmSync(join(f.root,'.trellis/scripts/task.py'));
+ f.selections.push('View project status');await f.run('');assert.match(f.notices.at(-1).text,/Missing — repair/);
+ f.selections.push('Repair missing resources');f.ctx.ui.confirm=async()=>false;await f.run('');assert.equal(existsSync(join(f.root,'.trellis/scripts/task.py')),false);
+ f.selections.push('Repair missing resources');f.ctx.ui.confirm=async()=>true;await f.run('');assert.ok(existsSync(join(f.root,'.trellis/scripts/task.py')));assert.match(f.notices.at(-1).text,/Current: .trellis\/scripts\/task.py/);
+});
