@@ -85,3 +85,25 @@ Kept widget/footer visible without an active task, added themed unfinished proje
 ### Status
 
 [OK] **Completed**
+
+
+## Session 4: Worktree 材料同步与渐进式协议
+<!-- trellis-session: v=2 fp=f6fd5f689e5c068b -->
+
+**Date**: 2026-10-13
+**Task**: Worktree 材料同步与渐进式协议
+**Branch**: `main`
+
+### Summary
+
+完成原生 Python prepare 快照、refresh/collect、材料新鲜度及版本化检查，overview 按需协议引用并区分主子角色；独立check修复身份/overlay/软链接/特殊文件边界，主会话全量144/144，Python18/18，未部署重载或推送。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f965687` | feat: synchronize worktree task materials and disclose execution protocol |
+
+### Status
+
+[OK] **Completed**
