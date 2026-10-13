@@ -133,3 +133,25 @@ Kept widget/footer visible without an active task, added themed unfinished proje
 ### Status
 
 [OK] **Completed**
+
+
+## Session 6: Trellis workflow 轻量执行与阶段提交
+<!-- trellis-session: v=2 fp=cfe8116c5db339c5 -->
+
+**Date**: 2026-10-14
+**Task**: Trellis workflow 轻量执行与阶段提交
+**Branch**: `main`
+
+### Summary
+
+同步英文内置与项目workflow；实施/检查分别选择，本地阶段提交默认允许且可opt-out；skills职责收敛，最终336/336测试通过；归档adaptive-execution，不push/install/reload。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0eafefb` | feat: streamline Trellis execution and stage commit workflow |
+
+### Status
+
+[OK] **Completed**
