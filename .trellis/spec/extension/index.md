@@ -11,6 +11,7 @@ Use this layer for `extensions/trellis.ts`, `lib/*.ts`, runtime integration test
 | [Architecture](architecture.md) | Entrypoint/module ownership, configuration, paths, types and failure boundaries |
 | [Session and Context](session-and-context.md) | Session keys, CLI provenance, child pointers, JSONL materials and injection lifecycle |
 | [Worktree Lifecycle](worktree-lifecycle.md) | Preview/confirm, persistent bindings, preparation, RPC occupancy and cleanup |
+| [Task Browser](task-browser.md) | Read-only command, bounded task/document reads, native Markdown and keyboard viewport contracts |
 | [Quality Guidelines](quality-guidelines.md) | Fixtures, preservation assertions, test environment and verification limits |
 
 ## Pre-Development Checklist

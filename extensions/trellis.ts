@@ -29,6 +29,8 @@ import { registerDispatchTool } from "../lib/subagent-rpc.ts";
 import { readBinding, readMarker } from "../lib/bindings.ts";
 import { containsPath } from "../lib/config.ts";
 import { registerInitCommand } from "../lib/initialization/command.ts";
+import { registerTaskBrowserCommand } from "../lib/task-browser/command.ts";
+import { readCurrentTaskIdentity } from "../lib/task-browser/reader.ts";
 import { checkedPath, verifyRuntime } from "../lib/initialization/engine.ts";
 
 /** The slice of pi's Theme this extension uses. Narrow on purpose: `ctx.ui.theme` is always present, even in the no-op UI. */
@@ -871,6 +873,10 @@ export default function (pi: ExtensionAPI): void {
 		contextCache.clear(); taskCache.clear(); taskErrors.clear(); workflowCache.delete(root);
 		sectionCache.clear(); lastStateSent.clear();
 		await refreshDisplay(ctx);
+	});
+	registerTaskBrowserCommand(pi, {
+		findRoot,
+		currentTask: (root, ctx) => readCurrentTaskIdentity(root, contextKey(root, ctx)),
 	});
 	registerDispatchTool(pi, async (ctx) => {
 		const current = session(ctx);

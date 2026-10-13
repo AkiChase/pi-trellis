@@ -215,8 +215,10 @@ lists/checklists, emphasis, code, quotes, links, and wrapping tables. Images
 remain readable Markdown source (alt text and URL); HTML and diagrams remain
 text rather than executing or fetching resources. Files must be UTF-8 regular
 files inside the selected task directory (safe local symlinks are allowed);
-documents over 2 MiB show a diagnostic instead of a truncated success. RPC,
-print, and JSON modes explain that custom terminal browsing is unavailable.
+records are limited to 1 MiB and documents to 2 MiB, with diagnostics instead of
+truncated success. If host Markdown rendering fails, the complete document
+source remains scrollable with an English warning. RPC, print, and JSON modes
+explain that custom terminal browsing is unavailable.
 Search, editing, lifecycle actions, and archive browsing are not included.
 
 ## Design notes
