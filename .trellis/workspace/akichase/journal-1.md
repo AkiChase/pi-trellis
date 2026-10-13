@@ -41,3 +41,25 @@ Committed Trellis initialization and source-backed extension/scripts/shared spec
 ### Next Steps
 
 - No product code changes, installation or push performed
+
+
+## Session 2: 原生 Python Worktree CLI 重构
+<!-- trellis-session: v=2 fp=09b03f2a55c8113a -->
+
+**Date**: 2026-10-13
+**Task**: 原生 Python Worktree CLI 重构
+**Branch**: `main`
+
+### Summary
+
+将混合 worktree 工具迁移为原生 Python 管理 CLI 与受保护的项目脚本部署，保留 Pi 宿主派发/停止及独立上下文；独立审查修复记录、Git 环境和派发竞态问题，最终全量88/88通过。用户批准当前本地实施、提交及归档；未push、真实部署/重载或恢复monitor。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `45d67f9` | feat: replace worktree tool with native Python CLI |
+
+### Status
+
+[OK] **Completed**
