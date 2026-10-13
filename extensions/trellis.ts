@@ -215,11 +215,17 @@ function runScript(
 	args: string[],
 	timeoutMs = 15000,
 ): Promise<{ code: number; stdout: string } | undefined> {
+	return runPython(root, key, [scriptPath(root, script), ...args], timeoutMs);
+}
+
+function runPython(
+	root: string, key: string, args: string[], timeoutMs = 15000,
+): Promise<{ code: number; stdout: string } | undefined> {
 	return new Promise((done) => {
 		try {
 			execFile(
 				PYTHON,
-				[scriptPath(root, script), ...args],
+				args,
 				{
 					cwd: root,
 					timeout: timeoutMs,
@@ -335,8 +341,10 @@ async function resolveActiveTask(root: string, key: string): Promise<ActiveTask 
 	if (!result) return undefined;
 	const data = parseJson<{
 		current_task?: { dir?: unknown; status?: unknown; title?: unknown; children?: unknown } | null;
+		source?: unknown; stale?: unknown; error?: unknown;
 	}>(result.stdout);
-	const task = data?.current_task;
+	if (result.code !== 0 || data?.source !== `session:${key}` || data.stale || data.error) return undefined;
+	const task = data.current_task;
 	if (!task || typeof task.dir !== "string") return undefined;
 	resolveTaskPath(root, task.dir);
 	return {
@@ -769,18 +777,29 @@ function session(ctx: ExtensionContext): Session | undefined {
 	return { root, key, cacheKey: `${sessionIdentity(root, ctx)}::${key}`, identity: sessionIdentity(root, ctx) };
 }
 
+async function inheritDispatchTask(current: Session, taskDir: string): Promise<void> {
+	// The dispatch context is provenance, not permission to clear its pointer.
+	// Even a process-wide pinned parent id must not pin a dispatched child.
+	// Isolate before validation so a failed binding cannot fall back to its parent.
+	const key = `pi-child-${shortHash(current.identity)}`;
+	keyBySession.set(current.identity, key);
+	invalidateTask(current.root, key);
+	resolveTaskPath(current.root, taskDir);
+	readTaskRecord(current.root, taskDir);
+	const result = await runPython(current.root, key, ["-c", [
+		"import sys",
+		"from pathlib import Path",
+		"sys.path.insert(0, str(Path.cwd() / '.trellis/scripts'))",
+		"from common.active_task import set_active_task",
+		"active = set_active_task(sys.argv[1], Path.cwd())",
+		"sys.exit(0 if active and active.task_path == sys.argv[1] else 1)",
+	].join("\n"), taskDir]);
+	if (!result || result.code !== 0) throw new Error("Could not bind dispatched task to child session; no parent context inherited");
+	invalidateTask(current.root, key);
+}
+
 async function sessionTask(current: Session): Promise<ActiveTask | undefined> {
-	const explicit = taskBySession.get(current.identity);
-	if (!explicit) return readActiveTask(current.root, current.key);
-	try {
-		const record = readTaskRecord(current.root, explicit);
-		return {
-			dir: explicit, status: typeof record.status === "string" ? record.status : "task_error",
-			title: typeof record.title === "string" ? record.title : undefined,
-			children: Array.isArray(record.children) ? record.children.length : 0,
-			artifacts: readArtifacts(current.root, explicit),
-		};
-	} catch { return undefined; }
+	return readActiveTask(current.root, current.key);
 }
 
 /**
@@ -907,10 +926,9 @@ export default function (pi: ExtensionAPI): void {
 			let current = session(ctx);
 			if (!current) return;
 			const facts = parseDispatchFacts(event.prompt);
-			if (facts) {
-				resolveTaskPath(current.root, facts.taskDir);
+			if (facts && taskBySession.get(current.identity) !== facts.taskDir) {
+				await inheritDispatchTask(current, facts.taskDir);
 				taskBySession.set(current.identity, facts.taskDir);
-				if (facts.contextId) keyBySession.set(current.identity, facts.contextId);
 				current = session(ctx)!;
 			}
 

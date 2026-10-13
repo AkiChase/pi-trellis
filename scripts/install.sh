@@ -15,6 +15,7 @@
 #                       write platform-neutral skills to .agents/skills/ —
 #                       the directory pi discovers natively. Adds a .codex/
 #                       directory to the project.
+#   --no-patch         Skip the default project-local Trellis safety patch.
 #   --check             Run the checks only; do not install anything. Useful
 #                       after the fact to diagnose a project.
 #   --dry-run           Print what would happen, change nothing.
@@ -26,6 +27,9 @@ SOURCE="git:github.com/AkiChase/pi-trellis"
 NEUTRAL_SKILLS=0
 DRY_RUN=0
 CHECK_ONLY=0
+PATCH_TRELLIS=1
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(pwd -P)"
 
 MIN_TRELLIS_MAJOR=0
 MIN_TRELLIS_MINOR=6
@@ -50,6 +54,7 @@ while [ $# -gt 0 ]; do
 		--source) SOURCE="${2:?--source needs a value}"; shift 2 ;;
 		--source=*) SOURCE="${1#*=}"; shift ;;
 		--neutral-skills) NEUTRAL_SKILLS=1; shift ;;
+		--no-patch) PATCH_TRELLIS=0; shift ;;
 		--check) CHECK_ONLY=1; shift ;;
 		--dry-run) DRY_RUN=1; shift ;;
 		-h|--help) awk 'NR>1 && /^#/ { sub(/^# ?/, ""); print; next } NR>1 { exit }' "$0"; exit 0 ;;
@@ -141,7 +146,11 @@ echo
 if [ "$NEUTRAL_SKILLS" = "1" ]; then
 	echo "Writing platform-neutral skills to .agents/skills/ via the Codex configurator..."
 	dim   "    (this is a second \`trellis init\` pass; it also creates .codex/)"
-	run trellis init --codex
+	if [ "$CHECK_ONLY" = "1" ]; then
+		dim "    checks only: not running trellis init --codex"
+	else
+		run trellis init --codex
+	fi
 fi
 
 SKILL_NOTE=""
@@ -160,6 +169,24 @@ if [ -n "$SKILL_NOTE" ]; then
 	amber "  Those were rendered for another platform, so they mention \`/trellis:*\` slash"
 	amber "  commands that do not exist in pi. Read them as \"follow the matching flow in"
 	amber "  .trellis/workflow.md\". For neutral text instead, re-run with --neutral-skills."
+fi
+
+# ---------------------------------------------------------------------------
+# Project-local Trellis safety fixes (no global CLI or worktree preparation changes)
+# ---------------------------------------------------------------------------
+
+if [ "$PATCH_TRELLIS" = "1" ]; then
+	if [ "$CHECK_ONLY" = "1" ]; then
+		if ! "$PYTHON" "$SCRIPT_DIR/patch-trellis.py" --root "$PROJECT_ROOT" --check; then
+			amber "! Trellis safety patch missing or incompatible — rerun the installer to repair it"
+		fi
+	elif [ "$DRY_RUN" = "1" ]; then
+		"$PYTHON" "$SCRIPT_DIR/patch-trellis.py" --root "$PROJECT_ROOT" --dry-run
+	else
+		"$PYTHON" "$SCRIPT_DIR/patch-trellis.py" --root "$PROJECT_ROOT"
+	fi
+else
+	dim "Skipping Trellis safety patch (--no-patch)"
 fi
 
 # ---------------------------------------------------------------------------

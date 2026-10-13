@@ -10,7 +10,8 @@ function setup(t) {
   const root = mkdtempSync(join(tmpdir(), "pi-trellis-integration-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const put = (path, content) => { mkdirSync(join(root, path, ".."), { recursive: true }); writeFileSync(join(root, path), content); };
-  put(".trellis/scripts/task.py", "print('{}')");
+  put(".trellis/scripts/task.py", "import os,json,pathlib\np=pathlib.Path('.trellis/.runtime/sessions')/(os.environ['TRELLIS_CONTEXT_ID']+'.json')\nif 'finish' in __import__('sys').argv:\n p.unlink(missing_ok=True); print('{}')\nelse:\n print('{}')");
+  put(".trellis/scripts/common/active_task.py", "import os,json\nfrom types import SimpleNamespace\ndef set_active_task(task,root):\n p=root/'.trellis/.runtime/sessions'/(os.environ['TRELLIS_CONTEXT_ID']+'.json')\n p.parent.mkdir(parents=True,exist_ok=True)\n p.write_text(json.dumps({'current_task':task}))\n return SimpleNamespace(task_path=task)\n");
   put(".trellis/scripts/get_context.py", "import os,json\nprint(json.dumps({'developer':os.environ.get('TRELLIS_CONTEXT_ID')}))");
   for (const name of ["a", "b"]) {
     const dir = `.trellis/tasks/${name}`;
@@ -41,20 +42,42 @@ test("two sessions in one project keep keys, CLI context cache, and dispatch tas
   assert.match(bi.prompt, /b requirements/); assert.ok(ai.prompt.includes(INJECTED_MARKER));
   assert.equal(process.env.TRELLIS_CONTEXT_ID, before);
 });
-test("child accepts explicit task/context header and uses that task rather than its own pointer", async (t) => {
+test("child binds explicit task under its own key; finish never clears parent and never resurrects task", async (t) => {
   const f = setup(t), parent = f.ctx("parent"), child = f.ctx("child");
   f.pointer(parent, "a"); f.pointer(child, "b");
   const input = { subagent_type: "trellis-implement", prompt: "implement" };
   await f.call(parent, input);
   const sections = {};
   await f.handlers.get("before_agent_start")({ prompt: input.prompt, systemPromptOptions: { sections } }, child);
-  assert.equal(__internals.contextKey(f.root, child), __internals.contextKey(f.root, parent));
+  const parentKey = __internals.contextKey(f.root, parent);
+  const childKey = __internals.contextKey(f.root, child);
+  assert.notEqual(childKey, parentKey);
+  assert.equal(JSON.parse(readFileSync(join(f.root, `.trellis/.runtime/sessions/${childKey}.json`))).current_task, '.trellis/tasks/a');
   assert.match(f.messages.at(-1).content, /Active task: .trellis\/tasks\/a/);
   assert.ok(!Object.hasOwn(sections, "trellis-workflow"));
   const shell = { command: "python3 .trellis/scripts/task.py current --source" };
   await f.call(child, shell, "bash");
-  assert.ok(shell.command.startsWith(`export TRELLIS_CONTEXT_ID=${__internals.contextKey(f.root, parent)}\n`));
+  assert.ok(shell.command.startsWith(`export TRELLIS_CONTEXT_ID=${childKey}\n`));
+  rmSync(join(f.root, `.trellis/.runtime/sessions/${childKey}.json`));
+  await f.handlers.get('tool_result')({toolName:'bash',input:{command:'task.py finish'}},child);
+  await f.handlers.get('before_agent_start')({prompt:input.prompt,systemPromptOptions:{sections:{}}},child);
+  assert.match(f.messages.at(-1).content, /No active task/i);
+  assert.equal(JSON.parse(readFileSync(join(f.root, `.trellis/.runtime/sessions/${parentKey}.json`))).current_task,'.trellis/tasks/a');
 });
+test("failed child binding isolates key before error; parent pointer is never inherited", async t => {
+  const f = setup(t), parent = f.ctx('owner'), child = f.ctx('failed-child');
+  f.pointer(parent,'a');
+  const parentKey = __internals.contextKey(f.root,parent);
+  f.put('.trellis/scripts/common/active_task.py', 'raise RuntimeError("binding unavailable")');
+  await f.handlers.get('before_agent_start')({prompt:`Active task: .trellis/tasks/a\nTrellis context id: ${parentKey}\n\nwork`,systemPromptOptions:{sections:{}}},child);
+  const childKey = __internals.contextKey(f.root,child);
+  assert.notEqual(childKey,parentKey);
+  const shell = {command:'task.py finish'};
+  await f.call(child,shell,'bash');
+  assert.ok(shell.command.startsWith(`export TRELLIS_CONTEXT_ID=${childKey}\n`));
+  assert.equal(JSON.parse(readFileSync(join(f.root,`.trellis/.runtime/sessions/${parentKey}.json`))).current_task,'.trellis/tasks/a');
+});
+
 test("explicit dispatch task overrides current pointer; quoted pointers and supplied markers cannot bypass loading", async (t) => {
   const f = setup(t), ctx = f.ctx("parent"); f.pointer(ctx, "a");
   const input = { subagent_type: "trellis-implement", prompt: "Active task: .trellis/tasks/b\n\nImplement b" };
@@ -99,4 +122,33 @@ test("hash-guard deployment updates untouched old copies and preserves user cust
   assert.match(readFileSync(join(f.root, ".pi/agents/trellis-check.md"), "utf8"), /Check Agent/);
   assert.equal(readFileSync(join(f.root, ".pi/agents/trellis-research.md"), "utf8"), "user customized research");
   assert.match(readFileSync(join(f.root, ".pi/agents/trellis-implement.md"), "utf8"), /Implement Agent/);
+});
+
+for (const source of ['session-fallback:foreign', 'session:foreign', undefined]) {
+  test(`foreign or missing CLI source (${source}) never enters task state or dispatch materials`, async t => {
+    const f = setup(t), ctx = f.ctx('empty');
+    const display = [];
+    ctx.hasUI = true;
+    ctx.ui = { theme: { fg: (_color,text) => text, bold: text => text }, setWidget: (_key,lines) => display.push(lines), setStatus: (_key,value) => display.push(value) };
+    f.put('.trellis/scripts/task.py', `print(${JSON.stringify(JSON.stringify({current_task:{dir:'.trellis/tasks/b',status:'in_progress'},source}))})`);
+    await f.handlers.get('before_agent_start')({prompt:'inspect',systemPromptOptions:{sections:{}}},ctx);
+    await f.handlers.get('agent_end')({},ctx);
+    assert.ok(display.length > 0);
+    assert.ok(display.every(value => value === undefined));
+    assert.doesNotMatch(f.messages.at(-1).content, /Active task: .trellis\/tasks\/b/);
+    const input = {subagent_type:'trellis-implement',prompt:'work'};
+    await f.call(ctx,input);
+    assert.doesNotMatch(input.prompt,/b requirements|Active task: .trellis\/tasks\/b/);
+  });
+}
+
+test('matching CLI session source is accepted; stale and errored tasks are rejected', async t => {
+  for (const extra of [{}, {stale:true}, {error:{reason:'invalid_json'}}]) {
+    const f = setup(t), ctx = f.ctx('matching');
+    const key = __internals.contextKey(f.root,ctx);
+    f.put('.trellis/scripts/task.py', `print(${JSON.stringify(JSON.stringify({current_task:{dir:'.trellis/tasks/a',status:'in_progress'},source:`session:${key}`,...extra}))})`);
+    const input = {subagent_type:'trellis-implement',prompt:'work'};
+    await f.call(ctx,input);
+    assert.equal(input.prompt.includes('a requirements'), !extra.stale && !extra.error);
+  }
 });

@@ -10,7 +10,7 @@ It replaces the pi adapter layer that `trellis init --pi` generates with one ins
 |---|---|
 | **Task context injection** | Adds `session-overview` and `trellis-workflow` sections to the system prompt, plus a per-turn task-state message. The model knows the active task, its status, and the workflow breadcrumb without reading a single file. |
 | **Task display** | A themed line above the editor: `▸ trellis · 00-bootstrap-guidelines · in_progress · prd ✓ design · impl ·`, refreshed when a session starts, when a turn ends, and immediately after any `task.py` call. Switch it to the footer chip or turn it off with `TRELLIS_PI_STATUS`. |
-| **Session isolation** | Derives a separate `TRELLIS_CONTEXT_ID` per session/root and passes it explicitly to CLI/bash calls. Child sessions bind the dispatch's task/context facts; no shared-process environment mutation. |
+| **Session isolation** | Derives a separate `TRELLIS_CONTEXT_ID` per session/root and passes it explicitly to CLI/bash calls. Dispatched children bind the explicit task under their own key without lifecycle hooks; they never reuse the dispatcher's pointer. No shared-process environment mutation. |
 | **Subagent context** | Claude-based `trellis-implement`, `trellis-check`, and `trellis-research` agents adapted for Pi. Ordinary `Agent` dispatch loads role JSONL references and task artifacts with byte budgets and fallback diagnostics. |
 | **Skill bridge** | Points pi at the Trellis skills already on disk (`.claude/skills/trellis-*` and friends), which pi otherwise cannot see. No files are copied. |
 
@@ -29,7 +29,7 @@ pi install -l --approve git:github.com/AkiChase/pi-trellis
 pi
 ```
 
-That is the whole install. The repository also ships a script that does the
+That installs the extension only. For the default project-local Trellis safety patch, use the repository's installer below. It also does the
 preflight `pi install` cannot — verifying pi, the Trellis version, python3 and
 `.trellis/scripts/`, probing `get_context.py`, reporting which skill directory
 will be bridged, and warning when the project also carries a generated
@@ -48,8 +48,13 @@ git clone --depth 1 https://github.com/AkiChase/pi-trellis /tmp/pi-trellis
 |---|---|
 | `--source <spec>` | What to install. Defaults to the git source; pass a path for a local checkout. |
 | `--neutral-skills` | Also run `trellis init --codex` so Trellis writes platform-neutral skills to `.agents/skills/`, the directory pi discovers natively. Adds a `.codex/` directory. |
-| `--check` | Run the checks only, install nothing. Use it to diagnose an existing project. |
+| `--no-patch` | Skip the default project-local Python safety patch. |
+| `--check` | Run the checks only, including patch status; install/write nothing. Use it to diagnose an existing project. |
 | `--dry-run` | Print what would happen, change nothing. |
+
+The installer patches only `.trellis/scripts/common/active_task.py`: an identified session with no pointer returns no task, single-session inference becomes opt-in for unidentified read-only callers, and `finish` deletes only the current session's pointer. Failed deletion never authorizes an `after_finish` hook. Reinstallation is idempotent; unknown code fails before any script replacement. The patch uses Python's standard library, validates syntax and preserves permissions. No global Trellis files are changed. `--dry-run` previews without writing; `--no-patch` skips this step. Commit the resulting project script changes as part of your baseline. Worktree preparation neither patches nor copies scripts.
+
+The extension also rejects CLI task results unless their source is exactly `session:<current context id>` and they are neither stale nor errored. This protection remains active with `--no-patch` or direct `pi install`; it does not fix direct calls to an unpatched `task.py finish`. After `trellis update`, rerun the installer/check if the script was replaced. Uninstalling the extension does not undo project script changes.
 
 Uninstall:
 
