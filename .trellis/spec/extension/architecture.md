@@ -2,7 +2,7 @@
 
 ## Scope and Ownership
 
-`package.json` declares `type: module`, one Pi extension (`extensions/trellis.ts`), and a Pi peer dependency. TypeScript modules use explicit `.ts` imports and Node built-ins; host API imports are type-only. There is no frontend build, service layer, or database in this package.
+`package.json` declares `type: module`, one Pi extension (`extensions/trellis.ts`), and host-provided Pi peers. TypeScript modules use explicit `.ts` imports and Node built-ins; coding-agent API imports are type-only, while `@earendil-works/pi-tui` provides runtime `visibleWidth()` / `truncateToWidth()` utilities. There is no frontend build, service layer, or database in this package.
 
 | Repository-root path | Owner |
 | --- | --- |
@@ -46,6 +46,13 @@ Evidence: `tests/worktree.test.mjs` and `tests/worktree-cli.test.mjs` cover conf
 Cosmetic/discovery failures in the entrypoint degrade: no project/scripts means no session adaptation, unusable optional context warns in UI, and display exceptions clear the display. This is **not** the worktree safety policy. Invalid bindings, target identity, conflicting materials or RPC uncertainty must remain visible and fail conservatively; do not convert them into source fallback or success.
 
 Use `execFile()` / Python `subprocess` argument arrays for subprocesses. `records.py:git_environment()` copies the environment, removes inherited `GIT_*` overrides and sets `GIT_OPTIONAL_LOCKS=0`; both Git operations and target `task.py`/hooks use it so parent index/repository overrides cannot redirect an operation. It does not modify the parent environment. Binding JSON uses exclusive temporary files and rename; the source lock uses `wx` and never guesses that an existing lock is stale.
+
+## Task Display Contract
+
+- `readUnfinishedTaskCount(root): number | undefined` rereads immediate project task directories on existing display refresh events. Exclude completed records and canonical archive descendants, deduplicate canonical aliases, and retain task-store containment validation. Unreadable/invalid enumeration yields unknown, not a partial or verified zero.
+- Widget mode renders `▸ trellis(N)` without a session task and adds existing task details when active. Positive counts use `accent`, zero `dim`, unknown `(?)` `muted`. Footer follows the same count semantics; `off` and unsupported projects clear the display.
+- Footer clipping uses host `visibleWidth()` / `truncateToWidth()` before theming, with a 34-terminal-column budget. Sanitize control input, preserve the count and fitting name/status, and cap long content. Byte length is not terminal width: `trellis(3): current ▸ in_progress` fits at 33 columns and must not become `cur…`.
+- `tests/task-display.test.mjs` asserts count filtering/alias behavior, persistence/refresh transitions, theme/error degradation and Unicode/control width bounds. Production resolves TUI through the Pi loader; direct-TS tests use the real peer via the test-only preload documented in [Quality Guidelines](quality-guidelines.md).
 
 ## Review Pitfalls
 

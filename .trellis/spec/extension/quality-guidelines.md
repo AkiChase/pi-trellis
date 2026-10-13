@@ -2,15 +2,15 @@
 
 ## Available Checks and Their Limits
 
-`package.json` defines `npm test` as `node --test tests/*.test.mjs`. Tests directly import `.ts` modules; Node v24.14.1 is the verified local environment for this bootstrap. TypeScript execution is **not** a full static type check. There is no package lint or typecheck command; report these as unavailable rather than inventing scripts or marking them passed.
+`package.json` defines `npm test` as `node --import ./tests/host-tui.mjs --test tests/*.test.mjs`. Tests directly import `.ts` modules; Node v24.14.1 is the verified local environment. The preload resolves the real `@earendil-works/pi-tui` peer locally, or from `PI_TRELLIS_TEST_HOST` (an installed Pi `node_modules` directory). Set that variable in the test subprocess when local peers are absent; no install is needed. Missing resolution fails with an actionable error, not a mock-width fallback. TypeScript execution is **not** a full static type check. There is no package lint or typecheck command; report these as unavailable rather than inventing scripts or marking them passed.
 
 ```bash
 node --version
 # From repository root, without an intentional inherited identity pin:
 env -u TRELLIS_CONTEXT_ID npm test
 # Focused examples:
-env -u TRELLIS_CONTEXT_ID node --test tests/task-context.test.mjs tests/agent-context-integration.test.mjs
-node --test tests/worktree.test.mjs tests/preparation.test.mjs tests/dispatch.test.mjs
+env -u TRELLIS_CONTEXT_ID node --import ./tests/host-tui.mjs --test tests/task-context.test.mjs tests/agent-context-integration.test.mjs tests/task-display.test.mjs
+node --import ./tests/host-tui.mjs --test tests/worktree.test.mjs tests/preparation.test.mjs tests/dispatch.test.mjs
 ```
 
 Use plain `npm test` when the invoking environment has no `TRELLIS_CONTEXT_ID` pin. `extensions/trellis.ts` captures a caller pin at module load; `tests/agent-context-integration.test.mjs` verifies derived distinct session keys. Running that suite from a pinned Trellis host can intentionally give simulated parent sessions the same key. Unset the variable **only for the test subprocess**, not the live host, global `process.env`, user config or session pointer. Record raw pinned and clean-subprocess results separately; such a failure is not by itself evidence of a runtime isolation bug.
@@ -34,6 +34,7 @@ Integration fixtures model documented Python `start/current` or `set_active_task
 
 | Test file | What to verify when editing |
 | --- | --- |
+| `tests/task-display.test.mjs` | Persistent task-less display, count/completion/archive/alias filtering, theme/unknown fallback, lifecycle refresh, Unicode/control footer column bounds with real host TUI helpers |
 | `tests/task-context.test.mjs` | Role lists/artifact order, dedup, directories/cycles, invalid/empty records, traversal/symlinks, UTF-8/byte caps, same-mtime rereads, marker ownership and bounded diagnostics |
 | `tests/agent-context-integration.test.mjs` | Session/CLI isolation, child bind/finish/non-resurrection, failed binding, ordinary Agent gates, foreign CLI provenance and deployment customization preservation |
 | `tests/worktree.test.mjs` | Preview no-write behavior, pinned baseline, source staged/unstaged/untracked/index preservation, bind identity, config reuse, lock/cancel and retained error records |

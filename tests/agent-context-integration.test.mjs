@@ -134,7 +134,8 @@ for (const source of ['session-fallback:foreign', 'session:foreign', undefined])
     await f.handlers.get('before_agent_start')({prompt:'inspect',systemPromptOptions:{sections:{}}},ctx);
     await f.handlers.get('agent_end')({},ctx);
     assert.ok(display.length > 0);
-    assert.ok(display.every(value => value === undefined));
+    assert.ok(display.some(value => Array.isArray(value) && value[0] === '▸ trellis(2)'));
+    assert.ok(display.every(value => value === undefined || (Array.isArray(value) && value[0] === '▸ trellis(2)')));
     assert.doesNotMatch(f.messages.at(-1).content, /Active task: .trellis\/tasks\/b/);
     const input = {subagent_type:'trellis-implement',prompt:'work'};
     await f.call(ctx,input);

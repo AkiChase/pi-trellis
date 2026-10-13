@@ -9,7 +9,7 @@ It replaces the pi adapter layer that `trellis init --pi` generates with one ins
 | | |
 |---|---|
 | **Task context injection** | Adds `session-overview` and `trellis-workflow` sections to the system prompt, plus a per-turn task-state message. The model knows the active task, its status, and the workflow breadcrumb without reading a single file. |
-| **Task display** | A themed line above the editor: `▸ trellis · 00-bootstrap-guidelines · in_progress · prd ✓ design · impl ·`, refreshed when a session starts, when a turn ends, and immediately after any `task.py` call. Switch it to the footer chip or turn it off with `TRELLIS_PI_STATUS`. |
+| **Task display** | A persistent themed line above the editor: `▸ trellis(3) · 00-bootstrap-guidelines · in_progress · prd ✓ design · impl ·`. Shows the project-wide unfinished task count even without an active session task, refreshed when a session starts, when a turn ends, and immediately after a `task.py` bash result. Switch it to the footer chip or turn it off with `TRELLIS_PI_STATUS`. |
 | **Session isolation** | Derives a separate `TRELLIS_CONTEXT_ID` per session/root and passes it explicitly to CLI/bash calls. Dispatched children bind the explicit task under their own key without lifecycle hooks; they never reuse the dispatcher's pointer. No shared-process environment mutation. |
 | **Subagent context** | Claude-based `trellis-implement`, `trellis-check`, and `trellis-research` agents adapted for Pi. Ordinary `Agent` dispatch loads role JSONL references and task artifacts with byte budgets and fallback diagnostics. |
 | **Skill bridge** | Points pi at the Trellis skills already on disk (`.claude/skills/trellis-*` and friends), which pi otherwise cannot see. No files are copied. |
@@ -161,13 +161,27 @@ Pass this to `trellis_dispatch`; use its returned ID with existing result and st
 
 ## Where the task display goes
 
+In a supported Trellis project, the display stays visible even when this
+session has no active task: `▸ trellis(3)`. The tightly appended count includes
+all unfinished task records immediately under `.trellis/tasks/`, including
+parent and child tasks once each, regardless of assignee or session. Completed
+records and `archive/` are excluded; the project's explicit top-level task-store
+symlink is supported. Positive counts use `accent`, zero uses `dim`. Unreadable
+or invalid count data shows muted `(?)`, not a verified zero. The count is read
+from disk on existing refresh events; there is no polling or file watching.
+
 The default is a **widget**: its own row above the editor, drawn with your
-theme's colors, with the task name in full and the planning artifacts beside
-it. Status colors carry meaning — `planning` is warning, `in_progress` is
+theme's colors. With an active task, it adds the full task name, status,
+conditional subtask count and planning artifacts after `▸ trellis(N)`.
+Status colors carry meaning — `planning` is warning, `in_progress` is
 accent, `completed` is success, `task_error` is error.
 
-`TRELLIS_PI_STATUS=status` moves it into the footer instead
-(`trellis: 00-bootstr… ▸ in_progress`). That is more compact but shares one
+`TRELLIS_PI_STATUS=status` moves it into the themed footer instead
+(`trellis(3): 00-boot… ▸ in_progress`, or just `trellis(3)` without an active
+task). The chip preserves the count within a compact 34-terminal-column budget,
+using Pi's host-provided `visibleWidth()` / `truncateToWidth()` helpers before
+theming. Fitting names/statuses stay intact, including CJK, combining characters
+and emoji; long names and custom statuses are shortened. It shares one
 line with every other extension that calls `setStatus()`: pi joins those
 statuses with a space, sorts them alphabetically by key, and truncates the
 whole line to the terminal width. Keys never collide — each extension owns its
@@ -175,8 +189,8 @@ own — but width is finite, and `trellis` sorts late enough to be among the
 first to get cut. The widget has no such competition: widgets are keyed and
 stacked, up to ten lines across all extensions.
 
-`TRELLIS_PI_STATUS=off` draws nothing. Context injection is unaffected either
-way — the display is just a display.
+`TRELLIS_PI_STATUS=off` and unsupported projects draw nothing. Context injection
+is unaffected either way — the display is just a display.
 
 ## Design notes
 
@@ -187,8 +201,17 @@ way — the display is just a display.
 
 ## Development checks
 
+Pi supplies `@earendil-works/pi-tui` as a `*` peer dependency; it is not bundled
+or installed separately. Direct-TS tests use the real public TUI export via a
+test-only loader alias, analogous to the provider probe. If local peers are
+absent, point `PI_TRELLIS_TEST_HOST` at an existing Pi `node_modules` directory:
+
 ```bash
+# Omit this variable when the host peer is already locally resolvable.
+export PI_TRELLIS_TEST_HOST=/path/to/installed/pi/node_modules
 env -u TRELLIS_CONTEXT_ID npm test
+# Focused direct-TS tests need the same preload:
+env -u TRELLIS_CONTEXT_ID node --import ./tests/host-tui.mjs --test tests/task-display.test.mjs tests/agent-context-integration.test.mjs
 # Native standard-library unit tests (also included in npm test):
 python3 -B -m unittest discover -s tests/python -p 'test_*.py'
 node scripts/sync-agents.mjs <fixed-version-generated-.claude/agents> --check

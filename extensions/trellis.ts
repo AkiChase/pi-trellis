@@ -18,13 +18,16 @@
 
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { stripVTControlCharacters } from "node:util";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { assembleDispatchPrompt, buildTaskContext, INJECTED_MARKER, isTrellisRole, parseDispatchFacts, readTaskRecord, resolveTaskPath } from "../lib/task-context.ts";
 import { registerDispatchTool } from "../lib/subagent-rpc.ts";
 import { readBinding, readMarker } from "../lib/bindings.ts";
+import { containsPath } from "../lib/config.ts";
 
 /** The slice of pi's Theme this extension uses. Narrow on purpose: `ctx.ui.theme` is always present, even in the no-op UI. */
 type ThemeColorToken = "accent" | "success" | "warning" | "error" | "muted" | "dim" | "text";
@@ -51,8 +54,8 @@ const TASK_TTL_MS = 10000;
 /** Hard cap on the workflow excerpt that enters the system prompt. */
 const WORKFLOW_MAX_CHARS = 14000;
 
-/** Total width budget for the footer status chip, including the `trellis: ` prefix. */
-const STATUS_MAX_CHARS = 34;
+/** Compact footer budget in visible terminal columns, measured before theming. */
+const STATUS_MAX_COLUMNS = 34;
 
 /**
  * Where the active task is shown: `widget` takes its own line above the editor
@@ -356,6 +359,51 @@ async function resolveActiveTask(root: string, key: string): Promise<ActiveTask 
 }
 
 // ---------------------------------------------------------------------------
+// Project task count (cosmetic, read-only; never cached with the startup context)
+// ---------------------------------------------------------------------------
+
+function readUnfinishedTaskCount(root: string): number | undefined {
+	try {
+		const store = join(root, ".trellis", "tasks");
+		let archive = join(realpathSync(store), "archive");
+		let archiveExists = true;
+		try { lstatSync(archive); }
+		catch (error) {
+			if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+			archiveExists = false;
+		}
+		if (archiveExists) archive = realpathSync(archive);
+		const seen = new Set<string>();
+		let count = 0;
+		// Match Trellis's immediate task-directory enumeration, not child links.
+		for (const name of readdirSync(store)) {
+			if (name === "archive") continue;
+			const dir = join(".trellis", "tasks", name);
+			if (!statSync(join(root, dir)).isDirectory()) continue;
+			const task = resolveTaskPath(root, dir);
+			const actual = realpathSync(task);
+			if (containsPath(archive, actual) || seen.has(actual)) continue;
+			seen.add(actual);
+			const file = join(task, "task.json");
+			try { lstatSync(file); }
+			catch (error) {
+				// A directory without a record is not a task; other errors are unknown.
+				if ((error as NodeJS.ErrnoException).code === "ENOENT") continue;
+				throw error;
+			}
+			if (!statSync(file).isFile()) return undefined;
+			const record = readTaskRecord(root, dir);
+			if (record.status !== undefined && (typeof record.status !== "string" || !record.status.trim())) return undefined;
+			if (record.status !== "completed") count++;
+		}
+		return count;
+	} catch {
+		// Never describe unreadable/invalid or partially enumerated data as zero.
+		return undefined;
+	}
+}
+
+// ---------------------------------------------------------------------------
 // workflow.md
 // ---------------------------------------------------------------------------
 
@@ -572,15 +620,28 @@ function renderState(root: string, task: ActiveTask | undefined, states: Map<str
 	return lines.join("\n");
 }
 
-function renderStatus(task: ActiveTask | undefined): string | undefined {
-	if (!task) return undefined;
-	const prefix = "trellis: ";
+function renderCount(theme: ExtensionTheme, count: number | undefined): string {
+	return theme.fg(count === undefined ? "muted" : count > 0 ? "accent" : "dim", `(${count ?? "?"})`);
+}
+
+/** Sanitize and clip plain footer text in terminal columns before styling. */
+function compactText(text: string, budget: number): string {
+	const plain = stripVTControlCharacters(text).replace(/[\x00-\x1f\x7f-\x9f]/g, " ");
+	// The host helper preserves graphemes but adds resets on truncation. Remove
+	// those before applying the footer's semantic theme color to the whole text.
+	return stripVTControlCharacters(truncateToWidth(plain, budget, "…"));
+}
+
+function renderStatus(theme: ExtensionTheme, task: ActiveTask | undefined, count: number | undefined): string {
+	const label = theme.fg("muted", "trellis") + renderCount(theme, count);
+	if (!task) return label;
+	const prefix = `trellis(${count ?? "?"}): `;
 	const separator = " ▸ ";
-	const slug = basename(task.dir);
-	const status = task.status;
-	const budget = Math.max(6, STATUS_MAX_CHARS - prefix.length - separator.length - status.length);
-	const short = slug.length > budget ? `${slug.slice(0, budget - 1)}…` : slug;
-	return `${prefix}${short}${separator}${status}`;
+	const remaining = STATUS_MAX_COLUMNS - visibleWidth(prefix + separator);
+	const status = compactText(task.status, Math.max(1, remaining - 1));
+	const slug = compactText(basename(task.dir), Math.max(1, remaining - visibleWidth(status)));
+	return label + theme.fg("dim", ": ") + theme.fg("text", slug) +
+		theme.fg("dim", separator) + theme.fg(statusColor(task.status), status);
 }
 
 /** Theme token used for a status name, so the colour carries meaning. */
@@ -606,10 +667,12 @@ function statusColor(status: string): ThemeColorToken {
  * fight other extensions for width: the task name is shown in full and the
  * planning artifacts fit alongside it.
  */
-function renderWidget(theme: ExtensionTheme, task: ActiveTask): string[] {
+function renderWidget(theme: ExtensionTheme, task: ActiveTask | undefined, count: number | undefined): string[] {
+	const label = theme.fg("muted", "▸ trellis") + renderCount(theme, count);
+	if (!task) return [label];
 	const dot = theme.fg("dim", " · ");
 	const parts: string[] = [
-		theme.fg("muted", "▸ trellis"),
+		label,
 		theme.bold(theme.fg("text", basename(task.dir))),
 		theme.fg(statusColor(task.status), task.status),
 	];
@@ -804,31 +867,30 @@ async function sessionTask(current: Session): Promise<ActiveTask | undefined> {
 }
 
 /**
- * Repaint the active-task display.
- *
- * Both surfaces are cleared on every pass before one is drawn, so switching
- * `TRELLIS_PI_STATUS` between runs cannot leave a stale chip behind, and a
- * task that goes away takes its row with it.
+ * Repaint the project display, with optional active-task details.
+ * Clear the unselected surface, or both when unsupported/disabled. The count
+ * is reread on existing refresh events independently of active-task caches.
  */
 async function refreshDisplay(ctx: ExtensionContext, known?: Session): Promise<void> {
 	try {
+		if (!ctx.hasUI) return;
 		const current = known ?? session(ctx);
-		if (!ctx.hasUI || DISPLAY_MODE === "off") return;
-
-		const task = current ? await sessionTask(current) : undefined;
-		if (!task) {
+		if (!current || DISPLAY_MODE === "off") {
 			clearDisplay(ctx);
 			return;
 		}
 
+		const task = await sessionTask(current);
+		const count = readUnfinishedTaskCount(current.root);
+		const theme = ctx.ui.theme as ExtensionTheme;
 		if (DISPLAY_MODE === "status") {
 			ctx.ui?.setWidget?.(WIDGET_KEY, undefined);
-			ctx.ui?.setStatus?.(STATUS_KEY, renderStatus(task));
+			ctx.ui?.setStatus?.(STATUS_KEY, renderStatus(theme, task, count));
 			return;
 		}
 
 		ctx.ui?.setStatus?.(STATUS_KEY, undefined);
-		ctx.ui?.setWidget?.(WIDGET_KEY, renderWidget(ctx.ui.theme as ExtensionTheme, task), {
+		ctx.ui?.setWidget?.(WIDGET_KEY, renderWidget(theme, task, count), {
 			placement: "aboveEditor",
 		});
 	} catch {
@@ -863,6 +925,7 @@ export const __internals = {
 	renderStatus,
 	renderWidget,
 	statusColor,
+	readUnfinishedTaskCount,
 	readActiveTaskFromDisk,
 	bridgeSkills,
 	contextKey,
@@ -881,7 +944,10 @@ export default function (pi: ExtensionAPI): void {
 
 	pi.on("session_start", async (_event, ctx) => {
 		const current = session(ctx);
-		if (!current) return;
+		if (!current) {
+			if (ctx.hasUI) clearDisplay(ctx);
+			return;
+		}
 
 		deployAgents(current.root, ctx);
 
