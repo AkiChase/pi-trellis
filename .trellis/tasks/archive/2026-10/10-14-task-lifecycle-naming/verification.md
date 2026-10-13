@@ -25,3 +25,7 @@
 ## 剩余步骤
 
 全部可自动验证的验收已完成，可创建单阶段工作 commit。随后使用已部署 CLI 归档（main 非 PR，显式 `--skip-branch-validation --no-commit`），记录 journal 并单独提交归档。journal/index 有并行旧修改，必须保留且不混入任务工作 commit。
+
+## 工作检查点
+
+`74670d7 refactor: rename task unbinding to deactivate`：已检查 staged exact scope 与 whitespace；不含 journal/index、部署 runtime/manifest/config/workflow。产品测试与独立复查均通过，按用户已批准执行提交归档指令接受完成。实际 Update resources 验证仍留给用户。
