@@ -4,7 +4,8 @@
 #
 # Does the preflight that `pi install` cannot: checks the toolchain, checks the
 # Trellis version against what this extension's CLI assumptions require, and
-# reports which skill directory will end up bridged into pi.
+# reports which skill directory will end up bridged into pi. Independently
+# deploys the native project worktree CLI and applies the active-task patch.
 #
 # Usage:  ./scripts/install.sh [options]
 #
@@ -15,7 +16,7 @@
 #                       write platform-neutral skills to .agents/skills/ —
 #                       the directory pi discovers natively. Adds a .codex/
 #                       directory to the project.
-#   --no-patch         Skip the default project-local Trellis safety patch.
+#   --no-patch          Skip active_task.py patch only; native CLI still deploys.
 #   --check             Run the checks only; do not install anything. Useful
 #                       after the fact to diagnose a project.
 #   --dry-run           Print what would happen, change nothing.
@@ -169,6 +170,17 @@ if [ -n "$SKILL_NOTE" ]; then
 	amber "  Those were rendered for another platform, so they mention \`/trellis:*\` slash"
 	amber "  commands that do not exist in pi. Read them as \"follow the matching flow in"
 	amber "  .trellis/workflow.md\". For neutral text instead, re-run with --neutral-skills."
+fi
+
+# Native CLI deployment is independent of --no-patch and never runs in prepare.
+if [ "$CHECK_ONLY" = "1" ]; then
+	if ! "$PYTHON" "$SCRIPT_DIR/deploy-worktree.py" --root "$PROJECT_ROOT" --check; then
+		amber "! Native worktree CLI missing/outdated/conflicting — inspect before explicitly updating"
+	fi
+elif [ "$DRY_RUN" = "1" ]; then
+	"$PYTHON" "$SCRIPT_DIR/deploy-worktree.py" --root "$PROJECT_ROOT" --dry-run
+else
+	"$PYTHON" "$SCRIPT_DIR/deploy-worktree.py" --root "$PROJECT_ROOT"
 fi
 
 # ---------------------------------------------------------------------------

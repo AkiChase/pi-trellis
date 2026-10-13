@@ -10,10 +10,11 @@ Use this guide for changes spanning Pi events, Python CLI/pointers, JSONL/artifa
 | --- | --- |
 | Event cwd/session → context key → scoped Python/bash → session pointer → task-state/UI | `extensions/trellis.ts:session`, `contextKey`, `resolveActiveTask`, `inheritDispatchTask`; `tests/agent-context-integration.test.mjs` |
 | Role/task/execution root → JSONL/artifacts → bounded context → owned dispatch block → child fallback | `lib/task-context.ts`; `tests/task-context.test.mjs` |
-| Source task/config → Git plan → authoritative binding + target marker → task-only prepare → target pointer/readiness | `lib/worktree-manager.ts`, `lib/bindings.ts`, `lib/preparation.ts`; worktree/preparation tests |
+| Source task/config → Git plan → authoritative binding + target marker → task-only prepare → target pointer/readiness | `python/pi_trellis_worktree/{manager,records,materials}.py`, shared host persistence in `lib/bindings.ts`; worktree/preparation tests |
 | Ready target → source-host role config → lease → public spawn cwd/off → provider ID/terminal event → snapshot/status | `lib/subagent-rpc.ts`, `lib/executions.ts`; `tests/dispatch.test.mjs` |
-| Approved clean target + preserving reference → ancestry/ignored-risk preview → ordinary Git removal → unbind | `lib/cleanup.ts`; cleanup cases in `tests/preparation.test.mjs` |
+| Approved clean target + preserving reference → ancestry/ignored-risk preview → ordinary Git removal → unbind | `python/pi_trellis_worktree/manager.py:remove`; cleanup cases in `tests/preparation.test.mjs` |
 | Fixed upstream generated Claude docs → exact adaptation → bundled docs/full hashes → deployed copy/truncated hash guard | `scripts/sync-agents.mjs`, `docs/agent-baseline.json`, `extensions/trellis.ts:deployAgents`; agent document/integration tests |
+| Installer flags/project cwd → protected native CLI deployment | `scripts/install.sh`, `scripts/deploy-worktree.py`; `tests/worktree-cli.test.mjs` |
 | Installer flags/project cwd → focused Python patch → current-session resolution/clear → permitted finish-hook result | `scripts/install.sh`, `scripts/patch-trellis.py`; `tests/trellis-patches.test.mjs` |
 
 For each changed arrow record input origin/shape, validation, authoritative state, side effects, failure output and verification. Source root, target root, Pi session identity, context ID, task path and binding ID are distinct facts; do not substitute one for another.

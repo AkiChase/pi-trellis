@@ -2,7 +2,7 @@
 
 ## Applicability and Ownership
 
-`scripts/install.sh` runs from the user's project cwd. Its own directory locates `patch-trellis.py`; `PROJECT_ROOT` is the invoking project's physical cwd, not the package checkout. `pi install` alone installs the extension but does not apply the Python patch. The repository installer defaults to patching the project's `.trellis/scripts/common/active_task.py`, then installing project-locally. Do not patch global Trellis, silently edit ignores, or introduce patching into worktree preparation.
+`scripts/install.sh` runs from the user's project cwd. Its own directory locates `patch-trellis.py`; `PROJECT_ROOT` is the invoking project's physical cwd, not the package checkout. `pi install` alone installs the extension but does not apply the Python patch. The repository installer defaults to patching the project's `.trellis/scripts/common/active_task.py`, independently deploying the native CLI, then installing project-locally. Do not patch global Trellis, silently edit ignores, or introduce patching into worktree preparation.
 
 ## Installer Modes
 
@@ -12,7 +12,7 @@ The script uses `set -euo pipefail`, argument-array execution and no `eval`. Def
 | --- | --- |
 | `--source <spec>` / `--source=<spec>` | Select package source for `pi install -l --approve` |
 | `--neutral-skills` | In normal install, run `trellis init --codex`; this writes `.agents/skills/` and adds `.codex/` |
-| `--no-patch` | Skip default project-local safety patch; extension-side provenance checks remain active |
+| `--no-patch` | Skip only project-local active_task.py safety patch (native CLI deployment still runs); extension-side provenance checks remain active |
 | `--check` | Preflight/report only; patch checker may report missing/incompatible patch as a warning; no install/init/patch writes |
 | `--dry-run` | Preflight plus print mutating commands and patch preview; no install/init/patch writes |
 
@@ -20,7 +20,7 @@ Preflight requires `pi`, `trellis`, interpreter (`TRELLIS_PYTHON` or `python3`),
 
 The installer warns about a generated `.pi/extensions/trellis/index.ts` duplicate adapter but does not delete it. Skills are reported in existing-root priority `.agents/skills`, `.claude/skills`, `.cursor/skills`; only neutral-skills normal install generates them. `--check --neutral-skills` must not initialize. The package installer does not write fictional Pi slash commands or install a provider globally.
 
-Normal install applies the patch first and then runs `pi install -l --approve <source>`. This is not a transaction: an installation failure does not undo a successful project patch. Project trust still gates loading. Uninstall does not undo patched Python; after a Trellis update replaces that script, check/reapply through an approved installation workflow. A prepared worktree uses its committed target scripts unchanged.
+The installer deploys the native CLI first, then applies the patch and runs `pi install -l --approve <source>`. This is not a transaction: patch failure does not undo CLI deployment, and installation failure does not undo either successful project step. Project trust still gates loading. Uninstall does not undo patched Python; after a Trellis update replaces that script, check/reapply through an approved installation workflow. A prepared worktree uses its committed target scripts unchanged.
 
 ## Python Patch Contract
 
@@ -61,3 +61,10 @@ Evidence: `tests/trellis-patches.test.mjs` imports patch constants to construct 
 - When changing installer flag combinations, test read-only combinations explicitly; do not infer all combinations from existing standalone-option tests.
 
 Focused command: `node --test tests/trellis-patches.test.mjs`. `bash -n scripts/install.sh` checks syntax only; it is not a linter or installation test. Never execute an actual install/patch in a user's project solely for verification without permission. See [Quality Guidelines](../extension/quality-guidelines.md).
+
+
+## Independent Native CLI Deployment
+
+`scripts/deploy-worktree.py --root <project>` deploys `python/worktree.py` and `python/pi_trellis_worktree/*.py` to project `.trellis/scripts/`; it does not touch `common/active_task.py`. The installer runs this independently, including with `--no-patch`. Check reports current/missing/outdated/conflicting state without writes (installer reports noncurrent state as a warning); dry-run validates and prints preview. Normal deployment uses a version-1 JSON object manifest with full SHA-256 `.pi-trellis-worktree.json` records: null/invalid manifests, unknown same-name files, customized bytes, missing recorded files, incompatible/retired manifest entries and symlinked files/ancestors refuse replacement. All expected files are validated before mutation; each replacement rechecks original bytes, preserves mode and uses a same-directory temporary file. Files already current are not rewritten. This is not an all-files transaction; interrupted publication may require explicit reconciliation.
+
+The fixed deployed command is `python3 .trellis/scripts/worktree.py`. It imports only project-local private modules and standard library, never Node or an absolute package path. It disables bytecode writes so previews/help do not create caches. Missing modules fail visibly; no runtime auto-install/network repair. Preparation requires the target baseline to have task.py and native CLI/modules and never deploys source scripts. Commit the entry/modules/manifest as project scaffolding with separate approval. Uninstall does not erase them. Tests: `tests/worktree-cli.test.mjs` exercises standalone deployment and `tests/trellis-patches.test.mjs` covers installer modes with fake pi/trellis binaries.

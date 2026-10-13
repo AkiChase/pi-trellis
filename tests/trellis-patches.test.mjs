@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, chmodSync, statSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, chmodSync, statSync, symlinkSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -142,7 +142,7 @@ test('unknown/ambiguous code and external script symlinks fail without modifying
 });
 
 test('installer defaults to patch, --no-patch opts out, and check/dry-run do not mutate', t => {
-  for (const args of [[], ['--no-patch'], ['--check'], ['--dry-run']]) {
+  for (const args of [[], ['--no-patch'], ['--check'], ['--dry-run'], ['--check','--neutral-skills'], ['--dry-run','--no-patch']]) {
     const f = fixture(t), original = readFileSync(f.file);
     const bin = join(f.root, 'bin'); mkdirSync(bin);
     for (const [name, body] of [['pi', 'echo 1.1.0'], ['trellis', 'echo 0.6.17']]) {
@@ -156,5 +156,9 @@ test('installer defaults to patch, --no-patch opts out, and check/dry-run do not
     assert.equal(result.status, 0, result.stderr);
     if (!args.length) assert.notDeepEqual(readFileSync(f.file), original);
     else assert.deepEqual(readFileSync(f.file), original);
+    const readonly=args.includes('--check') || args.includes('--dry-run');
+    assert.equal(existsSync(join(f.root,'.trellis/scripts/worktree.py')), !readonly);
+    assert.equal(existsSync(join(f.root,'.trellis/scripts/pi_trellis_worktree/manager.py')), !readonly);
+    assert.ok(!existsSync(join(f.root,'.codex')));
   }
 });

@@ -4,13 +4,11 @@ import { join, resolve, dirname } from "node:path";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
-import { acquireBindingLock, readBinding } from "./bindings.ts";
+import { acquireBindingLock, sameIdentity } from "./bindings.ts";
 import { activeExecution, processToken, readExecution, writeExecution, worktreeSnapshot, type ExecutionRecord } from "./executions.ts";
-import { sourceFor, bindingProblems } from "./worktree-manager.ts";
-import { validateReady } from "./preparation.ts";
-import { canonicalPath } from "./config.ts";
-import { repository } from "./worktree.ts";
-import { assembleDispatchPrompt, buildTaskContext, isTrellisRole, readTaskRecord } from "./task-context.ts";
+import { queryWorktree } from "./worktree-query.ts";
+import { canonicalPath, validateText } from "./config.ts";
+import { assembleDispatchPrompt, buildTaskContext, isTrellisRole } from "./task-context.ts";
 
 function adapterConfigured(sourceRoot: string): boolean {
 	const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -40,6 +38,7 @@ export function rpc(pi: ExtensionAPI, method: string, payload: Record<string, un
 }
 
 export function registerDispatchTool(pi: ExtensionAPI, activeTask: (ctx: ExtensionContext) => Promise<string | undefined>): void {
+	let shuttingDown = false;
 	const owned = new Map<string, { binding: import("./bindings.ts").WorktreeBinding; record: ExecutionRecord }>();
 	const early = new Map<string, { state: "completed" | "failed"; error?: string }>();
 	const off = ["subagents:completed", "subagents:failed"].map((event) => pi.events.on(event, (data: any) => {
@@ -57,6 +56,7 @@ export function registerDispatchTool(pi: ExtensionAPI, activeTask: (ctx: Extensi
 		} finally { owned.delete(data.id); }
 	}));
 	pi.on("session_shutdown", () => {
+		shuttingDown = true;
 		off.forEach((unsubscribe) => unsubscribe());
 		for (const { binding, record } of owned.values()) {
 			try { writeExecution(binding, { ...record, state: "unknown", error: "Host session shut down; verify/stop the provider execution before reuse" }); } catch { /* runtime persists conservative prior lease */ }
@@ -65,22 +65,37 @@ export function registerDispatchTool(pi: ExtensionAPI, activeTask: (ctx: Extensi
 	});
 	pi.registerTool({
 		name: "trellis_dispatch", label: "Trellis Dispatch",
-		description: "Dispatch an approved Trellis task role to its existing ready worktree using the subagent public cwd RPC. Never creates temporary isolation or falls back to source. Returns a real agent ID for get_subagent_result/steer_subagent; main agent chooses subsequent phases.",
-		parameters: { type: "object", properties: { agent: { type: "string", enum: ["trellis-implement", "trellis-check", "trellis-research"] }, task: { type: "string" }, prompt: { type: "string" } }, required: ["agent", "prompt"], additionalProperties: false } as unknown as Parameters<ExtensionAPI["registerTool"]>[0]["parameters"],
+		description: "Dispatch (default action) or request provider stop for an approved Trellis task role to its existing ready worktree using the subagent public cwd RPC. Never creates temporary isolation or falls back to source. Returns a real agent ID for get_subagent_result/steer_subagent. Stop uses task only and retains occupancy until terminal evidence. Manage via python3 .trellis/scripts/worktree.py; main agent chooses phases.",
+		parameters: { type: "object", properties: { action: { type: "string", enum: ["dispatch", "stop", ""] }, agent: { type: "string", enum: ["trellis-implement", "trellis-check", "trellis-research", ""] }, task: { type: "string" }, prompt: { type: "string" } }, anyOf: [{ properties: { action: { const: "stop" } }, required: ["action"] }, { properties: { action: { enum: ["dispatch", ""] } }, required: ["agent", "prompt"] }], additionalProperties: false } as unknown as Parameters<ExtensionAPI["registerTool"]>[0]["parameters"],
 		executionMode: "sequential",
 		async execute(_id, input, signal, _update, ctx) {
-			const args = input as { agent: string; task?: string; prompt: string };
-			if (!isTrellisRole(args.agent)) throw new Error("Unknown Trellis role");
-			const { source, local } = await sourceFor(ctx.cwd, signal);
+			if (shuttingDown) throw new Error("Host session shut down; reload before execution");
+			const args = { ...(input as { action?: string; agent?: string; task?: string; prompt?: string }) };
+			const action = args.action === "" || args.action === undefined ? "dispatch" : args.action;
+			if (!["dispatch", "stop"].includes(action)) throw new Error("Unknown execution action");
+			for (const key of ["task", "agent", "prompt"] as const) if (args[key] === "") args[key] = undefined;
+			if (args.task !== undefined) validateText(args.task, "task");
+			if (action === "stop" && (args.agent !== undefined || args.prompt !== undefined)) throw new Error("Stop accepts task only; agent/prompt are dispatch-only fields");
+			if (action === "dispatch") {
+				if (!isTrellisRole(args.agent)) throw new Error("Unknown Trellis role");
+				// Prompt is prose, not a CLI identifier: preserve newlines/tabs.
+				if (typeof args.prompt !== "string" || !args.prompt.trim() || args.prompt.includes("\0")) throw new Error("prompt must be non-empty text without NUL");
+			}
+			const { source, local } = await queryWorktree(ctx.cwd, undefined, false, signal);
 			if (canonicalPath(process.cwd()) !== source.root || canonicalPath(ctx.cwd) !== source.root) throw new Error("Dispatch from a Pi host opened at the source project root; provider role discovery/config must not silently fall back to generic agents");
 			if (!adapterConfigured(source.root)) throw new Error("Persist pi-trellis in source/user settings (not only a one-shot -e path), so child sessions can load the context adapter");
 			const task = args.task ?? local?.taskDir ?? await activeTask(ctx);
 			if (!task) throw new Error("No approved active task");
-			const binding = readBinding(source.root, task);
-			if (!binding || binding.preparationState !== "ready") throw new Error("No ready worktree binding; create/bind then prepare first");
-			if (readTaskRecord(source.root, task).status !== "in_progress") throw new Error("Source task is not approved/in_progress for managed execution");
-			const errors = await bindingProblems(binding, source, signal); if (errors.length) throw new Error(errors.join("; "));
-			await validateReady(binding, signal);
+			const { binding } = await queryWorktree(ctx.cwd, task, action === "dispatch", signal);
+			if (!binding) throw new Error("No worktree binding; use python3 .trellis/scripts/worktree.py create/prepare first");
+			if (action === "stop") {
+				const execution = readExecution(binding);
+				if (!execution?.agentId) throw new Error("No known agent id; inspect unknown startup before recovery");
+				const reply = await rpc(pi, "stop", { agentId: execution.agentId });
+				if (!reply.success) throw new Error(reply.error || "Stop failed; lease retained");
+				return { content: [{ type: "text", text: "Stop requested through provider. Lease retained until terminal evidence; directory/code preserved." }], details: { agentId: execution.agentId } };
+			}
+			if (!isTrellisRole(args.agent)) throw new Error("Unknown Trellis role");
 			// Preserve custom agents; reject config that would silently defeat cwd/context rather than overwrite it.
 			const definition = readFileSync(join(source.root, ".pi/agents", `${args.agent}.md`), "utf8");
 			const header = /^---\r?\n([\s\S]*?)\r?\n---/.exec(definition)?.[1];
@@ -92,16 +107,17 @@ export function registerDispatchTool(pi: ExtensionAPI, activeTask: (ctx: Extensi
 			const required = args.agent === "trellis-research" ? ["read", "write", "bash", "find", "grep"] : ["read", "write", "edit", "bash", "find", "grep"];
 			if (!tools || required.some((name) => !tools.includes(name))) throw new Error("Custom agent tool list omits required role capabilities; file is preserved");
 			const ping = await rpc(pi, "ping", {}, 3000); if (!ping.success) throw new Error(ping.error || "Subagent provider unavailable");
-			const context = buildTaskContext({ executionRoot: binding.worktreePath, taskDir: task, role: args.agent });
-			// validateReady checked all references without budget; partial inlining keeps child fallback active.
-			const prompt = assembleDispatchPrompt({ prompt: `Execution directory: ${binding.worktreePath}\nReview base: ${binding.baseCommit}\n\n${args.prompt}`, taskDir: task, contextId: binding.contextId, role: args.agent, context });
 			const release = acquireBindingLock(source.root);
 			try {
-				const problems = await bindingProblems(binding, await repository(source.root, signal), signal);
-				if (problems.length) throw new Error(problems.join("; "));
-				if (readBinding(source.root, task)?.preparationState !== "ready") throw new Error("Preparation state changed before dispatch");
+				const latest = await queryWorktree(ctx.cwd, task, true, signal);
+				if (!latest.binding || !sameIdentity(latest.binding, binding)) throw new Error("Binding changed before dispatch");
 				if (activeExecution(binding)) throw new Error("Worktree already has running/unknown execution; do not dispatch concurrently");
+				// Render after the awaited under-lock query, not from an earlier
+				// snapshot that could include a stale complete-injection marker.
+				const context = buildTaskContext({ executionRoot: binding.worktreePath, taskDir: task, role: args.agent });
+				const prompt = assembleDispatchPrompt({ prompt: `Execution directory: ${binding.worktreePath}\nReview base: ${binding.baseCommit}\n\n${args.prompt}`, taskDir: task, contextId: binding.contextId, role: args.agent, context });
 				signal?.throwIfAborted();
+				if (shuttingDown) throw new Error("Host session shut down before spawn");
 				const record: ExecutionRecord = { bindingId: binding.bindingId, requestId: randomUUID(), role: args.agent, state: "starting", ownerPid: process.pid, ownerToken: processToken, createdAt: new Date().toISOString() };
 				writeExecution(binding, record);
 				try {
@@ -109,6 +125,7 @@ export function registerDispatchTool(pi: ExtensionAPI, activeTask: (ctx: Extensi
 					const reply = await rpc(pi, "spawn", { requestId: record.requestId, type: args.agent, prompt, options: { cwd: binding.worktreePath, isolation: "off" } });
 					if (!reply.success || typeof reply.data?.id !== "string") throw new Error(reply.error || "Spawn returned no valid agent id");
 					record.agentId = reply.data.id;
+					if (shuttingDown) throw new Error("Host session shut down during spawn; execution may already exist");
 					const finished = early.get(record.agentId!); early.delete(record.agentId!);
 					record.state = finished?.state ?? "running"; record.error = finished?.error;
 					if (finished) { try { record.finalSnapshot = worktreeSnapshot(binding); } catch { /* unverified snapshot */ } }

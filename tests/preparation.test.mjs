@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { canonicalPath } from '../lib/config.ts';
-import { manageWorktree } from '../lib/worktree-manager.ts';
+import { manageWorktree } from './worktree-fixture.mjs';
 import { readBinding, markerFile } from '../lib/bindings.ts';
 import { writeExecution } from '../lib/executions.ts';
 
@@ -30,6 +30,7 @@ else:
  task=json.loads(pointer.read_text())['current_task']
  print(json.dumps({'current_task':{'dir':task},'source':'session:'+token,'stale':False}))
 `);
+ execFileSync(process.env.TRELLIS_PYTHON || 'python3',[new URL('../scripts/deploy-worktree.py',import.meta.url).pathname,'--root',root],{stdio:'pipe'});
  git('add','.');git('-c','user.name=Fixture','-c','user.email=fixture@example.invalid','-c','commit.gpgsign=false','commit','-qm','fixture');
  const task='.trellis/tasks/10-13-task';
  put(task+'/task.json',JSON.stringify({status:'in_progress',name:'10-13-task'}));

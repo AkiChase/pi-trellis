@@ -24,14 +24,14 @@ Read the complete relevant owner and callers after locating them. Package source
 | Owned injection wrapper | `lib/task-context.ts:assembleDispatchPrompt` | Strip caller/quoted success markers; incomplete context keeps fallback |
 | Destination/config containment | `lib/config.ts:containsPath`, `canonicalPath`, `validateText`, `taskSlug` | Canonicalize ancestors without writes; worktree slugs are narrower than general material references |
 | Persistent binding/lock | `lib/bindings.ts:parseBinding`, `sameIdentity`, `atomicJson`, `acquireBindingLock` | Immutable identity comparison vs source-authoritative mutable state |
-| Git repository operations | `lib/worktree.ts:git`, `repository`, `resolveBase`, `requireIgnored` | Argument arrays and sanitized environment; no implicit ignore writes |
+| Git repository operations | `python/pi_trellis_worktree/records.py:git`, `repository`, `resolve_base`, `require_ignored` | Argument arrays and sanitized environment; no implicit ignore writes |
 | Agent source adaptations | `scripts/sync-agents.mjs:adaptAgent` | Fixed exact anchors plus full provenance hashes, not deployed-copy hash policy |
 
-Reuse these owners instead of making a second JSONL loader, local prompt-marker shortcut, string-prefix containment test or unchecked direct Git invocation. When several consumers need a newly decoded field, consider putting its validation/projection with its data owner and testing all callers, rather than adding more divergent assertions. That is a targeted decision, not a mandate to rewrite every existing payload cast.
+Python owns complete management/readiness validation; the host reuses it through read-only queries while `task-context.ts` separately owns bounded prompt rendering. Shared interoperability tests protect their material rules. Reuse these owners instead of making a second management/readiness core, local prompt-marker shortcut, string-prefix containment test or unchecked direct Git invocation. When several consumers need a newly decoded field, consider putting its validation/projection with its data owner and testing all callers, rather than adding more divergent assertions. That is a targeted decision, not a mandate to rewrite every existing payload cast.
 
 ## Similar Mechanisms That Must Not Be Collapsed Blindly
 
-- `runPython()` in the entrypoint and `taskCli()` in preparation both spawn Python, but optional discovery can degrade while target readiness must fail, and cwd/key ownership differs.
+- `runPython()` in the entrypoint and `materials.py:task_cli()` in preparation both spawn Python, but optional discovery can degrade while target readiness must fail, and cwd/key ownership differs.
 - General material loading may accept a top-level external task store; worktree preparation requires a local target store. Sharing a helper must preserve the stricter policy.
 - Ordinary Agent injection and managed RPC share `buildTaskContext()`/`assembleDispatchPrompt()`, but only managed dispatch validates readiness, host cwd and occupancy. Hooks cannot promise interception of third-party RPC.
 - Full source/adapted SHA-256 in `docs/agent-baseline.json` records a source/output relationship that can be checked against available files; without the source, it is not independent integrity proof. Truncated deployment hashes only determine whether a user's copy is treated as untouched. They are not the same manifest.

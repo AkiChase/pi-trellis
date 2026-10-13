@@ -49,7 +49,3 @@ export function worktreeSnapshot(binding: WorktreeBinding): string {
 	walk(binding.worktreePath);
 	return hash.digest("hex");
 }
-
-export function ownerAlive(record: ExecutionRecord): boolean {
-	try { process.kill(record.ownerPid, 0); return true; } catch (error) { return (error as NodeJS.ErrnoException).code !== "ESRCH"; }
-}

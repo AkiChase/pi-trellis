@@ -23,7 +23,6 @@ import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { assembleDispatchPrompt, buildTaskContext, INJECTED_MARKER, isTrellisRole, parseDispatchFacts, readTaskRecord, resolveTaskPath } from "../lib/task-context.ts";
-import { registerWorktreeTool } from "../lib/worktree-tool.ts";
 import { registerDispatchTool } from "../lib/subagent-rpc.ts";
 import { readBinding, readMarker } from "../lib/bindings.ts";
 
@@ -527,6 +526,8 @@ function renderOverview(root: string, key: string, context: TrellisContext | und
 		`  ${PYTHON} ./.trellis/scripts/get_context.py --mode default --json`,
 		`  ${PYTHON} ./.trellis/scripts/get_context.py --mode phase --step <N.N>`,
 		`  ${PYTHON} ./.trellis/scripts/get_context.py --mode packages`,
+		"Worktree management: python3 .trellis/scripts/worktree.py <create|adopt|status|prepare|recover|remove> --task <task> (preview before approved --confirm).",
+		existsSync(scriptPath(root, "worktree.py")) ? "Flow: create → prepare → trellis_dispatch; stop via trellis_dispatch action=stop. Parent Pi stays in source." : "Worktree CLI not deployed: explicitly install/update pi-trellis with scripts/install.sh; no automatic repair.",
 		`Trellis CLI calls use TRELLIS_CONTEXT_ID=${key}; pi-trellis scopes each bash call explicitly.`,
 	);
 
@@ -871,10 +872,6 @@ export const __internals = {
 };
 
 export default function (pi: ExtensionAPI): void {
-	registerWorktreeTool(pi, async (ctx) => {
-		const current = session(ctx);
-		return current ? (await sessionTask(current))?.dir : undefined;
-	});
 	registerDispatchTool(pi, async (ctx) => {
 		const current = session(ctx);
 		return current ? (await sessionTask(current))?.dir : undefined;
@@ -1006,7 +1003,7 @@ export default function (pi: ExtensionAPI): void {
 			const task = facts ? { dir: facts.taskDir } : await sessionTask(current);
 			if (task) {
 				try {
-					if (readBinding(current.root, task.dir) || readMarker(current.root)) return { block: true, reason: "This task is bound to a worktree. Ordinary Agent cannot select or reserve its directory; use trellis_worktree prepare then trellis_dispatch. No child was started." };
+					if (readBinding(current.root, task.dir) || readMarker(current.root)) return { block: true, reason: "This task is bound to a worktree. Ordinary Agent cannot select or reserve its directory; use python3 .trellis/scripts/worktree.py prepare --task <task> (preview, then approved --confirm), then trellis_dispatch. No child was started." };
 				} catch (error) { return { block: true, reason: `Worktree binding cannot be verified: ${String(error)}. No child was started.` }; }
 			}
 			if (!task) {

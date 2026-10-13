@@ -152,3 +152,10 @@ test('matching CLI session source is accepted; stale and errored tasks are rejec
     assert.equal(input.prompt.includes('a requirements'), !extra.stale && !extra.error);
   }
 });
+
+
+test('only execution tool registered; overview discovers fixed CLI and missing deployment needs explicit install',t=>{
+ const f=setup(t);assert.deepEqual([...f.tools.keys()],['trellis_dispatch']);
+ const overview=__internals.renderOverview(f.root,'key',{});assert.match(overview,/python3 \.trellis\/scripts\/worktree\.py/);assert.match(overview,/not deployed/);assert.doesNotMatch(overview,/trellis_worktree/);
+ f.put('.trellis/scripts/worktree.py','# deployed');assert.match(__internals.renderOverview(f.root,'key',{}),/create → prepare → trellis_dispatch/);
+});

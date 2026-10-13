@@ -4,10 +4,9 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, symlinkSyn
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
-import { worktreeDirectory, canonicalPath } from "../lib/config.ts";
+import { canonicalPath } from "../lib/config.ts";
 import { readBinding, markerFile, bindingFile, acquireBindingLock } from "../lib/bindings.ts";
-import { manageWorktree } from "../lib/worktree-manager.ts";
-import { registerWorktreeTool } from "../lib/worktree-tool.ts";
+import { manageWorktree } from "./worktree-fixture.mjs";
 
 function fixture(t) {
   const cwd = mkdtempSync(join(tmpdir(), "pi-w1-"));
@@ -26,19 +25,6 @@ function fixture(t) {
   return { root, put, git, task, run };
 }
 
-test("configuration defaults, source-relative and absolute paths, invalid inputs", (t) => {
-  const f = fixture(t);
-  assert.equal(worktreeDirectory(f.root), join(f.root, ".worktree"));
-  f.put(".pi/pi-trellis.json", JSON.stringify({ worktree: { directory: "other/place" } }));
-  assert.equal(worktreeDirectory(f.root), join(f.root, "other/place"));
-  f.put(".pi/pi-trellis.json", JSON.stringify({ worktree: { directory: join(f.root, "absolute") } }));
-  assert.equal(worktreeDirectory(f.root), join(f.root, "absolute"));
-  for (const value of ["", 42, null, "a\0b"]) {
-    f.put(".pi/pi-trellis.json", JSON.stringify({ worktree: { directory: value } }));
-    assert.throws(() => worktreeDirectory(f.root));
-  }
-  f.put(".pi/pi-trellis.json", "broken"); assert.throws(() => worktreeDirectory(f.root));
-});
 
 test("preview has pinned full base and no mutations; create persists matching markers but not ready", async (t) => {
   const f = fixture(t);
@@ -61,9 +47,10 @@ test("creation preserves source staged/unstaged/untracked contents and index", a
   f.put("code.txt", "staged source\n"); f.git("add", "code.txt");
   f.put("code.txt", "unstaged source\n"); f.put("new.txt", "untracked source\n");
   const snapshot = () => JSON.stringify([f.git("diff", "--cached"), f.git("diff"), f.git("status", "--porcelain"), readFileSync(join(f.root, "new.txt"), "utf8")]);
-  const before = snapshot();
+  const before = snapshot(), indexBefore = readFileSync(join(f.root, ".git/index"));
   const created = await f.run();
   assert.equal(snapshot(), before);
+  assert.deepEqual(readFileSync(join(f.root, ".git/index")), indexBefore);
   assert.ok(!existsSync(join(created.binding.worktreePath, "new.txt")));
 });
 
@@ -75,7 +62,7 @@ test("repeated create/status reuse absolute binding even after invalid configura
   await assert.rejects(f.run({ branch: "different" }), /different branch/);
 });
 
-test("bind accepts existing registered branch worktree and rejects ordinary directory", async (t) => {
+test("adopt accepts existing registered branch worktree and rejects ordinary directory", async (t) => {
   const f = fixture(t);
   const target = join(f.root, "../", `${f.root.split('/').at(-1)}-external`);
   t.after(() => rmSync(target, { recursive: true, force: true }));
@@ -103,7 +90,7 @@ test("unignored directory/runtime, existing path/branch and unsafe tasks fail wi
 
 test("source calls from a bound target reuse instead of nesting", async (t) => {
   const f = fixture(t), first = await f.run();
-  const again = await f.run({ cwd: first.binding.worktreePath, task: undefined });
+  const again = await f.run({ cwd: first.binding.worktreePath });
   assert.equal(again.reused, true); assert.equal(again.binding.sourceRoot, f.root);
   assert.ok(!existsSync(join(first.binding.worktreePath, ".worktree")));
 });
@@ -145,7 +132,7 @@ test("custom source-relative directory and parent symlink resolve without shell 
   assert.equal(next.binding.worktreePath, join(f.root, "custom/second"));
   f.put(".pi/pi-trellis.json", JSON.stringify({ worktree: { directory: ".." } }));
   await assert.rejects(f.run({ task: ".trellis/tasks/third" }), /task|directory/i);
-  assert.throws(() => worktreeDirectory(f.root), /source root/);
+
 });
 
 test("branch switch and unbound linked source calls fail explicitly", async (t) => {
@@ -157,7 +144,7 @@ test("branch switch and unbound linked source calls fail explicitly", async (t) 
   await assert.rejects(f.run({ cwd: other }), /Unbound linked worktree/);
 });
 
-test("bind rejects foreign repositories and detached registered worktrees", async (t) => {
+test("adopt rejects foreign repositories and detached registered worktrees", async (t) => {
   const f = fixture(t), foreign = fixture(t);
   await assert.rejects(f.run({ action: "bind", path: foreign.root }), /registered Git worktree/);
   const detached = join(f.root, ".worktree/detached"); f.git("worktree", "add", "--detach", detached, "HEAD");
@@ -185,19 +172,4 @@ test("binding storage symlink is not a trusted external task store", async (t) =
   mkdirSync(join(f.root, ".trellis/.runtime/pi-trellis"), { recursive: true });
   symlinkSync(outside.root, join(f.root, ".trellis/.runtime/pi-trellis/bindings"));
   await assert.rejects(f.run(), /symlink outside/);
-});
-
-test("worktree tool exposes management actions, defaults task, previews and reports progress", async (t) => {
-  const f = fixture(t), tools = [];
-  registerWorktreeTool({ registerTool: (tool) => tools.push(tool) }, async () => f.task);
-  const tool = tools[0];
-  assert.deepEqual(tool.parameters.properties.action.enum, ["create", "bind", "status", "prepare", "remove", "recover", "stop"]);
-  const ctx = { cwd: f.root };
-  const preview = await tool.execute("preview", { action: "create" }, undefined, undefined, ctx);
-  assert.equal(preview.details.preview, true);
-  const updates = [];
-  const result = await tool.execute("create", { action: "create", confirm: true }, undefined, (update) => updates.push(update), ctx);
-  assert.equal(result.details.binding.preparationState, "unprepared");
-  assert.match(updates[0].content[0].text, /Base: [a-f0-9]{40}/);
-  await assert.rejects(tool.execute("bad", { action: "unsupported", task: f.task }, undefined, undefined, ctx), /Unsupported/);
 });

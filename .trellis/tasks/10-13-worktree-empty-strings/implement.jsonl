@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/extension/index.md", "reason": "运行时入口与边界检查"}
+{"file": ".trellis/spec/extension/architecture.md", "reason": "模块复用、输入验证与故障保留"}
+{"file": ".trellis/spec/extension/worktree-lifecycle.md", "reason": "管理审批、准备、派发与删除安全"}
+{"file": ".trellis/spec/extension/session-and-context.md", "reason": "主子会话身份与上下文注入"}
+{"file": ".trellis/spec/extension/quality-guidelines.md", "reason": "子进程fixture与验证限制"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "CLI、宿主RPC和文件状态的跨层验证"}
+{"file": ".trellis/spec/scripts/installation-and-patching.md", "reason": "独立Python脚本部署、只读模式与定制保护"}

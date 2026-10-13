@@ -65,11 +65,17 @@ export function readBinding(root: string, taskDir: string): WorktreeBinding | un
 export function readMarker(root: string): WorktreeBinding | undefined { return readRecord(markerFile(root)); }
 
 export function atomicJson(file: string, value: unknown): void {
+	const requireRegular = () => {
+		try { if (!lstatSync(file).isFile()) throw new Error(`Record must be a local regular file: ${file}`); }
+		catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+	};
+	requireRegular();
 	const parent = join(file, "..");
 	mkdirSync(parent, { recursive: true });
 	const temp = join(parent, `.binding-${randomUUID()}.tmp`);
 	try {
 		writeFileSync(temp, `${JSON.stringify(value, null, 2)}\n`, { flag: "wx", mode: 0o600 });
+		requireRegular();
 		renameSync(temp, file);
 	} finally {
 		try { unlinkSync(temp); } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }

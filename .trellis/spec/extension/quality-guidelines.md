@@ -39,6 +39,7 @@ Integration fixtures model documented Python `start/current` or `set_active_task
 | `tests/worktree.test.mjs` | Preview no-write behavior, pinned baseline, source staged/unstaged/untracked/index preservation, bind identity, config reuse, lock/cancel and retained error records |
 | `tests/preparation.test.mjs` | Selected task copies, independent target pointer, unchanged source, conflicts, branch-only metadata exception, clean/ancestry cleanup, dead/live owner recovery |
 | `tests/dispatch.test.mjs` | Public RPC target cwd/off, real ID, occupancy, early completion, snapshot freshness, shutdown ambiguity and rejection before spawn |
+| `tests/worktree-cli.test.mjs`, `tests/python/test_worktree.py` | Strict CLI parsing, deployed entry without Node, source pin isolation, complete reference bounds, v1 host/CLI locks and protected deployment |
 | `tests/trellis-patches.test.mjs` | Exact/idempotent patch, mode/no-write behavior, current-session clearing, unlink failure, unsafe inputs and installer modes |
 | `tests/agent-documents.test.mjs` | Adapted hashes/attribution, role tools and protocols, scoped check fixes, research output boundaries and rejected source drift |
 

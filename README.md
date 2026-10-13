@@ -29,7 +29,7 @@ pi install -l --approve git:github.com/AkiChase/pi-trellis
 pi
 ```
 
-That installs the extension only. For the default project-local Trellis safety patch, use the repository's installer below. It also does the
+That installs the extension only. For the native worktree CLI and default project-local Trellis safety patch, use the repository's installer below. It also does the
 preflight `pi install` cannot — verifying pi, the Trellis version, python3 and
 `.trellis/scripts/`, probing `get_context.py`, reporting which skill directory
 will be bridged, and warning when the project also carries a generated
@@ -48,11 +48,13 @@ git clone --depth 1 https://github.com/AkiChase/pi-trellis /tmp/pi-trellis
 |---|---|
 | `--source <spec>` | What to install. Defaults to the git source; pass a path for a local checkout. |
 | `--neutral-skills` | Also run `trellis init --codex` so Trellis writes platform-neutral skills to `.agents/skills/`, the directory pi discovers natively. Adds a `.codex/` directory. |
-| `--no-patch` | Skip the default project-local Python safety patch. |
-| `--check` | Run the checks only, including patch status; install/write nothing. Use it to diagnose an existing project. |
+| `--no-patch` | Skip only the active_task.py safety patch; still deploy the native CLI. |
+| `--check` | Run the checks only, including CLI deployment and patch status; install/write nothing. Use it to diagnose an existing project. |
 | `--dry-run` | Print what would happen, change nothing. |
 
-The installer patches only `.trellis/scripts/common/active_task.py`: an identified session with no pointer returns no task, single-session inference becomes opt-in for unidentified read-only callers, and `finish` deletes only the current session's pointer. Failed deletion never authorizes an `after_finish` hook. Reinstallation is idempotent; unknown code fails before any script replacement. The patch uses Python's standard library, validates syntax and preserves permissions. No global Trellis files are changed. `--dry-run` previews without writing; `--no-patch` skips this step. Commit the resulting project script changes as part of your baseline. Worktree preparation neither patches nor copies scripts.
+The installer separately deploys `worktree.py` and the private `pi_trellis_worktree/` modules into `.trellis/scripts/`. This standard-library CLI remains usable without Node or the original package directory. `.trellis/scripts/.pi-trellis-worktree.json` records full content digests: only recorded, unmodified copies can update; unknown/customized or incomplete files refuse replacement. Check/dry-run do not write; repeated deployment preserves bytes and modes. Deployment is not a multi-file transaction; interrupted updates require explicit inspection. No CLI invocation or prepare operation deploys/repairs files automatically. Commit the entry, modules and manifest with the project baseline. Reload/restart Pi after updating the extension to replace its tool registrations.
+
+The independent safety patch changes only `.trellis/scripts/common/active_task.py`: an identified session with no pointer returns no task, single-session inference becomes opt-in for unidentified read-only callers, and `finish` deletes only the current session's pointer. Failed deletion never authorizes an `after_finish` hook. Reinstallation is idempotent; unknown code fails before any script replacement. The patch uses Python's standard library, validates syntax and preserves permissions. No global Trellis files are changed. `--dry-run` previews without writing; `--no-patch` skips this step. Commit the resulting project script changes as part of your baseline. Worktree preparation neither patches nor copies scripts.
 
 The extension also rejects CLI task results unless their source is exactly `session:<current context id>` and they are neither stale nor errored. This protection remains active with `--no-patch` or direct `pi install`; it does not fix direct calls to an unpatched `task.py finish`. After `trellis update`, rerun the installer/check if the script was replaced. Uninstalling the extension does not undo project script changes.
 
@@ -67,10 +69,10 @@ rm -rf .pi/agents/trellis-*.md .pi/.pi-trellis-hashes.json
 
 - pi ≥ 1.1.0
 - Trellis ≥ 0.6 (uses `task.py` / `get_context.py` and `.trellis/.runtime/sessions/`)
-- python3 on `PATH` (override with `TRELLIS_PYTHON`)
+- Python ≥ 3.10 on `PATH` (override with `TRELLIS_PYTHON`)
 - a subagent extension for the `trellis-*` agents — `pi install @tintinweb/pi-subagents`. Without one, everything else still works; you get one warning at startup.
 
-Verified on macOS and Linux. Windows is untested.
+Existing host behavior has macOS/Linux evidence. The native management CLI is verified on macOS with Python 3.14.7; Python 3.10 is the syntax minimum, not a tested version matrix. Windows is untested and recovery conservatively refuses to prove owner death there.
 
 ## Agent definitions and `.gitignore`
 
@@ -105,21 +107,34 @@ Falling back to 2 or 3 means the skill text was rendered for another platform: i
 
 **External research is configuration-dependent.** Agent files inherit configured extensions/skills, not a particular web service. Without actual search/MCP tools, research reports that external search was unavailable. Built-in tool allowlists and role instructions are not a shell sandbox or a restriction on every extension tool.
 
-**Task-level worktree management.** `trellis_worktree` previews and manages creation/binding, task-material preparation, status, provider stop, recovery and safe removal. `trellis_dispatch` sends a role to the existing ready directory. No temporary subagent isolation, automatic phase advancement, commits, merges or branch deletion.
+**Task-level worktree management.** `python3 .trellis/scripts/worktree.py` manages creation/adoption, preparation, status, recovery and safe removal; only execution/stop remains in Pi. The old `trellis_worktree` tool is no longer registered. Persisted v1 bindings/executions remain compatible; do not recreate or automatically clean existing worktrees. `trellis_dispatch` sends a role to the existing ready directory. No temporary subagent isolation, automatic phase advancement, commits, merges or branch deletion.
 
 ### Worktree usage
 
-Source `.gitignore` must explicitly ignore `/.worktree/` (or your configured directory) and `/.trellis/.runtime/`. The target base must also ignore its runtime. The extension checks this; it never edits `.gitignore` silently. Optional `.pi/pi-trellis.json` (relative paths resolve from source root):
+Source `.gitignore` must explicitly ignore `/.worktree/` (or your configured directory) and `/.trellis/.runtime/`. The target base must also ignore its runtime. The native CLI checks this; it never edits `.gitignore` silently. Optional `.pi/pi-trellis.json` (relative paths resolve from source root):
 
 ```json
 { "worktree": { "directory": ".worktree" } }
 ```
 
-Call `trellis_worktree` with `{ "action": "create", "task": ".trellis/tasks/<full-slug>" }` to preview the source, target, branch and pinned commit. After user approval, repeat with `"confirm": true`. For a user-created registered worktree, use `action: "bind"` and `path`. `action: "status"` is read-only and reports missing/mismatched bindings without recreating them.
+Run the fixed project entry from the source project (no package-path lookup):
+
+```bash
+python3 .trellis/scripts/worktree.py --help
+python3 .trellis/scripts/worktree.py create --task .trellis/tasks/<full-slug>
+# Repeat only after approval; optionally pin the preview's full commit with --base:
+python3 .trellis/scripts/worktree.py create --task .trellis/tasks/<full-slug> --confirm
+python3 .trellis/scripts/worktree.py prepare --task .trellis/tasks/<full-slug>
+# After approval of copies and target start/hooks:
+python3 .trellis/scripts/worktree.py prepare --task .trellis/tasks/<full-slug> --confirm
+python3 .trellis/scripts/worktree.py status --task .trellis/tasks/<full-slug> --json
+```
+
+`adopt --path <registered-worktree>` handles an existing branch-backed worktree. `create` accepts `--base`/`--branch`, not `--path`. Every command requires explicit `--task`; `--cwd` defaults to process cwd. `--json` outputs one object (failures nonzero; diagnostics/progress stderr). Unknown, abbreviated, repeated, inapplicable, missing and empty/control-character options fail before mutation. `status` is read-only; all other commands preview by default. A preview is not a reservation: default HEAD can change before confirmation; supply its full commit to pin it.
 
 Creates never copy staged/unstaged/untracked source code, commit, install, or delete anything. New configuration affects new creates only; existing bindings keep their absolute path.
 
-After create/bind, use `action: "prepare"` (preview, then confirm). Source task must already be `in_progress`. Preparation copies only task artifacts and task-local referenced research; specs/code/scripts stay at the target baseline. Conflicts or source spec differences are reported, never silently overwritten. It runs **target** `task.py start`, including configured `after_start` hooks, then validates an independent target pointer and branch. Successful preparation marks `ready`.
+After create/adopt, use `prepare` (preview, then `--confirm`). Source task must already be `in_progress`. Preparation copies only task artifacts and task-local referenced research; specs/code/scripts stay at the target baseline. The baseline must contain local task.py and deployed native CLI/modules; missing scaffolding requires committing it or an explicitly approved target update, not copying source scripts during prepare. Conflicts or source spec differences are reported, never silently overwritten. It runs **target** `task.py start`, including configured `after_start` hooks, with the independent target context ID and inherited Git redirection variables removed, then validates the target pointer and branch. Successful preparation marks `ready`.
 
 Dispatch from a Pi host opened at the source project root:
 
@@ -129,9 +144,9 @@ Dispatch from a Pi host opened at the source project root:
 
 Pass this to `trellis_dispatch`; use its returned ID with existing result and steering tools. The main agent chooses when to dispatch check to the same directory. Ordinary Agent calls for a bound task are blocked before starting; `completed` means the agent ended, not acceptance. Check snapshot status becomes stale after later file changes.
 
-`action: "stop"` requests the provider to stop; the lease remains until a terminal event. Timeout/restart ambiguity retains an `unknown` lease and code. Explicit `recover` resets preparation and releases an execution only after its owner process has exited; live owners must be stopped through the provider. Stale lock files need manual inspection, not automatic deletion.
+`trellis_dispatch` with `{ "action": "stop", "task": ".trellis/tasks/<full-slug>" }` requests the provider to stop (no agent/prompt required); the lease remains until a terminal event. Timeout/restart ambiguity retains an `unknown` lease and code. Explicit `recover` resets preparation and releases an execution only after its owner process has exited; live owners must be stopped through the provider. Stale lock files need manual inspection, not automatic deletion.
 
-`remove` previews ignored-file risks and requires confirmation, a clean worktree and `integratedInto` (the user-approved reference preserving its commits). It uses ordinary `git worktree remove`, never force-removes or deletes the branch. A manually removed target can be explicitly unbound. Task artifacts often keep a prepared tree dirty: preserve/commit/archive them through the normal approved workflow before cleanup.
+`remove` previews ignored-file risks and requires confirmation, a clean worktree and `--integrated-into <reference>` (the user-approved reference preserving its commits). It uses ordinary `git worktree remove`, never force-removes, deletes the branch, or removes the actual process cwd (even when `--cwd` points elsewhere). A manually removed target can be explicitly unbound. Task artifacts often keep a prepared tree dirty: preserve/commit/archive them through the normal approved workflow before cleanup.
 
 **Limits:** first version accepts branch-backed worktrees and strict bundled-style role config (`isolation: off`, `extensions: true`, required tools). Customized incompatible files are kept and rejected, not replaced. Managed dispatch requires the actual host/source cwd to match and pi-trellis persistently configured in source/user settings (not just a parent-only `-e`) so children can reload the adapter. Worktrees and role rules are not an OS sandbox; third-party RPC/workflow launches are outside this tool's occupancy gate.
 
@@ -173,7 +188,9 @@ way — the display is just a display.
 ## Development checks
 
 ```bash
-npm test
+env -u TRELLIS_CONTEXT_ID npm test
+# Native standard-library unit tests (also included in npm test):
+python3 -B -m unittest discover -s tests/python -p 'test_*.py'
 node scripts/sync-agents.mjs <fixed-version-generated-.claude/agents> --check
 # Optional: real Pi/provider execution, scripted offline model responses only
 node tests/provider-contracts.mjs --host <Pi-node_modules> --provider <provider-package-root>
