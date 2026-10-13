@@ -8,18 +8,20 @@
 | --- | --- |
 | `extensions/trellis.ts` | Pi events, session/root identity, UI, workflow excerpt, ordinary Agent interception, agent deployment and skill discovery |
 | `lib/task-context.ts` | Task/material containment, role JSONL loading, dispatch facts and owned prompt assembly |
-| `python/pi_trellis_worktree/records.py`, `manager.py` | Native Git/config/identity, v1 records, lock and management transitions |
-| `python/pi_trellis_worktree/materials.py` | Complete reference validation, selected task copies and readiness |
+| `runtime/pi_trellis_worktree/records.py`, `manager.py` | Native Git/config/identity, v1 records, lock and management transitions |
+| `runtime/pi_trellis_worktree/materials.py` | Complete reference validation, selected task copies and readiness |
 | `lib/config.ts`, `lib/bindings.ts` | Host path validators and shared v1 persistence/lock primitives (no management fallback) |
 | `lib/executions.ts`, `lib/subagent-rpc.ts`, `lib/worktree-query.ts` | Host leases/snapshots, public provider RPC and read-only Python queries |
+| `runtime/common/`, `runtime/{task,get_context,add_session,init_developer,get_developer}.py` | Fixed AGPL Trellis 0.6.16 import closure, maintained task/session/journal contracts |
+| `resources/runtime-baseline.json` | Full original/output hashes, independent native/role source categories and content-derived release ID |
 | `scripts/`, `agents/`, `docs/agent-baseline.json` | Installation and adapted-agent source maintenance; see the scripts layer |
 | `tests/*.test.mjs` | `node:test` coverage with direct TypeScript imports |
 
-Keep host presentation in the entrypoint and reuse the library owner for shared contract logic. `__internals` exports in the extension are test helpers, not a stable public API. Runtime integration uses Trellis CLIs and project files; the new standard-library management core is original pi-trellis code, not a copied Trellis runtime. Host queries invoke the package-local Python query without taking a lock; user commands use the independently deployed fixed project entry. Python also owns accepted-source snapshots, whole-file B/S/T decisions, prospective overlays and material revisions; TS consumes opaque facts and never duplicates those rules. The installer separately applies focused derived Python blocks; [license/provenance rules](../scripts/agent-sync-and-provenance.md) still apply.
+Keep host presentation in the entrypoint and reuse the library owner for shared contract logic. `__internals` exports in the extension are test helpers, not a stable public API. The native standard-library management core remains original MIT pi-trellis code, moved unchanged from `python/`. The package now also vendors the supported AGPL Trellis 0.6.16 task/context/journal/developer import closure in `runtime/`; see [runtime baseline](../../../docs/runtime-baseline.md). Package source is not implicitly deployed to an existing project. Host queries invoke the package-local Python query without taking a lock; user commands use the independently deployed fixed project entry. Python also owns accepted-source snapshots, whole-file B/S/T decisions, prospective overlays and material revisions; TS consumes opaque facts and never duplicates those rules. The installer separately applies focused derived Python blocks; [license/provenance rules](../scripts/agent-sync-and-provenance.md) still apply.
 
 ## Inputs, Types and Validation
 
-Follow the small local validators rather than introducing a schema framework for an unrelated edit. Example from `python/pi_trellis_worktree/records.py`:
+Follow the small local validators rather than introducing a schema framework for an unrelated edit. Example from `runtime/pi_trellis_worktree/records.py`:
 
 ```python
 config = json.loads(file.read_text(encoding="utf-8"))

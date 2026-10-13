@@ -1,6 +1,6 @@
 // Test adapter only: all lifecycle assertions exercise the native CLI subprocess.
 import { execFile } from 'node:child_process';
-const cli = new URL('../python/worktree.py', import.meta.url).pathname;
+const cli = new URL('../runtime/worktree.py', import.meta.url).pathname;
 export async function manageWorktree(request) {
   request.signal?.throwIfAborted();
   const args = [cli, request.action === 'bind' ? 'adopt' : request.action, '--cwd', request.cwd, '--task', request.task, '--json'];

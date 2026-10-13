@@ -1,0 +1,251 @@
+✖ real runtime never infers foreign task, including explicit compatibility flag, absence, empty and child clear (213.058458ms)
+✖ start without identity fails before status and hooks; invalid and nonexistent records refuse binding (198.909042ms)
+✖ invalid raw refs cannot authorize reads, context, package, journal or finish hooks (234.413208ms)
+✖ pointer corruption distinguished from no task; invalid override cannot sanitize into another key (152.540666ms)
+✖ finish hooks only once for successfully cleared valid task, never after unlink failure (291.077917ms)
+✖ external source task-store parity and lexical/record escape refusals (142.164542ms)
+✖ malformed optional children projection is tolerant and bounded across real current/list/context (218.321583ms)
+✖ journal commits exact archived task path, not active basename victim, preserving unrelated index (491.255334ms)
+✖ archive commits only exact moved destination, source deletes and edited child task.json, not old archive/child artifacts (331.834333ms)
+✖ developer single-segment Unicode/spaces, unsafe names no writes, existing identity and history preserved (149.039375ms)
+✖ supported entrypoints run without trellis and suppress all bytecode/update-marker writes (836.447791ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 0
+ℹ fail 11
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3335.670375
+
+✖ failing tests:
+
+test at tests/runtime-contracts.test.mjs:27:1
+✖ real runtime never infers foreign task, including explicit compatibility flag, absence, empty and child clear (213.058458ms)
+  AssertionError [ERR_ASSERTION]: Expected "actual" to be strictly unequal to: 0
+      at TestContext.<anonymous> (file:///Users/jyxc-dz-0101322/tools/pi-trellis/tests/runtime-contracts.test.mjs:29:109)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.start (node:internal/test_runner/test:1015:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:358:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 0,
+    operator: 'notStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/runtime-contracts.test.mjs:35:1
+✖ start without identity fails before status and hooks; invalid and nonexistent records refuse binding (198.909042ms)
+  AssertionError [ERR_ASSERTION]: Expected "actual" to be strictly unequal to: 0
+      at TestContext.<anonymous> (file:///Users/jyxc-dz-0101322/tools/pi-trellis/tests/runtime-contracts.test.mjs:37:66)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 0,
+    operator: 'notStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/runtime-contracts.test.mjs:42:1
+✖ invalid raw refs cannot authorize reads, context, package, journal or finish hooks (234.413208ms)
+  AssertionError [ERR_ASSERTION]: Expected "actual" to be strictly unequal to: 0
+      at TestContext.<anonymous> (file:///Users/jyxc-dz-0101322/tools/pi-trellis/tests/runtime-contracts.test.mjs:46:77)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 0,
+    operator: 'notStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/runtime-contracts.test.mjs:54:1
+✖ pointer corruption distinguished from no task; invalid override cannot sanitize into another key (152.540666ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+
+    assert.ok(JSON.parse(r.stdout).error)
+
+      at TestContext.<anonymous> (file:///Users/jyxc-dz-0101322/tools/pi-trellis/tests/runtime-contracts.test.mjs:56:196)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests/runtime-contracts.test.mjs:60:1
+✖ finish hooks only once for successfully cleared valid task, never after unlink failure (291.077917ms)
+  AssertionError [ERR_ASSERTION]: Traceback (most recent call last):
+    File "<string>", line 10, in <module>
+      else: raise AssertionError('unlink failure returned authorization')
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  AssertionError: unlink failure returned authorization
+
+
+  1 !== 0
+
+      at TestContext.<anonymous> (file:///Users/jyxc-dz-0101322/tools/pi-trellis/tests/runtime-contracts.test.mjs:62:317)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/runtime-contracts.test.mjs:66:1
+✖ external source task-store parity and lexical/record escape refusals (142.164542ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  1 !== 0
+
+      at TestContext.<anonymous> (file:///Users/jyxc-dz-0101322/tools/pi-trellis/tests/runtime-contracts.test.mjs:68:9)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/runtime-contracts.test.mjs:73:1
+✖ malformed optional children projection is tolerant and bounded across real current/list/context (218.321583ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+
+    assert.ok(current.children.length<=512)
+
+      at TestContext.<anonymous> (file:///Users/jyxc-dz-0101322/tools/pi-trellis/tests/runtime-contracts.test.mjs:75:92)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests/runtime-contracts.test.mjs:79:1
+✖ journal commits exact archived task path, not active basename victim, preserving unrelated index (491.255334ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /archive\/2000-01\/same\/evidence/. Input:
+
+  '.trellis/tasks/same/victim.txt\n' +
+    '.trellis/workspace/Dev/index.md\n' +
+    '.trellis/workspace/Dev/journal-1.md'
+
+      at TestContext.<anonymous> (file:///Users/jyxc-dz-0101322/tools/pi-trellis/tests/runtime-contracts.test.mjs:82:144)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '.trellis/tasks/same/victim.txt\n.trellis/workspace/Dev/index.md\n.trellis/workspace/Dev/journal-1.md',
+    expected: /archive\/2000-01\/same\/evidence/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at tests/runtime-contracts.test.mjs:85:1
+✖ archive commits only exact moved destination, source deletes and edited child task.json, not old archive/child artifacts (331.834333ms)
+  AssertionError [ERR_ASSERTION]: The input was expected to not match the regular expression /1999|dirty|staged/. Input:
+
+  '.trellis/tasks/archive/1999-01/old/dirty.md\n' +
+    '.trellis/tasks/archive/2026-10/parent/prd.md\n' +
+    '.trellis/tasks/archive/2026-10/parent/task.json\n' +
+    '.trellis/tasks/child/dirty.md\n' +
+    '.trellis/tasks/child/task.json\n' +
+    '.trellis/tasks/parent/prd.md\n' +
+    '.trellis/tasks/parent/task.json'
+
+      at TestContext.<anonymous> (file:///Users/jyxc-dz-0101322/tools/pi-trellis/tests/runtime-contracts.test.mjs:88:245)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '.trellis/tasks/archive/1999-01/old/dirty.md\n.trellis/tasks/archive/2026-10/parent/prd.md\n.trellis/tasks/archive/2026-10/parent/task.json\n.trellis/tasks/child/dirty.md\n.trellis/tasks/child/task.json\n.trellis/tasks/parent/prd.md\n.trellis/tasks/parent/task.json',
+    expected: /1999|dirty|staged/,
+    operator: 'doesNotMatch',
+    diff: 'simple'
+  }
+
+test at tests/runtime-contracts.test.mjs:91:1
+✖ developer single-segment Unicode/spaces, unsafe names no writes, existing identity and history preserved (149.039375ms)
+  AssertionError [ERR_ASSERTION]: ..
+      at TestContext.<anonymous> (file:///Users/jyxc-dz-0101322/tools/pi-trellis/tests/runtime-contracts.test.mjs:93:273)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 0,
+    operator: 'notStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/runtime-contracts.test.mjs:99:1
+✖ supported entrypoints run without trellis and suppress all bytecode/update-marker writes (836.447791ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+
+    assert.ok(!walk(join(f.root,'.trellis')).some(n=>n==='__pycache__'||n.startsWith('update-check-')))
+
+      at TestContext.<anonymous> (file:///Users/jyxc-dz-0101322/tools/pi-trellis/tests/runtime-contracts.test.mjs:104:135)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

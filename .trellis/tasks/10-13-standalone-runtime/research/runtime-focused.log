@@ -1,0 +1,24 @@
+✔ real runtime never infers foreign task, including explicit compatibility flag, absence, empty and child clear (717.884584ms)
+✔ start without identity fails before status and hooks; invalid and nonexistent records refuse binding (797.31525ms)
+✔ invalid raw refs cannot authorize reads, context, package, journal or finish hooks (2717.789542ms)
+✔ pointer corruption distinguished from no task; invalid override cannot sanitize into another key (855.679792ms)
+✔ finish hooks only once for successfully cleared valid task, never after unlink failure (430.454542ms)
+✔ external source task-store parity and lexical/record escape refusals (468.462333ms)
+✔ malformed optional children projection is tolerant and bounded across real current/list/context (544.869041ms)
+✔ journal commits exact archived task path, not active basename victim, preserving unrelated index (528.90475ms)
+✔ archive commits only exact moved destination, source deletes and edited child task.json, not old archive/child artifacts (331.096125ms)
+✔ developer single-segment Unicode/spaces, unsafe names no writes, existing identity and history preserved (1034.702541ms)
+✔ supported entrypoints run without trellis and suppress all bytecode/update-marker writes (900.129042ms)
+✔ real runtime child binding/finish cannot resurrect from repeated dispatch header; failed binding never borrows parent (631.779958ms)
+✔ real runtime rejects oversized/nonregular task records and direct library readers retain diagnostics (366.693042ms)
+✔ external allowed store journal never guesses a local task basename or commits external files (487.33625ms)
+✔ runtime baseline hashes, import closure, unchanged native move and Python 3.10 syntax are reproducible (705.889625ms)
+✔ all supported record mutations refuse external task.json redirects and preserve victim bytes (492.504875ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12194.086083

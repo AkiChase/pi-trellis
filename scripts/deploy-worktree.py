@@ -16,7 +16,7 @@ import sys
 import tempfile
 
 VERSION = 1
-SOURCE = Path(__file__).resolve().parent.parent / "python"
+SOURCE = Path(__file__).resolve().parent.parent / "runtime"
 MANIFEST = ".pi-trellis-worktree.json"
 
 

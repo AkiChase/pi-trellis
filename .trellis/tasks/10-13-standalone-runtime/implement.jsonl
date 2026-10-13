@@ -1,0 +1,8 @@
+{"file": ".trellis/tasks/10-13-pi-trellis-standalone/design.md", "reason": "父任务整体架构和明确裁剪范围"}
+{"file": ".trellis/tasks/10-13-pi-trellis-standalone/implement.md", "reason": "总体顺序和验证保护要求"}
+{"file": ".trellis/spec/extension/session-and-context.md", "reason": "现有会话与任务安全边界"}
+{"file": ".trellis/spec/extension/quality-guidelines.md", "reason": "真实测试环境和验证限制"}
+{"file": ".trellis/spec/scripts/installation-and-patching.md", "reason": "现有部署与补丁契约"}
+{"file": ".trellis/spec/scripts/agent-sync-and-provenance.md", "reason": "AGPL/来源归属"}
+{"file": ".trellis/tasks/10-13-standalone-runtime/research/source-baseline.md", "reason": "0.6.16 真实源码 hashes"}
+{"file": ".trellis/tasks/10-13-pi-trellis-standalone/research/execution-authorization.md", "reason": "用户统一授权与保留边界"}

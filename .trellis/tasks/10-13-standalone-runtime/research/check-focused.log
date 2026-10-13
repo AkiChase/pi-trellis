@@ -1,0 +1,31 @@
+✔ real runtime never infers foreign task, including explicit compatibility flag, absence, empty and child clear (719.86425ms)
+✔ start without identity fails before status and hooks; invalid and nonexistent records refuse binding (772.307917ms)
+✔ invalid raw refs cannot authorize reads, context, package, journal or finish hooks (2112.912708ms)
+✔ pointer corruption distinguished from no task; invalid override cannot sanitize into another key (788.559334ms)
+✔ finish hooks only once for successfully cleared valid task, never after unlink failure (447.094708ms)
+✔ external source task-store parity and lexical/record escape refusals (490.108833ms)
+✔ malformed optional children projection is tolerant and bounded across real current/list/context (549.541292ms)
+✔ journal commits exact archived task path, not active basename victim, preserving unrelated index (532.262625ms)
+✔ archive commits only exact moved destination, source deletes and edited child task.json, not old archive/child artifacts (337.001625ms)
+✔ developer single-segment Unicode/spaces, unsafe names no writes, existing identity and history preserved (1033.336875ms)
+✔ supported entrypoints run without trellis and suppress all bytecode/update-marker writes (900.052042ms)
+✔ real runtime child binding/finish cannot resurrect from repeated dispatch header; failed binding never borrows parent (637.579792ms)
+✔ real runtime rejects oversized/nonregular task records and direct library readers retain diagnostics (365.373125ms)
+✔ external allowed store journal never guesses a local task basename or commits external files (475.484583ms)
+✔ runtime baseline hashes, import closure, unchanged native move and Python 3.10 syntax are reproducible (692.52725ms)
+✔ all supported record mutations refuse external task.json redirects and preserve victim bytes (455.343417ms)
+✔ trimmed dot developer names fail before identity or workspace writes (303.645292ms)
+✔ session directory and final pointer symlinks never authorize reads, finish or start (804.98875ms)
+✔ archive destination links/collisions fail before status, child or session mutation (389.382833ms)
+✔ developer identity/workspace symlinks preserve external identity and history (349.811084ms)
+✔ recorded native provenance matches original git bytes and derived sources retain AGPL notices (67.297166ms)
+✔ actual create/start/current/finish lifecycle and malformed hooks remain observable without global trellis (669.952625ms)
+✔ context validation refuses invalid task records rather than raw external or nonobject metadata (456.053208ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 14508.557208

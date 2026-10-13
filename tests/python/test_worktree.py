@@ -7,7 +7,7 @@ import unittest
 
 from unittest.mock import patch
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "python"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "runtime"))
 from pi_trellis_worktree.records import canonical, parse_binding, text, owner_alive, source_lock, now, read_json, json_value
 from pi_trellis_worktree.materials import references, projection, digest, classify, material_graph, load_snapshot, apply_files, file_hash, collectible, local_file, MaterialView
 from pi_trellis_worktree.cli import parser

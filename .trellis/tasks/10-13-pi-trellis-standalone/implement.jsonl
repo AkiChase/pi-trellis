@@ -1,0 +1,9 @@
+{"file": ".trellis/spec/extension/architecture.md", "reason": "Existing ownership and proposed standalone boundaries"}
+{"file": ".trellis/spec/extension/session-and-context.md", "reason": "Session key, task validity and child identity contract"}
+{"file": ".trellis/spec/extension/worktree-lifecycle.md", "reason": "Preserve persistent worktree/material execution contracts"}
+{"file": ".trellis/spec/scripts/installation-and-patching.md", "reason": "Current installer/deployer behavior being replaced"}
+{"file": ".trellis/spec/scripts/agent-sync-and-provenance.md", "reason": "Attribution and fixed upstream resource provenance"}
+{"file": ".trellis/tasks/10-13-pi-trellis-standalone/research/upstream-init-audit.md", "reason": "Verified CLI initialization and historical username branches"}
+{"file": ".trellis/tasks/10-13-pi-trellis-standalone/research/init-wizard-ux.md", "reason": "Proposed English wizard and host UI capabilities"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Trace host/Python/files/role boundaries"}
+{"file": ".trellis/spec/extension/quality-guidelines.md", "reason": "Real host test environment and preservation/verification limits"}

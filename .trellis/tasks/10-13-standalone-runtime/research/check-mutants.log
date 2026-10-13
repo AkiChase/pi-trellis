@@ -1,0 +1,11 @@
+trimmed-dot vulnerable= False exit= 1
+session-ancestor vulnerable= False exit= 1
+archive-ancestor vulnerable= False exit= 1
+identity-link vulnerable= False exit= 1
+raw-validator vulnerable= False exit= 1
+trimmed-dot vulnerable= True exit= 1
+session-ancestor vulnerable= True exit= 0
+archive-ancestor vulnerable= True exit= 0
+identity-link vulnerable= True exit= 0
+raw-validator vulnerable= True exit= 0
+5 repaired boundaries deny side effects; 5 isolated guard-removal mutants reproduce failures.

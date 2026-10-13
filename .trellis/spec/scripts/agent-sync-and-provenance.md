@@ -45,7 +45,7 @@ Evidence: `tests/agent-context-integration.test.mjs` verifies untouched old copy
 
 `LICENSE` covers original/new runtime code under MIT. Bundled adapted upstream documents retain **AGPL-3.0-only**, with attribution/modification notes and `licenses/trellis-AGPL-3.0.txt`. `scripts/patch-trellis.py` embeds Trellis-derived code blocks and explicitly carries their upstream AGPL attribution. Preserve notices in adaptation/patch sources and shipped materials.
 
-`package.json` declares `(MIT AND AGPL-3.0-only)`. Do not describe the complete distribution as MIT-only, wholly upstream-free, or free of Trellis material. Distinguish the runtime integration (CLI/file surfaces; no vendored runtime implementation) from adapted document/derived block material. The provenance record is not legal advice for every downstream combination, but release claims must not erase the existing attribution/license split.
+`package.json` declares `(MIT AND AGPL-3.0-only)`. Do not describe the complete distribution as MIT-only, wholly upstream-free, or free of Trellis material. The fixed `runtime/common/` and supported task/context/journal/developer entries are now vendored Trellis 0.6.16 AGPL material, with per-file source/output hashes in `resources/runtime-baseline.json`. Native `runtime/pi_trellis_worktree/` remains original MIT code. These are separate from the 0.6.17 adapted-role baseline. The provenance record is not legal advice for every downstream combination, but release claims must not erase the existing attribution/license split.
 
 ## Quality Check
 

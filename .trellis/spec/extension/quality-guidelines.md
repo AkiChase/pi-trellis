@@ -42,6 +42,7 @@ Integration fixtures model documented Python `start/current` or `set_active_task
 | `tests/material-sync.test.mjs`, `tests/worktree-protocol.test.mjs` | Accepted-source/B/S/T ancestry, overlay/dependencies, projection, explicit collection/negative paths, partial error retention, check lineage, package protocol and role cache changes |
 | `tests/dispatch.test.mjs` | Public RPC target cwd/off, real ID, occupancy, early completion, source drift/final material recheck, versioned snapshot freshness, shutdown ambiguity and rejection before spawn |
 | `tests/worktree-cli.test.mjs`, `tests/python/test_worktree.py` | Strict CLI parsing, deployed entry without Node, source pin isolation, complete reference bounds, v1 host/CLI locks and protected deployment |
+| `tests/runtime-contracts.test.mjs` | Complete fixed-runtime copies: strict own-key/no inference, real child finish/non-resurrection, invalid raw refs/records/hooks, bounded projections, exact journal/archive commits and preserved unrelated index, safe developer identity, no global trellis/bytecode, source hashes/import closure/package files |
 | `tests/trellis-patches.test.mjs` | Exact/idempotent patch, mode/no-write behavior, current-session clearing, unlink failure, unsafe inputs and installer modes |
 | `tests/agent-documents.test.mjs` | Adapted hashes/attribution, role tools and protocols, scoped check fixes, research output boundaries and rejected source drift |
 

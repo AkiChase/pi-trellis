@@ -2,7 +2,7 @@
 
 ## Applicability and Invariants
 
-Use this guide for `python/pi_trellis_worktree/`, `lib/worktree-query.ts`, `lib/bindings.ts`, `lib/executions.ts` and `lib/subagent-rpc.ts`. pi-trellis manages a persistent task directory, then uses the provider's public cwd RPC. It does not modify providers, use temporary subagent isolation, automatically advance phases, install dependencies, commit, merge or delete branches.
+Use this guide for `runtime/pi_trellis_worktree/`, `lib/worktree-query.ts`, `lib/bindings.ts`, `lib/executions.ts` and `lib/subagent-rpc.ts`. pi-trellis manages a persistent task directory, then uses the provider's public cwd RPC. It does not modify providers, use temporary subagent isolation, automatically advance phases, install dependencies, commit, merge or delete branches.
 
 Caller approval is required before using `--confirm`; a CLI flag is not proof of consent. Management runs through `python3 .trellis/scripts/worktree.py`; `trellis_worktree` is not registered. Each mutating CLI operation previews by default, accepts explicit `--task`, and requires approved `--confirm`. Operation-specific argparse rejects abbreviation, duplicates, unknown/inapplicable options and empty/control-character values before repository access. `status` cannot confirm. JSON stdout is one object; errors/progress go to stderr. A source-wide exclusive lock serializes confirmed management transitions and dispatch reservations; provider terminal-event record writes and stop requests do not acquire that lock. Existing lock files require inspection, not automatic stale-lock deletion.
 

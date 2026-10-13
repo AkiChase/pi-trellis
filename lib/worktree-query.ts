@@ -18,7 +18,7 @@ interface WorktreeQuery {
 
 /** Python owns Git identity and readiness. Read-only even inside the host source lock. */
 export function queryWorktree(cwd: string, task?: string, ready = false, signal?: AbortSignal): Promise<WorktreeQuery> {
-	const script = join(dirname(dirname(fileURLToPath(import.meta.url))), "python/query-worktree.py");
+	const script = join(dirname(dirname(fileURLToPath(import.meta.url))), "runtime/query-worktree.py");
 	const args = ["-B", script, "--cwd", cwd];
 	if (task !== undefined) args.push("--task", task);
 	if (ready) args.push("--ready");

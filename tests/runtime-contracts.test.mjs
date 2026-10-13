@@ -1,0 +1,229 @@
+import assert from 'node:assert/strict';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import test from 'node:test';
+import trellis, { __internals } from '../extensions/trellis.ts';
+
+
+
+const python = execFileSync('which', [process.env.TRELLIS_PYTHON || 'python3'], {encoding:'utf8'}).trim();
+function fixture(t) {
+ const root=mkdtempSync(join(tmpdir(),'pi-real-runtime-')); t.after(()=>rmSync(root,{recursive:true,force:true}));
+ const put=(path,data)=>{mkdirSync(join(root,path,'..'),{recursive:true});writeFileSync(join(root,path),typeof data==='string'?data:JSON.stringify(data));};
+ cpSync(resolve('runtime'),join(root,'.trellis/scripts'),{recursive:true});
+ const env={...process.env,PYTHONDONTWRITEBYTECODE:'1',TRELLIS_CONTEXT_ID:'own'};
+ for(const key of Object.keys(env))if(key.startsWith('GIT_') || /SESSION_ID|THREAD_ID|CONVERSATION_ID|TRANSCRIPT_PATH|TRELLIS_DEVELOPER/.test(key))delete env[key];
+ const run=(entry,args=[],extra={})=>spawnSync(python,[join(root,'.trellis/scripts',entry),...args],{cwd:root,env:{...env,...extra},encoding:'utf8'});
+ const probe=code=>spawnSync(python,['-B','-c',`import sys,os,json\nfrom pathlib import Path\nsys.path.insert(0,str(Path.cwd()/'.trellis/scripts'))\nroot=Path.cwd()\n${code}`],{cwd:root,env,encoding:'utf8'});
+ const git=(...args)=>execFileSync('git',['-C',root,...args],{encoding:'utf8',env,stdio:['ignore','pipe','pipe']}).trim();
+ git('init','-q');git('config','user.name','Runtime Fixture');git('config','user.email','fixture@example.invalid');git('config','commit.gpgsign','false');git('config','core.quotePath','false');
+ put('.gitignore','/.trellis/.runtime/\n/.trellis/.developer\n');
+ const task=(name='own',overrides={})=>{const path='.trellis/tasks/'+name;put(path+'/task.json',{id:name,title:name,description:'Task description',status:'planning',children:[],...overrides});put(path+'/prd.md','Requirements');return path;};
+ const pointer=(key,ref)=>put('.trellis/.runtime/sessions/'+key+'.json',{current_task:ref});
+ const ok=(entry,args=[],extra={})=>{const r=run(entry,args,extra);assert.equal(r.status,0,r.stderr+'\n'+r.stdout);return r;};
+ return {root,put,env,run,probe,git,task,pointer,ok};
+}
+const start=(f,path)=>f.run('task.py',['start',path,'--allow-empty-context']);
+
+test('real runtime never infers foreign task, including explicit compatibility flag, absence, empty and child clear',t=>{
+ const f=fixture(t), foreign=f.task('parent');f.pointer('parent',foreign);
+ for(const pin of ['own','']){const r=f.run('task.py',['current','--json'],{TRELLIS_CONTEXT_ID:pin});assert.notEqual(r.status,0);assert.equal(JSON.parse(r.stdout).current_task,null);}
+ const r=f.probe(`from common.active_task import resolve_active_task\nassert resolve_active_task(root,allow_single_session_fallback=True).task_path is None\nfrom common.paths import get_current_task\nassert get_current_task(root) is None`);assert.equal(r.status,0,r.stderr);
+ f.pointer('own',null);f.ok('task.py',['finish']);assert.ok(existsSync(join(f.root,'.trellis/.runtime/sessions/parent.json')));
+ const child=f.task('child');assert.equal(start(f,child).status,0);f.ok('task.py',['finish']);f.ok('task.py',['finish']);assert.notEqual(f.run('task.py',['current','--json']).status,0);assert.ok(existsSync(join(f.root,'.trellis/.runtime/sessions/parent.json')));
+});
+
+test('start without identity fails before status and hooks; invalid and nonexistent records refuse binding',t=>{
+ const f=fixture(t), path=f.task();f.put('.trellis/config.yaml','hooks:\n  after_start:\n    - echo touched >> hook-marker\n');
+ const before=readFileSync(join(f.root,path,'task.json'));assert.notEqual(f.run('task.py',['start',path,'--allow-empty-context'],{TRELLIS_CONTEXT_ID:''}).status,0);assert.deepEqual(readFileSync(join(f.root,path,'task.json')),before);assert.ok(!existsSync(join(f.root,'hook-marker')));
+ for(const data of ['broken','[]','{}','{"status":{}}','{"title":42}','{"status":"'+ 'a'.repeat(9000)+'"}']){f.put(path+'/task.json',data);assert.notEqual(start(f,path).status,0,data);assert.ok(!existsSync(join(f.root,'.trellis/.runtime/sessions/own.json')));}
+ rmSync(join(f.root,path,'task.json'));assert.notEqual(start(f,path).status,0);assert.notEqual(start(f,'.trellis/tasks/absent').status,0);assert.ok(!existsSync(join(f.root,'hook-marker')));
+});
+
+test('invalid raw refs cannot authorize reads, context, package, journal or finish hooks',t=>{
+ const f=fixture(t);f.ok('init_developer.py',['Dev']);const outside=join(f.root,'victim');f.put('victim/task.json',{id:'SECRET',title:'SECRET',status:'in_progress',package:'evil',branch:'SECRET'});f.put('victim/prd.md','SECRET');
+ f.put('.trellis/config.yaml','session_auto_commit: false\npackages:\n  safe:\n    path: safe\n  evil:\n    path: evil\nsession:\n  spec_scope: active_task\nhooks:\n  after_finish:\n    - echo touched >> hook-marker\n');
+ for(const ref of ['victim',outside,'.trellis/tasks/../../victim','.trellis/tasks/missing']){
+  f.pointer('own',ref);const r=f.run('task.py',['current','--json']);assert.notEqual(r.status,0);const data=JSON.parse(r.stdout);assert.equal(data.current_task,null);assert.ok(data.error);assert.equal(data.raw_ref,ref);
+  const p=f.probe(`from common.paths import get_current_task, get_current_task_abs\nassert get_current_task(root) is None and get_current_task_abs(root) is None`);assert.equal(p.status,0,p.stderr);
+  for(const args of [['--json'],['--mode','record','--json'],['--mode','packages','--json']]){const result=f.run('get_context.py',args);assert.notEqual(result.status,0);assert.doesNotMatch(result.stdout,/SECRET/);}
+  const journal=f.run('add_session.py',['--title','invalid task','--no-commit']);assert.notEqual(journal.status,0);assert.doesNotMatch(readFileSync(join(f.root,'.trellis/workspace/Dev/journal-1.md'),'utf8'),/invalid task|SECRET/);
+  f.ok('task.py',['finish']);assert.ok(!existsSync(join(f.root,'hook-marker')));assert.ok(!existsSync(join(f.root,'.trellis/.runtime/sessions/own.json')));
+ }
+});
+
+test('pointer corruption distinguished from no task; invalid override cannot sanitize into another key',t=>{
+ const f=fixture(t),path=f.task();f.pointer('own',path);
+ for(const content of ['broken','[]','{"current_task":42}']){f.put('.trellis/.runtime/sessions/own.json',content);const r=f.run('task.py',['current','--json']);assert.notEqual(r.status,0);assert.ok(JSON.parse(r.stdout).error);f.ok('task.py',['finish']);}
+ for(const pin of ['own/../own','own!','a'.repeat(129)]){const r=f.run('task.py',['current','--json'],{TRELLIS_CONTEXT_ID:pin});assert.notEqual(r.status,0);assert.ok(JSON.parse(r.stdout).error);}
+});
+
+test('finish hooks only once for successfully cleared valid task, never after unlink failure',t=>{
+ const f=fixture(t),path=f.task();f.put('.trellis/config.yaml','hooks:\n  after_finish:\n    - echo finished >> hook-marker\n');assert.equal(start(f,path).status,0);
+ const failed=f.probe(`from unittest.mock import patch\nfrom common.active_task import clear_active_task\nwith patch.object(Path,'unlink',side_effect=PermissionError('denied')):\n try: clear_active_task(root)\n except RuntimeError: pass\n else: raise AssertionError('unlink failure returned authorization')`);assert.equal(failed.status,0,failed.stderr);assert.ok(existsSync(join(f.root,'.trellis/.runtime/sessions/own.json')));assert.ok(!existsSync(join(f.root,'hook-marker')));
+ f.ok('task.py',['finish']);f.ok('task.py',['finish']);assert.equal(readFileSync(join(f.root,'hook-marker'),'utf8'),'finished\n');
+});
+
+test('external source task-store parity and lexical/record escape refusals',t=>{
+ const f=fixture(t),path=f.task();const store=mkdtempSync(join(tmpdir(),'pi-external-store-'));t.after(()=>rmSync(store,{recursive:true,force:true}));cpSync(join(f.root,'.trellis/tasks'),store,{recursive:true});rmSync(join(f.root,'.trellis/tasks'),{recursive:true});symlinkSync(store,join(f.root,'.trellis/tasks'));
+ assert.equal(start(f,path).status,0);assert.equal(JSON.parse(f.ok('task.py',['current','--json']).stdout).current_task.dir,path);
+ f.put('victim/task.json',{status:'in_progress'});symlinkSync(join(f.root,'victim'),join(store,'escape'));assert.notEqual(start(f,'.trellis/tasks/escape').status,0);
+ const external=join(store,'..','record-'+Date.now()+'.json');writeFileSync(external,'{"status":"in_progress"}');t.after(()=>rmSync(external,{force:true}));rmSync(join(store,'own/task.json'));symlinkSync(external,join(store,'own/task.json'));assert.notEqual(f.run('task.py',['current','--json']).status,0);assert.notEqual(start(f,path).status,0);
+});
+
+test('malformed optional children projection is tolerant and bounded across real current/list/context',t=>{
+ const f=fixture(t);f.ok('init_developer.py',['Dev']);const path=f.task('own',{children:[null,42,{},'../victim','good',...Array(600).fill('child')],parent:[],package:{},assignee:42});f.pointer('own',path);
+ const current=JSON.parse(f.ok('task.py',['current','--json']).stdout).current_task;assert.ok(current.children.length<=512);assert.ok(current.children.every(x=>typeof x==='string'&&!x.includes('/')));
+ for(const [entry,args] of [['task.py',['list','--json']],['get_context.py',['--json']],['get_context.py',['--mode','record','--json']]])f.ok(entry,args);
+});
+
+test('journal commits exact archived task path, not active basename victim, preserving unrelated index',t=>{
+ const f=fixture(t);f.ok('init_developer.py',['Dev']);f.task('same');const archived=f.task('archive/2000-01/same');f.git('add','.');f.git('commit','-qm','baseline');
+ f.put('.trellis/tasks/same/victim.txt','unrelated');f.put(archived+'/evidence.md','selected');f.put('staged.txt','preserve');f.git('add','staged.txt');const staged=f.git('show',':staged.txt');f.pointer('own',archived);
+ f.ok('add_session.py',['--title','Exact journal scope']);const committed=f.git('diff-tree','--no-commit-id','--name-only','-r','HEAD');assert.match(committed,/archive\/2000-01\/same\/evidence/);assert.doesNotMatch(committed,/victim|staged/);assert.equal(f.git('show',':staged.txt'),staged);assert.match(f.git('status','--porcelain'),/staged.txt/);
+});
+
+test('archive commits only exact moved destination, source deletes and edited child task.json, not old archive/child artifacts',t=>{
+ const f=fixture(t),path=f.task('parent',{children:['child']}),child=f.task('child',{parent:'parent'});f.task('archive/1999-01/old');f.git('add','.');f.git('commit','-qm','baseline');
+ f.put('.trellis/tasks/archive/1999-01/old/dirty.md','unrelated old archive');f.put(child+'/dirty.md','unrelated child');f.put('staged.txt','preserve');f.git('add','staged.txt');
+ f.ok('task.py',['archive',path,'--skip-branch-validation']);const committed=f.git('diff-tree','--no-commit-id','--name-only','-r','HEAD');assert.match(committed,/archive\/\d{4}-\d{2}\/parent/);assert.match(committed,/child\/task.json/);assert.doesNotMatch(committed,/1999|dirty|staged/);assert.match(f.git('status','--porcelain'),/staged.txt/);assert.equal(f.git('ls-files',path),'');
+});
+
+test('developer single-segment Unicode/spaces, unsafe names no writes, existing identity and history preserved',t=>{
+ const f=fixture(t);
+ for(const name of ['..','.','../victim','a/b','a\\b','bad\nname','edge\n','\tbad','bad\u0000name','   ']){if(name.includes('\0')){const r=f.probe(`from common.developer import init_developer\nassert not init_developer('bad\\x00name',root)`);assert.equal(r.status,0,r.stderr);}else assert.notEqual(f.run('init_developer.py',[name]).status,0,name);assert.ok(!existsSync(join(f.root,'.trellis/.developer')));}
+ f.put('.trellis/workspace/李 小明/journal-1.md','history');f.put('.trellis/workspace/李 小明/index.md','history index');f.ok('init_developer.py',['李 小明']);const identity=readFileSync(join(f.root,'.trellis/.developer'));assert.equal(readFileSync(join(f.root,'.trellis/workspace/李 小明/journal-1.md'),'utf8'),'history');
+ f.ok('init_developer.py',['李 小明']);const different=f.run('init_developer.py',['Someone else']);assert.notEqual(different.status,0);assert.match(different.stdout+different.stderr,/李 小明/);assert.deepEqual(readFileSync(join(f.root,'.trellis/.developer')),identity);assert.ok(!existsSync(join(f.root,'.trellis/workspace/Someone else')));
+ for(const name of ['../victim','edge\n','\tbad'])assert.notEqual(f.run('get_developer.py',[],{TRELLIS_DEVELOPER:name}).status,0);
+});
+
+test('supported entrypoints run without trellis and suppress all bytecode/update-marker writes',t=>{
+ const f=fixture(t);const bin=join(f.root,'only-git');mkdirSync(bin);symlinkSync(execFileSync('which',['git'],{encoding:'utf8'}).trim(),join(bin,'git'));const env={PATH:bin,PYTHONDONTWRITEBYTECODE:''};
+ f.ok('init_developer.py',['Dev'],env);f.ok('get_developer.py',[],env);const path=f.task();f.pointer('own',path);f.put('.trellis/.version','0.0.1');
+ for(const entry of ['task.py','get_context.py','add_session.py'])f.ok(entry,['--help'],env);
+ f.ok('get_context.py',['--json'],env);f.ok('get_context.py',[],env);f.ok('task.py',['current','--json'],env);f.ok('add_session.py',['--title','Offline','--no-commit'],env);
+ const walk=dir=>readdirSync(dir,{withFileTypes:true}).flatMap(e=>e.isDirectory()?[e.name,...walk(join(dir,e.name))]:[e.name]);assert.ok(!walk(join(f.root,'.trellis')).some(n=>n==='__pycache__'||n.startsWith('update-check-')));
+});
+
+test('real runtime child binding/finish cannot resurrect from repeated dispatch header; failed binding never borrows parent',async t=>{
+ const f=fixture(t);const path=f.task();const handlers=new Map(),messages=[];
+ trellis({events:{on:()=>()=>{},emit:()=>{}},registerCommand: () => {}, registerTool:()=>{},on:(name,fn)=>handlers.set(name,fn),sendMessage:m=>messages.push(m),getAllTools:()=>[]});
+ const ctx=name=>({cwd:f.root,hasUI:false,sessionManager:{getSessionId:()=>name,getSessionFile:()=>undefined},ui:{}});
+ const parent=ctx('runtime-parent'),child=ctx('runtime-child'),parentKey=__internals.contextKey(f.root,parent);f.pointer(parentKey,path);
+ const prompt=`Active task: ${path}\nTrellis context id: ${parentKey}\nTrellis agent: trellis-implement\n\nImplement`;
+ await handlers.get('before_agent_start')({prompt,systemPromptOptions:{sections:{}}},child);
+ const childKey=__internals.contextKey(f.root,child);assert.notEqual(childKey,parentKey);assert.equal(JSON.parse(f.ok('task.py',['current','--json'],{TRELLIS_CONTEXT_ID:childKey}).stdout).current_task.dir,path);
+ f.ok('task.py',['finish'],{TRELLIS_CONTEXT_ID:childKey});await handlers.get('tool_result')({toolName:'bash',input:{command:'task.py finish'}},child);
+ await handlers.get('before_agent_start')({prompt,systemPromptOptions:{sections:{}}},child);assert.ok(!existsSync(join(f.root,`.trellis/.runtime/sessions/${childKey}.json`)));assert.match(messages.at(-1).content,/No active task/i);
+ const failed=ctx('runtime-failed');await handlers.get('before_agent_start')({prompt:prompt.replace(path,'.trellis/tasks/missing'),systemPromptOptions:{sections:{}}},failed);const failedKey=__internals.contextKey(f.root,failed);assert.notEqual(failedKey,parentKey);assert.notEqual(f.run('task.py',['current','--json'],{TRELLIS_CONTEXT_ID:failedKey}).status,0);
+ assert.equal(JSON.parse(f.ok('task.py',['current','--json'],{TRELLIS_CONTEXT_ID:parentKey}).stdout).current_task.dir,path);
+});
+
+test('real runtime rejects oversized/nonregular task records and direct library readers retain diagnostics',t=>{
+ const f=fixture(t),path=f.task();f.pointer('own',path);f.put(path+'/task.json','{"title":"'+ 'x'.repeat(1024*1024)+'"}');assert.notEqual(start(f,path).status,0);assert.notEqual(f.run('task.py',['current','--json']).status,0);
+ const r=f.probe(`from common.session_context import get_context_json, get_context_record_json\nfrom common.packages_context import get_context_packages_json\nassert get_context_json(root).get('task_error')\nassert get_context_record_json(root).get('task_error')\nassert get_context_packages_json(root).get('task_error')`);assert.equal(r.status,0,r.stderr);
+ rmSync(join(f.root,path,'task.json'));mkdirSync(join(f.root,path,'task.json'));assert.notEqual(start(f,path).status,0);
+});
+
+test('external allowed store journal never guesses a local task basename or commits external files',t=>{
+ const f=fixture(t);f.ok('init_developer.py',['Dev']);const path=f.task('same');const store=mkdtempSync(join(tmpdir(),'pi-journal-store-'));t.after(()=>rmSync(store,{recursive:true,force:true}));cpSync(join(f.root,'.trellis/tasks'),store,{recursive:true});rmSync(join(f.root,'.trellis/tasks'),{recursive:true});symlinkSync(store,join(f.root,'.trellis/tasks'));f.git('add','.');f.git('commit','-qm','baseline');
+ writeFileSync(join(store,'same/output.md'),'external output');f.pointer('own',path);f.ok('add_session.py',['--title','External store']);assert.doesNotMatch(f.git('diff-tree','--no-commit-id','--name-only','-r','HEAD'),/tasks|output/);assert.equal(readFileSync(join(store,'same/output.md'),'utf8'),'external output');
+});
+
+test('runtime baseline hashes, import closure, unchanged native move and Python 3.10 syntax are reproducible',t=>{
+ const metadata=JSON.parse(readFileSync(resolve('resources/runtime-baseline.json'),'utf8'));
+ const digest=data=>createHash('sha256').update(data).digest('hex');
+ for(const [name,entry] of Object.entries(metadata.files)){assert.equal(digest(readFileSync(resolve('runtime',name))),entry.sha256,name);if(entry.origin==='trellis-0.6.16')assert.equal(entry.sourceSha256,metadata.upstream.sourceHashes[name]);}
+ const body={schemaVersion:metadata.schemaVersion,files:Object.fromEntries(Object.keys(metadata.files).sort().map(name=>[name,metadata.files[name].sha256]))};
+ // Python sorted keys and compact separators define release identity (ASCII paths).
+ const canonical=`{"files":${JSON.stringify(body.files)},"schemaVersion":${body.schemaVersion}}`;
+ assert.equal(metadata.releaseId,'pi-trellis-runtime-v1-'+digest(canonical));
+ assert.equal(Object.keys(metadata.upstream.sourceHashes).length,28);assert.equal(metadata.upstream.version,'0.6.16');assert.equal(metadata.pythonMinimum,'3.10');assert.ok(!existsSync(resolve('python')));
+ const r=spawnSync(python,['-B','-c',`import ast,json\nfrom pathlib import Path\nroot=Path('runtime')\nseen=set();pending=['task.py','get_context.py','add_session.py','init_developer.py','get_developer.py','common/__init__.py']\nwhile pending:\n name=pending.pop()\n if name in seen: continue\n seen.add(name)\n tree=ast.parse((root/name).read_text(),feature_version=(3,10))\n compile(tree,name,'exec')\n for n in ast.walk(tree):\n  if not isinstance(n,ast.ImportFrom): continue\n  module=n.module or ''\n  if n.level: module='common.'+module\n  if module=='common': module='common.__init__'\n  if module.startswith('common.'):\n   target=module.replace('.','/')+'.py'\n   assert (root/target).is_file(),target\n   pending.append(target)\nfor path in root.rglob('*.py'):\n ast.parse(path.read_text(),feature_version=(3,10))\n compile(path.read_text(),str(path),'exec')\nassert {p.relative_to(root).as_posix() for p in (root/'common').glob('*.py')} <= seen\nprint(len(seen))`],{cwd:resolve('.'),encoding:'utf8'});assert.equal(r.status,0,r.stderr);assert.ok(Number(r.stdout)>=24);
+ const listing=spawnSync('npm',['pack','--dry-run','--json','--ignore-scripts'],{cwd:resolve('.'),env:{...process.env,npm_config_cache:join(tmpdir(),'pi-runtime-npm-cache')},encoding:'utf8'});assert.equal(listing.status,0,listing.stderr);const files=JSON.parse(listing.stdout)[0].files.map(f=>f.path);for(const name of Object.keys(metadata.files))assert.ok(files.includes('runtime/'+name),name);assert.ok(files.includes('resources/runtime-baseline.json'));assert.ok(files.includes('licenses/trellis-AGPL-3.0.txt'));
+});
+
+test('all supported record mutations refuse external task.json redirects and preserve victim bytes',t=>{
+ const f=fixture(t),path=f.task();f.put('victim/task.json',{status:'planning',title:'victim'});const file=join(f.root,path,'task.json'),victim=join(f.root,'victim/task.json');rmSync(file);symlinkSync(victim,file);const before=readFileSync(victim);
+ for(const args of [['set-branch',path,'new-branch'],['set-base-branch',path,'new-base'],['set-scope',path,'scope'],['set-meta',path,'key','value'],['archive',path,'--no-commit','--skip-branch-validation']]){assert.notEqual(f.run('task.py',args).status,0,args.join(' '));assert.deepEqual(readFileSync(victim),before);}
+});
+
+test('trimmed dot developer names fail before identity or workspace writes',t=>{
+ const f=fixture(t);
+ for(const name of [' . ',' .. ','\u3000.\u3000','\u00a0..\u00a0']){
+  assert.notEqual(f.run('init_developer.py',[name]).status,0,name);
+  assert.ok(!existsSync(join(f.root,'.trellis/.developer')));
+  assert.ok(!existsSync(join(f.root,'.trellis/workspace')));
+ }
+});
+
+test('session directory and final pointer symlinks never authorize reads, finish or start',t=>{
+ const f=fixture(t),path=f.task();const external=mkdtempSync(join(tmpdir(),'pi-pointer-victim-'));t.after(()=>rmSync(external,{recursive:true,force:true}));
+ const victim=join(external,'own.json');writeFileSync(victim,JSON.stringify({current_task:path}));const before=readFileSync(victim);
+ f.put('.trellis/config.yaml','hooks:\n  after_start:\n    - echo started >> hook-marker\n  after_finish:\n    - echo finished >> hook-marker\n');
+ const unchanged=readFileSync(join(f.root,path,'task.json'));
+ for(const route of ['.trellis/.runtime','.trellis/.runtime/sessions','.trellis/.runtime/sessions/own.json']){
+  rmSync(join(f.root,'.trellis/.runtime'),{recursive:true,force:true});mkdirSync(join(f.root,route,'..'),{recursive:true});symlinkSync(route.endsWith('.json')?victim:external,join(f.root,route));
+  const current=f.run('task.py',['current','--json']);assert.notEqual(current.status,0);assert.ok(JSON.parse(current.stdout).error);
+  assert.notEqual(start(f,path).status,0);assert.deepEqual(readFileSync(join(f.root,path,'task.json')),unchanged);
+  const finish=f.run('task.py',['finish']);if(route.endsWith('.json'))assert.equal(finish.status,0);else assert.notEqual(finish.status,0);
+  assert.deepEqual(readFileSync(victim),before);assert.ok(!existsSync(join(f.root,'hook-marker')));
+ }
+});
+
+test('archive destination links/collisions fail before status, child or session mutation',t=>{
+ const f=fixture(t),path=f.task('parent',{children:['child']}),child=f.task('child',{parent:'parent'});f.pointer('own',path);
+ const external=mkdtempSync(join(tmpdir(),'pi-archive-victim-'));t.after(()=>rmSync(external,{recursive:true,force:true}));
+ const before=readFileSync(join(f.root,path,'task.json')), childBefore=readFileSync(join(f.root,child,'task.json')),pointerBefore=readFileSync(join(f.root,'.trellis/.runtime/sessions/own.json'));
+ const month=new Date().getFullYear()+'-'+String(new Date().getMonth()+1).padStart(2,'0');
+ for(const route of ['archive',`archive/${month}`,`archive/${month}/parent`]){
+  rmSync(join(f.root,'.trellis/tasks/archive'),{recursive:true,force:true});mkdirSync(join(f.root,'.trellis/tasks',route,'..'),{recursive:true});symlinkSync(join(external,route.endsWith('parent')?'missing':'') ,join(f.root,'.trellis/tasks',route));
+  assert.notEqual(f.run('task.py',['archive',path,'--skip-branch-validation','--no-commit']).status,0,route);
+  assert.deepEqual(readFileSync(join(f.root,path,'task.json')),before);assert.deepEqual(readFileSync(join(f.root,child,'task.json')),childBefore);assert.deepEqual(readFileSync(join(f.root,'.trellis/.runtime/sessions/own.json')),pointerBefore);assert.deepEqual(readdirSync(external),[]);
+ }
+ rmSync(join(f.root,'.trellis/tasks/archive'),{recursive:true,force:true});mkdirSync(join(f.root,`.trellis/tasks/archive/${month}/parent`),{recursive:true});
+ assert.notEqual(f.run('task.py',['archive',path,'--skip-branch-validation','--no-commit']).status,0);
+ assert.deepEqual(readFileSync(join(f.root,path,'task.json')),before);assert.deepEqual(readFileSync(join(f.root,'.trellis/.runtime/sessions/own.json')),pointerBefore);
+});
+
+test('developer identity/workspace symlinks preserve external identity and history',t=>{
+ const f=fixture(t),external=mkdtempSync(join(tmpdir(),'pi-identity-victim-'));t.after(()=>rmSync(external,{recursive:true,force:true}));
+ const identity=join(external,'identity');writeFileSync(identity,'name=Dev\n');symlinkSync(identity,join(f.root,'.trellis/.developer'));
+ assert.notEqual(f.run('get_developer.py').status,0);assert.notEqual(f.run('init_developer.py',['Dev']).status,0);assert.equal(readFileSync(identity,'utf8'),'name=Dev\n');assert.ok(!existsSync(join(f.root,'.trellis/workspace')));
+ rmSync(join(f.root,'.trellis/.developer'));
+ for(const route of ['.trellis/workspace','.trellis/workspace/Dev']){
+  rmSync(join(f.root,'.trellis/workspace'),{recursive:true,force:true});mkdirSync(join(f.root,route,'..'),{recursive:true});symlinkSync(external,join(f.root,route));assert.notEqual(f.run('init_developer.py',['Dev']).status,0);assert.ok(!existsSync(join(f.root,'.trellis/.developer')));assert.deepEqual(readdirSync(external),['identity']);
+ }
+});
+
+test('recorded native provenance matches original git bytes and derived sources retain AGPL notices',()=>{
+ const metadata=JSON.parse(readFileSync(resolve('resources/runtime-baseline.json'),'utf8'));const digest=data=>createHash('sha256').update(data).digest('hex');
+ for(const [name,row] of Object.entries(metadata.files)){
+  const bytes=readFileSync(resolve('runtime',name));
+  if(row.origin==='pi-trellis'){
+   const original=execFileSync('git',['show',row.sourceRevision+':'+row.sourcePath],{cwd:resolve('.')});assert.deepEqual(bytes,original,name);assert.equal(digest(original),row.sourceSha256,name);assert.equal(row.modified,false);assert.equal(row.license,'MIT');
+  }else{
+   assert.equal(row.license,'AGPL-3.0-only',name);assert.match(bytes.toString(),/SPDX-License-Identifier: AGPL-3\.0-only/,name);
+   if(row.origin==='trellis-0.6.16')assert.match(bytes.toString(),/Derived from @mindfoldhq\/trellis 0\.6\.16 \(Mindfold LLC\)/,name);
+  }
+ }
+});
+
+test('actual create/start/current/finish lifecycle and malformed hooks remain observable without global trellis',t=>{
+ const f=fixture(t);f.ok('init_developer.py',['Dev']);f.put('.pi/settings.json','{}');f.put('.trellis/config.yaml','hooks:\n  after_start:\n    - printf "%s\\n" "$TASK_JSON_PATH" >> hook-paths\n  after_finish: invalid scalar\n');
+ const created=f.ok('task.py',['create','Lifecycle','--description','Actual CLI lifecycle','--slug','lifecycle','--no-start']);const path=created.stdout.trim().split('\n').at(-1);
+ assert.match(path,/^\.trellis\/tasks\/\d{2}-\d{2}-lifecycle$/);assert.ok(existsSync(join(f.root,path,'implement.jsonl')));assert.ok(!existsSync(join(f.root,'.trellis/.runtime/sessions/own.json')));
+ assert.notEqual(f.run('task.py',['start',path]).status,0);f.put(path+'/implement.jsonl',JSON.stringify({file:path+'/prd.md'})+'\n');f.put(path+'/check.jsonl',JSON.stringify({file:path+'/prd.md'})+'\n');f.ok('task.py',['validate',path]);f.ok('task.py',['start',path]);
+ assert.equal(JSON.parse(f.ok('task.py',['current','--json']).stdout).current_task.status,'in_progress');assert.equal(realpathSync(readFileSync(join(f.root,'hook-paths'),'utf8').trim()),realpathSync(join(f.root,path,'task.json')));
+ const finish=f.ok('task.py',['finish']);assert.match(finish.stderr,/ignoring hook.*after_finish/);assert.ok(!existsSync(join(f.root,'.trellis/.runtime/sessions/own.json')));
+});
+
+test('context validation refuses invalid task records rather than raw external or nonobject metadata',t=>{
+ const f=fixture(t),path=f.task();f.put(path+'/implement.jsonl',JSON.stringify({file:path+'/prd.md'})+'\n');f.put(path+'/check.jsonl',JSON.stringify({file:path+'/prd.md'})+'\n');
+ for(const record of ['[]','broken','{}']){f.put(path+'/task.json',record);const result=f.run('task.py',['validate',path]);assert.notEqual(result.status,0);assert.doesNotMatch(result.stderr,/Traceback/);}
+ f.put(path+'/task.json',{status:'planning',branch:{invalid:1}});f.ok('task.py',['validate',path]);
+ f.put('victim/task.json',{status:'planning'});rmSync(join(f.root,path,'task.json'));symlinkSync(join(f.root,'victim/task.json'),join(f.root,path,'task.json'));assert.notEqual(f.run('task.py',['validate',path]).status,0);
+});

@@ -109,7 +109,7 @@ test('partial disk failure retains prior snapshot/error and prior successful wri
  const f=await prepared(t);f.source('prd.md','new requirement');f.source('design.md','new design');
  const script=`import sys,json
 sys.dont_write_bytecode=True
-sys.path.insert(0,${JSON.stringify(new URL('../python',import.meta.url).pathname)})
+sys.path.insert(0,${JSON.stringify(new URL('../runtime',import.meta.url).pathname)})
 from pi_trellis_worktree import manager,materials
 old=materials.os.replace
 count=0
