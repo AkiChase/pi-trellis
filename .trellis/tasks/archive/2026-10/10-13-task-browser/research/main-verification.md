@@ -16,3 +16,7 @@
 ## 提交前更新
 
 用户授权提交。重新执行相同 host 环境的 `npm test`：**336/336 passed，0 failed，0 skipped**。日志 `/tmp/pi-trellis-task-browser-precommit.log`，摘要亦见 `/tmp/pi-bg/b3hew2vv8.log`。并行资源哈希阻塞已消除；不删除早期失败证据。仅提交 browser owner、tests、规范及本任务材料，不包含并行 adaptive-execution 的改动；不 push/install/reload/archive。
+
+## 用户终端验收与收尾授权
+
+用户确认“真实终端验收通过了，收尾吧”。该证据为用户实际终端验收，不冒充 agent PTY 测试。实施、独立检查、336/336 整仓测试及提交 b3880c4 已完成。任务是经用户指定 main 当前工作区直接实施的非 PR 任务（branch/base_branch 均 main）；归档时显式跳过仅 PR branch 元数据校验，保留真实验收与质量门禁。
