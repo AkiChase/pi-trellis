@@ -61,9 +61,11 @@ test('username completion quotes Unicode/spaces/quotes reversibly and requires n
  assert.equal(existsSync(join(f.root,'.trellis/.developer')),false);
 });
 
-test('resource management menu repairs with confirmation and status contains per-file health',async t=>{
+test('update restores missing resources with confirmation and status contains per-file health',async t=>{
  const f=fixture(t);apply(plan(f.root,'Dev'));rmSync(join(f.root,'.trellis/scripts/task.py'));
- f.selections.push('View project status');await f.run('');assert.match(f.notices.at(-1).text,/Missing — repair/);
- f.selections.push('Repair missing resources');f.ctx.ui.confirm=async()=>false;await f.run('');assert.equal(existsSync(join(f.root,'.trellis/scripts/task.py')),false);
- f.selections.push('Repair missing resources');f.ctx.ui.confirm=async()=>true;await f.run('');assert.ok(existsSync(join(f.root,'.trellis/scripts/task.py')));assert.match(f.notices.at(-1).text,/Current: .trellis\/scripts\/task.py/);
+ f.selections.push('View project status');await f.run('');assert.match(f.notices.at(-1).text,/Missing — will restore/);
+ assert.ok(f.dialogs.at(-1).options.includes('Update project resources'));assert.ok(!f.dialogs.at(-1).options.includes('Repair missing resources'));
+ f.selections.push('Update project resources');f.ctx.ui.confirm=async()=>false;await f.run('');assert.equal(existsSync(join(f.root,'.trellis/scripts/task.py')),false);
+ f.selections.push('Update project resources');f.ctx.ui.confirm=async()=>true;await f.run('');assert.ok(existsSync(join(f.root,'.trellis/scripts/task.py')));assert.equal(f.notices.at(-1).text,'Project resources updated.');
+ f.selections.push('Update project resources');await f.run('');assert.equal(f.notices.at(-1).text,'Project resources are up to date.');
 });

@@ -9,7 +9,7 @@ function fixture(t){const root=mkdtempSync(join(tmpdir(),'pi-resource-update-'))
 test('resource status describes files and repair restores missing runtime without changing history',t=>{
  const root=fixture(t),identity=readFileSync(join(root,'.trellis/.developer')),history=readFileSync(join(root,'.trellis/workspace/Dev/index.md'));
  unlinkSync(join(root,'.trellis/scripts/task.py'));
- assert.match(resourceStatus(root),/Missing — repair: .trellis\/scripts\/task.py/);
+ assert.match(resourceStatus(root),/Missing — will restore: .trellis\/scripts\/task.py/);
  applyResourcePlan(resourcePlan(root,'repair'));assert.ok(verifyRuntime(root));
  assert.deepEqual(readFileSync(join(root,'.trellis/.developer')),identity);assert.deepEqual(readFileSync(join(root,'.trellis/workspace/Dev/index.md')),history);
 });

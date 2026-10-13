@@ -78,17 +78,17 @@ export function registerInitCommand(pi: ExtensionAPI, refresh: (ctx: ExtensionCo
 				if (state.developer && parsed.user && parsed.user !== state.developer) throw new Error(`Developer conflict: actual ${state.developer}; requested ${parsed.user}. Existing identity preserved.`);
 				if (state.state === "unsupported") { notify(resourceStatus(state.root), "error"); return; }
 				if (state.state === "ready" && parsed.user) { notify(statusSummary(state) + "\nAlready ready; no files changed."); return; }
-				const menu = ["Update project resources", "Repair missing resources", "View project status", "Cancel"];
+				const menu = ["Update project resources", "View project status", "Cancel"];
 				if (state.state !== "fresh" && state.state !== "incomplete" && state.state !== "supported") {
 					const choice = await ctx.ui.select(statusSummary(state), menu);
 					if (choice === "View project status") { notify(resourceStatus(state.root)); return; }
-					if (choice === "Update project resources" || choice === "Repair missing resources") {
-						const update = resourcePlan(state.root, choice === "Update project resources" ? "update" : "repair");
+					if (choice === "Update project resources") {
+						const update = resourcePlan(state.root, "update");
 						if (update.report.conflicts.length) throw new Error(`Modified managed files are preserved: ${update.report.conflicts.join(", ")}`);
-						if (!update.changes.length && update.manifest.runtimeReleaseId === update.report.installed) { notify(resourceStatus(state.root) + "\nNo updates or repairs required."); return; }
+						if (!update.changes.length && update.manifest.runtimeReleaseId === update.report.installed) { notify("Project resources are up to date."); return; }
 						const summary = [`Project: ${state.root}`, ...update.changes.map(c => `${c.before ? "Update" : "Restore"}: ${c.path}`), "Identity, tasks, journals and user-modified documents remain unchanged."].join("\n");
 						if (await ctx.ui.confirm("Confirm project resource changes", summary) !== true) return;
-						applyResourcePlan(update); notify(resourceStatus(state.root)); await refresh(ctx, state.root); await ctx.reload(); return;
+						applyResourcePlan(update); notify("Project resources updated."); await refresh(ctx, state.root); await ctx.reload(); return;
 					}
 					return;
 				}

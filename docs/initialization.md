@@ -10,8 +10,10 @@ migration or non-interactive write protocol is provided.
 
 ## Managed resource updates and useful status
 
-An initialized project exposes `Update project resources`, `Repair missing resources`,
-`View project status`, and `Cancel`. Resource status lists installed/available runtime
+An initialized project exposes `Update project resources`, `View project status`,
+and `Cancel`. Update also restores missing managed files; there is no separate repair menu.
+When nothing needs changing, it reports `Project resources are up to date.`.
+Resource status lists installed/available runtime
 IDs and individual missing, modified, current, safe-update and preserved-document paths;
 it is not merely a duplicate of the menu summary. Skills load from the installed package.
 

@@ -52,7 +52,7 @@ export function resourcePlan(rootInput: string, mode: "update" | "repair"): Reso
   if(mode==="repair" && actual) {report.rows.push({path,state:"Update available"});continue;}
   const data=readFileSync(checkedPath(packageRoot,want.source));
   if(digest(data)!==want.sha256) throw new Error(`Package hash mismatch: ${path}`);
-  changes.push({path,data,mode:want.mode,before:actual});next.files[path]=want;report.rows.push({path,state:actual?"Safe update":"Missing — repair"});
+  changes.push({path,data,mode:want.mode,before:actual});next.files[path]=want;report.rows.push({path,state:actual?"Safe update":"Missing — will restore"});
  }
  for(const [path,want] of Object.entries(defaults)) {
   const prior=old.templates[path],actual=stamp(root,path);
@@ -60,13 +60,13 @@ export function resourcePlan(rootInput: string, mode: "update" | "repair"): Reso
   if(actual && equal(actual,want)) {report.rows.push({path,state:"Current template"});next.templates[path]=want;continue;}
   if(mode==="repair" && actual) {report.rows.push({path,state:"Template update available"});continue;}
   const data=readFileSync(checkedPath(packageRoot,want.source));
-  changes.push({path,data,mode:want.mode,before:actual});next.templates[path]=want;report.rows.push({path,state:actual?"Safe template update":"Missing template — repair"});
+  changes.push({path,data,mode:want.mode,before:actual});next.templates[path]=want;report.rows.push({path,state:actual?"Safe template update":"Missing template — will restore"});
  }
  if(Object.entries(expected).every(([p,r])=>equal(next.files[p],r))) next.runtimeReleaseId=report.available;
  return {report,mode,changes,manifest:next,original:digest(raw)};
 }
 export function resourceStatus(root:string):string {
- try { const {report}=resourcePlan(root,"update");return ["Project resource health",`Project: ${report.root}`,`Installed runtime: ${report.installed}`,`Available runtime: ${report.available}`,`Runtime version: ${report.installed===report.available?"Current":"Update available"}`, `Developer: ${(()=>{try{return read(report.root,".trellis/.developer")?.toString().split(/\r?\n/).find(l=>l.startsWith("name="))?.slice(5) ?? "Not set";}catch{return "Invalid identity";}})()}`,"",...report.rows.map(r=>`${r.state}: ${r.path}`),"","Skills: loaded from the installed Pi package; no project copies.","Identity, tasks, journals and runtime session state are never reset."].join("\n"); }
+ try { const {report}=resourcePlan(root,"update");return ["Project resource health",`Project: ${report.root}`,`Installed runtime: ${report.installed}`,`Available runtime: ${report.available}`,`Runtime version: ${report.installed===report.available?"Current":"Update available"}`, `Developer: ${(()=>{try{return read(report.root,".trellis/.developer")?.toString().split(/\r?\n/).find(l=>l.startsWith("name="))?.slice(5) ?? "Not set";}catch{return "Invalid identity";}})()}`,"",...report.rows.map(r=>`${r.state}: ${r.path}`)].join("\n"); }
  catch(e){return `Project resource health\n${String(e)}\nNo resources changed.`;}
 }
 export function applyResourcePlan(value:ResourcePlan):void {
