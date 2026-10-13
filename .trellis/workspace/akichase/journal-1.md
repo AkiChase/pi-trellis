@@ -107,3 +107,29 @@ Kept widget/footer visible without an active task, added themed unfinished proje
 ### Status
 
 [OK] **Completed**
+
+
+## Session 5: 完成 Pi 专用 Trellis 独立发行
+<!-- trellis-session: v=2 fp=27e07078dc80f856 -->
+
+**Date**: 2026-10-14
+**Task**: 完成 Pi 专用 Trellis 独立发行
+**Branch**: `main`
+
+### Summary
+
+完成固定运行时及任务安全修复、英文初始化向导、资源更新和状态报告、本仓库迁移；删除仅本项目 .agents。最终独立快照回归292/292，通过后提交并归档父任务及三个子任务。保留并行task-browser/adaptive-execution工作。未push、实际安装/reload或真实TUI/provider验收。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d738148` | feat: bundle fixed Trellis runtime with safe task lifecycle |
+| `2e8e73c` | feat: initialize Pi Trellis projects with confirmed resource deployment |
+| `c9bacda` | feat: migrate repository to fixed Pi Trellis distribution |
+| `158991a` | feat: update managed project resources and report resource health |
+| `3114a23` | fix: simplify project update menu and result messages |
+
+### Status
+
+[OK] **Completed**
