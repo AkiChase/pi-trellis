@@ -38,4 +38,8 @@
 - [x] README/docs/spec清引用；固定artifact核验方法留testing，来源数据留resources，License保真实文件。
 - [x] 三角色与generator仅注释目标变更，原source hash不变，adapted hash一致；来源测试加强真实声明/新引用/旧引用不存在断言。
 - [x] 14 Markdown/52 links/anchors/whitespace与角色仅注释差异检查PASS。
-- [x] 来源/初始化/manifest/协议focused 90/90、最终来源8/8与full408/408自然退出0；精确阶段提交，不动并行部署/runtime/config/workflow。
+## 收尾验收
+用户已确认“收尾吧”，接受最终交付并授权归档、清本会话绑定和 journal。第二阶段 commit `bc7980d`，第三阶段 commit `bb6c73b`；最终来源测试 8/8、联合 focused90/90、full408/408 自然退出0。第三阶段的角色注释/adapted hash 变更是后续明确授权，覆盖前述不改资源hash限制，仅限这三角色对应adapted字段。无真实tmux/provider、独立review、安装/个人sync/reload/push；unused manifests 的validate两错误仍如实保留。
+
+任务直接在 main 实施，branch/base_branch 都是 main、从未PR-backed；归档使用 CLI 文档允许的 `--skip-branch-validation`，不冒称PR合入。归档与journal仅提交精确自有任务/工作记录，保并行改动。
+
