@@ -367,3 +367,36 @@ viewer 区分归档隐藏与真正缺失；归档父子不展示，合法引用�
 ### Next Steps
 
 - 本任务无剩余实施工作；并行任务保持原状态，未 push。
+
+
+## Session 14: Shared-source dispatch implementation and acceptance
+<!-- trellis-session: v=2 fp=1a4b39a77fcb23de -->
+
+**Date**: 2026-10-14
+**Task**: Shared-source dispatch implementation and acceptance
+**Branch**: `main`
+
+### Summary
+
+统一trellis_dispatch支持共享主目录，保持managed边界；完成独立审查、408项回归及真实SDK/provider离线10项验收，归档任务。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `4cbeadc` | feat: support shared-source Trellis dispatch |
+| `c909dcc` | docs: clarify shared-source dispatch workflow |
+| `f71111d` | test: validate shared dispatch with real offline provider |
+
+### Testing
+
+- [OK] Full suite 408/408; independent stage reviews passed
+- [OK] Real SDK/loader/agent-tasks offline acceptance 10/10; original provider harness passed after canonical temp-path fix
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- No task remaining for this session; online model and CLI/tmux validation not run
