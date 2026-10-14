@@ -11,13 +11,13 @@ type Stamp = { sha256: string; mode: number };
 export interface ResourceReport { root: string; installed: string; available: string; rows: { path: string; state: string }[]; conflicts: string[] }
 interface Change { path: string; data: Buffer; mode: number; before: Stamp | null }
 export interface ResourcePlan { report: ResourceReport; mode: "update" | "repair"; changes: Change[]; manifest: InstalledManifest; original: string }
-function read(root: string, path: string): Buffer | undefined {
+export function read(root: string, path: string): Buffer | undefined {
  const p = checkedPath(root, path);
  try { const s = lstatSync(p); if (!s.isFile() || s.size > 4 * 1024 * 1024) throw new Error(`Invalid resource file: ${path}`); return readFileSync(p); }
  catch (e) { if ((e as NodeJS.ErrnoException).code === "ENOENT") return undefined; throw e; }
 }
-function stamp(root: string, path: string): Stamp | null { const b = read(root,path); return b ? { sha256:digest(b),mode:lstatSync(checkedPath(root,path)).mode & 0o777 } : null; }
-function equal(a: Stamp | null,b: Stamp | null): boolean { return a?.sha256 === b?.sha256 && a?.mode === b?.mode; }
+export function stamp(root: string, path: string): Stamp | null { const b = read(root,path); return b ? { sha256:digest(b),mode:lstatSync(checkedPath(root,path)).mode & 0o777 } : null; }
+export function equal(a: Stamp | null,b: Stamp | null): boolean { return a?.sha256 === b?.sha256 && a?.mode === b?.mode; }
 function oldManifest(root: string): { manifest: InstalledManifest; raw: Buffer } {
  const raw=read(root,MANIFEST); if (!raw) throw new Error("No managed project manifest. General migration is not available. Initialize a new project first.");
  const m=JSON.parse(raw.toString()) as InstalledManifest;
@@ -69,7 +69,7 @@ export function resourceStatus(root:string):string {
  try { const {report}=resourcePlan(root,"update");return ["Project resource health",`Project: ${report.root}`,`Installed runtime: ${report.installed}`,`Available runtime: ${report.available}`,`Runtime version: ${report.installed===report.available?"Current":"Update available"}`, `Developer: ${(()=>{try{return read(report.root,".trellis/.developer")?.toString().split(/\r?\n/).find(l=>l.startsWith("name="))?.slice(5) ?? "Not set";}catch{return "Invalid identity";}})()}`,"",...report.rows.map(r=>`${r.state}: ${r.path}`)].join("\n"); }
  catch(e){return `Project resource health\n${String(e)}\nNo resources changed.`;}
 }
-function atomicFile(root: string, path: string, data: Buffer, mode: number, before: Stamp | null): void {
+export function atomicFile(root: string, path: string, data: Buffer, mode: number, before: Stamp | null): void {
  const target = checkedPath(root, path);
  if (!equal(stamp(root, path), before)) throw new Error(`Concurrent change preserved: ${path}`);
  mkdirSync(dirname(target), { recursive: true }); checkedPath(root, path);
