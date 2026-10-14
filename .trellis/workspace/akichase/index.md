@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 12
+- **Total Sessions**: 13
 - **Last Active**: 2026-10-14
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~335 | Active |
+| `journal-1.md` | ~369 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 13 | 2026-10-14 | 修复 viewer 归档层级引用误报 | `db7be05` | `main` |
 | 12 | 2026-10-14 | 任务查看器展示、排序与文档归位 | `24d879e` | `main` |
 | 11 | 2026-10-14 | Adopt existing Trellis project | `a3b7c1b` | `main` |
 | 10 | 2026-10-14 | 修正 Trellis 收尾授权与自动提交 | `8e5aa2d`, `8bc285a`, `93600d1` | `main` |

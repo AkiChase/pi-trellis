@@ -333,3 +333,37 @@ Added the explicit Adopt existing project action so a legacy .trellis project wi
 ### Status
 
 [OK] **Completed**
+
+
+## Session 13: 修复 viewer 归档层级引用误报
+<!-- trellis-session: v=2 fp=f50d6b37509b4b6e -->
+
+**Date**: 2026-10-14
+**Task**: 修复 viewer 归档层级引用误报
+**Branch**: `main`
+
+### Summary
+
+viewer 区分归档隐藏与真正缺失；归档父子不展示，合法引用不再误报，保留缺失/损坏/越界/重名诊断。用户接受并授权收尾，任务已归档。
+
+### Main Changes
+
+- 最小 reader 引用边界修复、归档安全负例回归及功能文档；不改 task 记录或归档 CLI。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `db7be05` | fix(viewer): recognize archived hierarchy references |
+
+### Testing
+
+- [OK] viewer focused 55/55；npm test 408/408；git diff --check 通过。主会话自检，未执行真实 PTY/reload/install。
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 本任务无剩余实施工作；并行任务保持原状态，未 push。
