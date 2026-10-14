@@ -71,7 +71,17 @@ export function adoptPlan(rootInput: string): AdoptPlan {
 }
 function signature(value: AdoptPlan): string { return digest(JSON.stringify({ ...value, changes: value.changes.map(c => ({ ...c, data: c.data.toString("base64") })) })); }
 export function adoptionSummary(value: AdoptPlan): string {
- return [`Project: ${value.root}`, "Adopt existing project", ...value.rows.map(r => `${r.state}  ${r.path}`), ...value.legacy.slice(0, 256).map(path => `Legacy — left in place: ${path}`), ...(value.legacy.length > 256 ? [`${value.legacy.length - 256} additional legacy paths omitted.`] : []), "Runtime scripts, roles and managed root blocks are replaced without backups. Nothing is deleted.", "Existing workflow, config, spec, tasks, journals and identity are preserved."].join("\n");
+ return [`Project: ${value.root}`, "Adopt existing project", ...value.rows.map(r => `${r.state}  ${r.path}`), ...value.legacy.slice(0, 256).map(path => `Legacy — left in place: ${path}`), ...(value.legacy.length > 256 ? [`${value.legacy.length - 256} additional legacy paths omitted.`] : []), ...ADOPTION_NOTES].join("\n");
+}
+const ADOPTION_NOTES = ["Runtime scripts, roles and managed root blocks are replaced without backups. Nothing is deleted.", "Existing workflow, config, spec, tasks, journals and identity are preserved."];
+/** Native dialogs render every title line without a viewport, so confirmation stays counted, not enumerated. */
+export function adoptionDialog(value: AdoptPlan): string {
+ const counts = new Map<string, number>();
+ for (const row of value.rows) counts.set(row.state, (counts.get(row.state) ?? 0) + 1);
+ return [`Adopt existing project`, `Project: ${value.root}`,
+  [...counts].map(([state, count]) => `${state}: ${count}`).join("  "),
+  `Legacy — left in place: ${value.legacy.length} path${value.legacy.length === 1 ? "" : "s"}`,
+  ...ADOPTION_NOTES, "Full per-path list: /trellis-init --check"].join("\n");
 }
 export function applyAdoptPlan(value: AdoptPlan, options: { afterWrite?: (path: string) => void } = {}) {
  const fresh = adoptPlan(value.root);

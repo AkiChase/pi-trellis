@@ -89,6 +89,18 @@ test('update restores missing resources with confirmation and status contains pe
  test('Adopt native menu confirms once, cancels read-only, then reloads with supported runtime',async t=>{
  const f=fixture(t);mkdirSync(join(f.root,'.trellis'));writeFileSync(join(f.root,'.trellis/workflow.md'),'legacy workflow');
  await f.run('--check');assert.match(f.notices.at(-1).text,/Adopt existing project/);assert.match(f.notices.at(-1).text,/Preserve  \.trellis\/workflow\.md/);assert.equal(f.dialogs.length,0);assert.deepEqual(readdirSync(join(f.root,'.trellis')),['workflow.md']);
- f.selections.push('Adopt existing project','Cancel');await f.run('');assert.ok(!existsSync(join(f.root,'.trellis/.pi-trellis.json')));assert.deepEqual(f.dialogs.at(-1).options,['Cancel','Adopt existing project']);assert.match(f.dialogs.at(-1).title,/without backups/);assert.equal(f.reloads,0);assert.equal(f.refreshes,0);
+ f.selections.push('Adopt existing project','Cancel');await f.run('');assert.ok(!existsSync(join(f.root,'.trellis/.pi-trellis.json')));assert.deepEqual(f.dialogs.at(-1).options,['Cancel','Adopt existing project']);assert.match(f.dialogs.at(-1).title,/without backups/);assert.ok(f.dialogs.at(-1).title.split('\n').length<=14,'adoption confirmation must stay bounded');assert.equal(f.reloads,0);assert.equal(f.refreshes,0);
  f.selections.push('Adopt existing project','Adopt existing project');await f.run('');assert.equal(inspect(f.root).state,'supported');assert.equal(f.reloads,1);assert.equal(f.refreshes,1);assert.match(f.notices.at(-1).text,/Project adopted/);assert.equal(readFileSync(join(f.root,'.trellis/workflow.md'),'utf8'),'legacy workflow');
  });
+
+test('dialog text stays bounded for huge legacy inventories and long plans; full report stays in --check',async t=>{
+ const f=fixture(t);mkdirSync(join(f.root,'.trellis/scripts/hooks'),{recursive:true});
+ for(let i=0;i<300;i++)writeFileSync(join(f.root,`.trellis/scripts/legacy-${i}.py`),'legacy');
+ await f.run('--check');const report=f.notices.at(-1).text;assert.ok(report.split('\n').length>300);assert.match(report,/legacy-299.py/);
+ f.selections.push('Adopt existing project','Cancel');await f.run('');
+ for(const dialog of f.dialogs){const lines=(dialog.title??'').split('\n');assert.ok(lines.length<=14,`dialog title too tall: ${lines.length}`);}
+ assert.match(f.dialogs.at(-1).title,/Legacy — left in place: 30[0-9] paths/);assert.match(f.dialogs.at(-1).title,/\/trellis-init --check/);
+ assert.ok(!existsSync(join(f.root,'.trellis/.pi-trellis.json')));
+ const g=fixture(t,{selections:['Initialize project'],confirm:true});await g.run('--user Dev');
+ const message=g.dialogs.find(d=>d.message).message;assert.ok(message.split('\n').length<=14,'initialization confirmation must stay bounded');assert.match(message,/more lines; run \/trellis-init --check/);
+});

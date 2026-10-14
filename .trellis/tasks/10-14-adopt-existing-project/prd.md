@@ -43,3 +43,9 @@
 - 主会话最终复跑：`env -u TRELLIS_CONTEXT_ID PI_TRELLIS_TEST_HOST=<pi 1.2.0 node_modules> npm test` → 373/373 pass；`git diff --check` 干净。
 - 未验证：真实 TUI 视觉、真实用户项目接管（my-pi-preset / tools/test 未改动）、非 POSIX 平台与 Python 矩阵、OS 级并发祖先替换；包无 lint/typecheck 脚本。
 - AC1–AC6 以上述自动化证据满足；AC6 的"真实 UI 接管"部分仍待用户在实际项目确认。
+
+## 追加缺陷修复：对话框文本无界（用户报告）
+
+证据：宿主 `dist/modes/interactive/components/extension-selector.js` 将标题与全部选项逐行渲染，无视口/滚动/高度钳制；`interactive-mode.js:2153` 的 confirm 走同一组件。标题越长，选项越被挤出屏幕。影响面不止接管：`planSummary()`（全新初始化约 50 行）、资源更新摘要、Apply template 摘要、接管确认（最坏 43 行 + 256 行 legacy）。
+
+修复：`command.ts:boundedDialog()` 把任何对话框正文钳到 14 行并附 `/trellis-init --check` 指引；`adoption.ts:adoptionDialog()` 在确认框只给各状态计数 + legacy 路径计数；完整逐路径报告保留在 `--check` / 状态通知（普通消息可滚动）。覆盖 300 个 legacy 文件 + 全新初始化长计划的断言在 `tests/init-command.test.mjs`。最终 `npm test` 374/374。未做真实 TUI 视觉确认。

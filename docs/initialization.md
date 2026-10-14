@@ -41,7 +41,11 @@ Successful changes refresh host state and reload resources. `--check` is read-on
 initialization operation record, an existing lock, a managed worktree binding, HOME,
 an unsupported Python, or any symlinked/nonregular managed path refuses before writes.
 
-One native confirmation lists every row: `Install`/`Replace` for the 35 runtime and role
+Native select/confirm dialogs render every title line without a viewport, so dialog text is
+bounded: `boundedDialog()` caps any dialog body at 14 lines with a `/trellis-init --check`
+pointer, and the adoption confirmation reports per-state **counts** plus a legacy path count
+instead of enumerating files. Status notifications and `--check` carry the complete per-path
+report, including every row: `Install`/`Replace` for the 35 runtime and role
 paths, `Create` for missing bundled templates, `Preserve` for existing template targets,
 `Current` for already-identical bytes and mode, `Replace block`/`Append block`/`Create`/
 `Append journal attribute` for root files, and `Legacy — left in place` for `.trellis/.version`,

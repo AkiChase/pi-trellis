@@ -1,4 +1,4 @@
-import { adoptPlan, applyAdoptPlan, adoptionSummary } from "./adoption.ts";
+import { adoptPlan, applyAdoptPlan, adoptionSummary, adoptionDialog } from "./adoption.ts";
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { applyResourcePlan, resourcePlan, resourceStatus, templatePlan, applyTemplatePlan, type TemplateScope } from "./resources.ts";
 import { inspect, plan, apply, validateUsername, type Inspection, type InitPlan } from "./engine.ts";
@@ -33,6 +33,17 @@ export function parseInitArguments(args: string): { user?: string; check: boolea
 	if (result.check && result.help) throw new Error("Choose either --check or --help");
 	return result;
 }
+/**
+ * Native select/confirm dialogs render every title line with no viewport, so a long
+ * file list pushes the options off screen. Dialog text stays bounded; the complete
+ * report belongs in `--check` / status notifications, which scroll in the transcript.
+ */
+const DIALOG_LINES = 14;
+export function boundedDialog(text: string): string {
+	const lines = text.split("\n");
+	if (lines.length <= DIALOG_LINES) return text;
+	return [...lines.slice(0, DIALOG_LINES - 1), `… ${lines.length - DIALOG_LINES + 1} more lines; run /trellis-init --check for the full report.`].join("\n");
+}
 export function statusSummary(state: Inspection): string {
 	return [`Project: ${state.root}`, `Status: ${state.state}`, `Developer: ${state.developer ?? "Not set"}`, `Workspace: ${state.developer ? `.trellis/workspace/${state.developer}` : "Not set"}`, `Runtime release: ${state.releaseId}`, ...state.diagnostics].join("\n");
 }
@@ -65,7 +76,7 @@ async function applyTemplates(ctx: ExtensionCommandContext, notify: (text: strin
   "Replace files will be overwritten; backups will be saved under .trellis/.runtime/template-backups/.",
   "Same files will not be written. Other project files remain unchanged.",
  ].join("\n");
- if (await ctx.ui.select(summary, ["Cancel", "Apply template"]) !== "Apply template") return false;
+ if (await ctx.ui.select(boundedDialog(summary), ["Cancel", "Apply template"]) !== "Apply template") return false;
  const backup = applyTemplatePlan(value);
  notify(`Template applied.${backup ? `\nBackup: ${backup}` : " No files changed."}`);
  return true;
@@ -101,11 +112,11 @@ export function registerInitCommand(pi: ExtensionAPI, refresh: (ctx: ExtensionCo
 				if (parsed.check || !ctx.hasUI) { notify(health() + (!ctx.hasUI ? "\nUse /trellis-init in interactive or RPC UI to review and confirm writes." : "")); return; }
 				if (state.developer && parsed.user && parsed.user !== state.developer) throw new Error(`Developer conflict: actual ${state.developer}; requested ${parsed.user}. Existing identity preserved.`);
 				if (state.state === "unsupported") {
-					const choice = await ctx.ui.select(statusSummary(state), ["Adopt existing project", "View project status", "Cancel"]);
+					const choice = await ctx.ui.select(boundedDialog(statusSummary(state)), ["Adopt existing project", "View project status", "Cancel"]);
 					if (choice === "View project status") { notify(health()); return; }
 					if (choice !== "Adopt existing project") return;
 					const value = adoptPlan(state.root);
-					if (await ctx.ui.select(adoptionSummary(value), ["Cancel", "Adopt existing project"]) !== "Adopt existing project") return;
+					if (await ctx.ui.select(adoptionDialog(value), ["Cancel", "Adopt existing project"]) !== "Adopt existing project") return;
 					const result = applyAdoptPlan(value);
 					notify(statusSummary(result) + "\nProject adopted.\n" + value.legacy.slice(0, 256).map(p => `Legacy — left in place: ${p}`).join("\n") + (value.legacy.length > 256 ? `\n${value.legacy.length - 256} additional legacy paths omitted.` : "") + (result.state === "supported" ? "\nNext: /trellis-init to set up developer identity." : ""));
 					await refresh(ctx, result.root); await ctx.reload(); return;
@@ -113,7 +124,7 @@ export function registerInitCommand(pi: ExtensionAPI, refresh: (ctx: ExtensionCo
 				if (state.state === "ready" && parsed.user) { notify(statusSummary(state) + "\nAlready ready; no files changed."); return; }
 				const menu = ["Update project resources", ...(state.state === "ready" ? ["Apply template"] : []), "View project status", "Cancel"];
 				if (state.state !== "fresh" && state.state !== "incomplete" && state.state !== "supported") {
-					const choice = await ctx.ui.select(statusSummary(state), menu);
+					const choice = await ctx.ui.select(boundedDialog(statusSummary(state)), menu);
 					if (choice === "View project status") { notify(resourceStatus(state.root)); return; }
 					if (choice === "Apply template") { if (await applyTemplates(ctx, notify)) await refresh(ctx, state.root); return; }
 					if (choice === "Update project resources") {
@@ -121,14 +132,14 @@ export function registerInitCommand(pi: ExtensionAPI, refresh: (ctx: ExtensionCo
 						if (update.report.conflicts.length) throw new Error(`Modified managed files are preserved: ${update.report.conflicts.join(", ")}`);
 						if (!update.changes.length && update.manifest.runtimeReleaseId === update.report.installed) { notify("Project resources are up to date."); return; }
 						const summary = [`Project: ${state.root}`, ...update.changes.map(c => `${c.before ? "Update" : "Restore"}: ${c.path}`), "Identity, tasks, journals and user-modified documents remain unchanged."].join("\n");
-						if (await ctx.ui.confirm("Confirm project resource changes", summary) !== true) return;
+						if (await ctx.ui.confirm("Confirm project resource changes", boundedDialog(summary)) !== true) return;
 						applyResourcePlan(update); notify("Project resources updated."); await refresh(ctx, state.root); await ctx.reload(); return;
 					}
 					return;
 				}
 				if (!["fresh", "supported", "incomplete"].includes(state.state)) { notify(statusSummary(state), "error"); return; }
 				const action = state.state === "fresh" ? "Initialize project" : state.state === "incomplete" ? "Retry interrupted initialization" : "Set up developer identity";
-				const choice = await ctx.ui.select(statusSummary(state), [action, ...(state.state === "supported" ? ["Apply template"] : []), ...(state.state !== "fresh" ? ["View project status"] : []), "Cancel"]);
+				const choice = await ctx.ui.select(boundedDialog(statusSummary(state)), [action, ...(state.state === "supported" ? ["Apply template"] : []), ...(state.state !== "fresh" ? ["View project status"] : []), "Cancel"]);
 				if (choice === "Apply template") { if (await applyTemplates(ctx, notify)) await refresh(ctx, state.root); return; }
 				if (choice === "View project status") { notify(resourceStatus(state.root)); return; }
 				if (choice !== action) return;
@@ -136,7 +147,7 @@ export function registerInitCommand(pi: ExtensionAPI, refresh: (ctx: ExtensionCo
 				if (user === undefined) return;
 				const value = plan(state.root, user);
 				if (!value) { notify(statusSummary(inspect(state.root)) + "\nAlready ready; no files changed."); return; }
-				if (await ctx.ui.confirm("Confirm Pi Trellis initialization", planSummary(value)) !== true) return;
+				if (await ctx.ui.confirm("Confirm Pi Trellis initialization", boundedDialog(planSummary(value))) !== true) return;
 				const result = apply(value);
 				notify(statusSummary(result) + `\nTask: ${value.task} (${value.taskReused ? "reused" : "created"}).\nNo active task selected. Next: /skill:trellis-start; review the task before starting work.`);
 				await refresh(ctx, result.root);
