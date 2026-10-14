@@ -461,3 +461,29 @@ viewer 区分归档隐藏与真正缺失；归档父子不展示，合法引用�
 ### Next Steps
 
 - 未安装、同步、重载或推送；其他 runtime-tool-names/user-level-project-activation 工作保持不变。
+
+
+## Session 17: 用户级 Trellis 激活与真实终端验收
+<!-- trellis-session: v=2 fp=f8dd2b3dc6dc6e6f -->
+
+**Date**: 2026-10-15
+**Task**: 用户级 Trellis 激活与真实终端验收
+**Branch**: `main`
+
+### Summary
+
+完成用户级安装与项目级激活：443/443全量、分阶段独立审查及tmux真实键盘验收。安装当前已验收checkout至用户配置，移除本仓及my-pi-preset项目级包声明并原生更新无冲突托管资源（邻仓f31c2ec）。保留所有并行规范/README/tasks/runtime修改，未push。归档当前任务，tmux测试进程退出；未在线provider/物理IME/全主题矩阵。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `568634f` | feat: gate Trellis commands and display by project runtime |
+| `740824c` | feat: discover Trellis skills only in supported projects |
+| `19e8bb0` | docs: document user-level Trellis activation and installation |
+| `23c0a9a` | chore: verify terminal activation and migrate to user Trellis |
+| `4f85b6a` | chore(task): archive 10-14-user-level-project-activation |
+
+### Status
+
+[OK] **Completed**

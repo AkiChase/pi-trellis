@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 16
-- **Last Active**: 2026-10-14
+- **Total Sessions**: 17
+- **Last Active**: 2026-10-15
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~463 | Active |
+| `journal-1.md` | ~489 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 17 | 2026-10-15 | 用户级 Trellis 激活与真实终端验收 | `568634f`, `740824c`, `19e8bb0`, `23c0a9a`, `4f85b6a` | `main` |
 | 16 | 2026-10-14 | 任务浏览面板列对齐与溢出省略 | `c3c1ac1` | `main` |
 | 15 | 2026-10-14 | 规范与用户文档精简收尾 | `0d31790`, `bc7980d`, `bb6c73b` | `main` |
 | 14 | 2026-10-14 | Shared-source dispatch implementation and acceptance | `4cbeadc`, `c909dcc`, `f71111d` | `main` |
