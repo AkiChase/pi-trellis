@@ -27,6 +27,90 @@ test("reader lists all non-archived statuses, original titles and immediate dire
   assert.equal(value.tasks.find(task => task.title === "中文任务").status, "completed");
 });
 
+test("archived children and parents are recognized but never enter the visible tree", t => {
+  const f = fixture(t);
+  f.record("parent", { status: "in_progress", children: ["old-child", ".trellis/tasks/old-child", ".trellis/tasks/archive/2026-10/old-child", "old-alias"] });
+  f.record("child", { status: "planning", parent: "old-parent" });
+  f.record("archive/2026-10/old-child", { status: "completed", parent: "parent" });
+  f.record("archive/2026-10/old-parent", { status: "completed", children: ["child"] });
+  symlinkSync("archive/2026-10/old-child", join(f.root, ".trellis/tasks/old-alias"));
+  const paths = ["parent", "child", "archive/2026-10/old-child", "archive/2026-10/old-parent"];
+  const before = paths.map(path => readFileSync(join(f.root, ".trellis/tasks", path, "task.json")));
+  const value = f.read();
+  assert.equal(value.complete, true, value.diagnostics.join("\n"));
+  assert.deepEqual(value.rows.map(row => [row.task.dir.split("/").at(-1), row.prefix]), [["parent", ""], ["child", ""]]);
+  assert.deepEqual(paths.map(path => readFileSync(join(f.root, ".trellis/tasks", path, "task.json"))), before);
+});
+
+test("archive lookup is lazy, visible links take precedence, and canonical duplicates are not ambiguous", t => {
+  const f = fixture(t);
+  f.record("parent", { status: "planning", children: ["child", "old"] });
+  f.record("child");
+  f.record("archive/2026-10/child");
+  f.record("archive/2026-09/child");
+  f.record("archive/2026-10/old");
+  f.put(".trellis/tasks/archive/2026-10/unrelated/task.json", "null");
+  mkdirSync(join(f.root, ".trellis/tasks/archive/2026-09"), { recursive: true });
+  symlinkSync("../2026-10/old", join(f.root, ".trellis/tasks/archive/2026-09/old"));
+  const value = f.read();
+  assert.equal(value.complete, true, value.diagnostics.join("\n"));
+  assert.deepEqual(value.rows.map(row => row.prefix), ["", "└─ "]);
+});
+
+test("archived links honor an external task store and canonical symlinked archive", t => {
+  const f = fixture(t), store = mkdtempSync(join(tmpdir(), "pi-browser-archive-store-"));
+  t.after(() => rmSync(store, { recursive: true, force: true }));
+  rmSync(join(f.root, ".trellis/tasks"), { recursive: true });
+  symlinkSync(store, join(f.root, ".trellis/tasks"));
+  f.record("retired/2026-10/old");
+  symlinkSync("retired", join(store, "archive"));
+  symlinkSync("archive/2026-10/old", join(store, "old-alias"));
+  f.record("parent", { status: "planning", children: ["old", "old-alias", ".trellis/tasks/archive/2026-10/old"] });
+  // The archive's canonical root is also an immediate directory: exclude it too.
+  const value = f.read();
+  assert.equal(value.complete, true, value.diagnostics.join("\n"));
+  assert.equal(value.rows.length, 1);
+});
+
+test("different archived identities with the same name remain ambiguous, exact archive paths do not", t => {
+  const f = fixture(t);
+  f.record("parent", { status: "planning", children: ["old"] });
+  f.record("archive/2026-09/old"); f.record("archive/2026-10/old");
+  assert.match(f.read().diagnostics.join("\n"), /Ambiguous archived hierarchy link/);
+  f.record("parent", { status: "planning", children: [".trellis/tasks/archive/2026-10/old"] });
+  assert.equal(f.read().complete, true);
+});
+
+for (const kind of ["missing", "invalid", "fifo", "record-escape", "task-escape", "month-escape", "invalid-path"]) {
+  test(`archived hierarchy lookup retains diagnostics for ${kind}`, t => {
+    const f = fixture(t);
+    const ref = kind === "invalid-path" ? "../old" : "old";
+    f.record("parent", { status: "planning", children: [ref] });
+    const dir = ".trellis/tasks/archive/2026-10/old";
+    if (kind === "invalid") f.put(`${dir}/task.json`, "null");
+    if (kind === "fifo") { mkdirSync(join(f.root, dir), { recursive: true }); execFileSync("mkfifo", [join(f.root, dir, "task.json")]); }
+    if (kind === "record-escape") {
+      f.record("archive/2026-10/other"); mkdirSync(join(f.root, dir));
+      symlinkSync("../other/task.json", join(f.root, dir, "task.json"));
+    }
+    if (kind === "task-escape" || kind === "month-escape") {
+      f.put("secret/old/task.json", '{"status":"completed"}');
+      mkdirSync(join(f.root, ".trellis/tasks/archive/2026-10"), { recursive: true });
+      if (kind === "task-escape") symlinkSync(join(f.root, "secret/old"), join(f.root, dir));
+      else {
+        rmSync(join(f.root, ".trellis/tasks/archive/2026-10"), { recursive: true });
+        symlinkSync(join(f.root, "secret"), join(f.root, ".trellis/tasks/archive/2026-10"));
+      }
+    }
+    const value = f.read();
+    assert.equal(value.complete, false);
+    assert.equal(value.rows.length, 1);
+    assert.ok(value.diagnostics.length > 0);
+    if (!["missing", "invalid-path"].includes(kind)) assert.match(value.diagnostics.join("\n"), /Invalid archived hierarchy link/);
+    if (kind.endsWith("escape")) assert.match(value.diagnostics.join("\n"), /escapes/);
+  });
+}
+
 test("external top-level task store, canonical aliases and symlinked archive are supported", t => {
   const f = fixture(t), store = mkdtempSync(join(tmpdir(), "pi-browser-store-"));
   t.after(() => rmSync(store, { recursive: true, force: true }));

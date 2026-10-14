@@ -82,7 +82,39 @@ function validateRecord(record: Record<string, unknown>): void {
 	}
 }
 
-/** Immediate directories only; aliases/archive use canonical identity, never broaden task containment. */
+/** Archived links are hidden, not missing. Only read candidates for an unresolved reference. */
+function archivedLink(root: string, store: string, archive: string, ref: string): boolean {
+	const name = ref.startsWith(".trellis/tasks/") ? ref.slice(".trellis/tasks/".length) : ref;
+	if (!/^[^/\\\x00-\x1f]+$/.test(name) && !/^archive\/\d{4}-\d{2}\/[^/\\\x00-\x1f]+$/.test(name)) return false;
+	if (name === "." || name === ".." || name.endsWith("/.") || name.endsWith("/..")) return false;
+	const identities = new Set<string>();
+	const candidate = (dir: string) => {
+		try { lstatSync(join(root, dir)); }
+		catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return; throw error; }
+		const task = resolveTaskPath(root, dir), identity = realpathSync(task);
+		if (!containsPath(archive, identity)) return;
+		const value: unknown = JSON.parse(readTextFile(regularTaskFile(task, "task.json"), 1024 * 1024, "task.json"));
+		if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid archived task.json");
+		validateRecord(value as Record<string, unknown>);
+		identities.add(identity);
+	};
+	candidate(join(".trellis", "tasks", name));
+	if (!name.includes("/")) {
+		let months: string[];
+		try { months = readdirSync(archive).sort(); }
+		catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return identities.size === 1; throw error; }
+		for (const month of months) {
+			if (!/^\d{4}-\d{2}$/.test(month)) continue;
+			const directory = realpathSync(join(archive, month));
+			if (!containsPath(store, directory) || !containsPath(archive, directory)) throw new Error("Archive month escapes its archive/task store");
+			if (statSync(directory).isDirectory()) candidate(join(".trellis", "tasks", "archive", month, name));
+		}
+	}
+	if (identities.size > 1) throw new Error(`Ambiguous archived hierarchy link: ${diagnosticText(ref)}`);
+	return identities.size === 1;
+}
+
+/** Immediate visible directories only; archive lookups never broaden task containment. */
 export function readTasks(root: string): TaskSnapshot {
 	const snapshot: TaskSnapshot = { tasks: [], rows: [], diagnostics: [], complete: true };
 	const warn = (text: string) => {
@@ -91,6 +123,7 @@ export function readTasks(root: string): TaskSnapshot {
 		else if (snapshot.diagnostics.length === MAX_DIAGNOSTICS) snapshot.diagnostics.push("Further diagnostics omitted; inspect the task store.");
 	};
 	const aliases = new Map<string, BrowserTask>();
+	let isArchived = (_ref: string): boolean => false;
 	try {
 		const store = join(root, ".trellis", "tasks");
 		const actualStore = realpathSync(store);
@@ -102,6 +135,7 @@ export function readTasks(root: string): TaskSnapshot {
 			try { lstatSync(archive); throw new Error("Archive path cannot be resolved"); }
 			catch (probe) { if ((probe as NodeJS.ErrnoException).code !== "ENOENT") throw probe; }
 		}
+		isArchived = ref => archivedLink(root, actualStore, archive, ref);
 		const identities = new Map<string, BrowserTask>();
 		for (const name of readdirSync(store).sort().reverse()) {
 			if (name === "archive") continue;
@@ -128,16 +162,20 @@ export function readTasks(root: string): TaskSnapshot {
 			} catch (error) { warn(`${dir}: ${diagnosticText(error)}`); }
 		}
 	} catch (error) { warn(`Unable to read task store: ${diagnosticText(error)}`); }
-	snapshot.rows = projectTree(snapshot.tasks, aliases, warn);
+	snapshot.rows = projectTree(snapshot.tasks, aliases, isArchived, warn);
 	return snapshot;
 }
 
-function projectTree(tasks: BrowserTask[], aliases: Map<string, BrowserTask>, warn: (text: string) => void): TaskRow[] {
+function projectTree(tasks: BrowserTask[], aliases: Map<string, BrowserTask>, isArchived: (ref: string) => boolean, warn: (text: string) => void): TaskRow[] {
 	const parents = new Map<BrowserTask, BrowserTask>();
 	const explicit = new Set<BrowserTask>();
 	const link = (task: BrowserTask, ref: unknown): BrowserTask | undefined => {
 		const target = typeof ref === "string" ? aliases.get(ref) : undefined;
-		if (!target) warn(`${task.dir}: Missing or invalid hierarchy link: ${diagnosticText(ref)}`);
+		if (!target) {
+			try { if (typeof ref === "string" && isArchived(ref)) return undefined; }
+			catch (error) { warn(`${task.dir}: Invalid archived hierarchy link ${diagnosticText(ref)}: ${diagnosticText(error)}`); return undefined; }
+			warn(`${task.dir}: Missing or invalid hierarchy link: ${diagnosticText(ref)}`);
+		}
 		else if (target === task) { warn(`${task.dir}: Self-referencing hierarchy link`); return undefined; }
 		return target;
 	};

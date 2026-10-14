@@ -18,6 +18,7 @@
 - Resolve root per command invocation. Browser entry does not require a current task, verified runtime deployment, subprocess or model request.
 - Enumerate immediate task directories only; exclude canonical archive descendants and deduplicate canonical aliases. Include completed records still outside archive. Sort immediate directory names lexicographically descending before tree projection: roots and siblings retain that order, children remain beneath parents. Same-day names descend deterministically; MM-DD prefixes do not distinguish years, and no creation-time/status weighting is inferred. The UI promotes the current session task's entire top-level tree ahead of other roots, retaining ancestor and sibling order; invalid/missing current identity leaves descending order unchanged. Refresh reorders before recovering canonical selection. Preserve each valid task once despite malformed/cyclic hierarchy links.
 - Resolve task paths with the existing task-store containment owner; only the top-level external task-store exception is supported. Artifact/record files must resolve inside their selected canonical task directory.
+- 归档层级引用：可见任务索引优先。未命中的目录名或 `.trellis/tasks/<目录名>` 引用按 `archive/YYYY-MM/<目录名>` 查找，也支持精确 `.trellis/tasks/archive/YYYY-MM/<目录名>` 与指向归档对象的顶层 alias。只读取相关候选记录，不递归加载归档树；归档子任务不展示，归档父任务的可见子任务留在顶层。候选沿用任务目录 containment 与记录大小、UTF-8、regular-file 校验；同 canonical identity 去重，不同归档对象重名视为歧义。合法隐藏引用不产生缺失警告，真正缺失、损坏或越界仍有诊断；不修改任何任务记录。
 - Pointer reads use `.trellis/.runtime/sessions/<key>.json` through `checkedPath`; invalid/unreadable pointers yield no current marker, not blocked browsing. A marker is displayed only for an identity in the validated snapshot.
 - Record/pointer reads are bounded at 1 MiB; documents at 2 MiB. Validate UTF-8/NUL and descriptor regular-file type, use nonblocking/no-follow final opens, and read at most limit + 1 bytes. This is not an OS sandbox against concurrent ancestor replacement.
 - List labels show the sanitized directory basename followed by ` · ` and the original title/name/id fallback; identical values are not repeated. Protect current marker/status before allocating remaining width to tree prefix, directory identifier, then title. Extreme widths may truncate the identifier; full detail stays scrollable. Overview explicitly includes existing Name, Title and Path values. The list header states `Directory descending` and `Current tree first`.
@@ -35,6 +36,8 @@
 | No task records in a valid empty store | `No tasks found` |
 | Missing record, invalid JSON/UTF-8, escaping symlink, unreadable or special file | Bounded warning, `complete=false`; not a verified empty store |
 | Dangling archive | Incomplete store diagnostic, not silent archive absence |
+| 可见任务引用合法归档父/子任务 | 不产生缺失警告；归档对象不进入可见树 |
+| 归档引用缺失、损坏、越界或不同对象重名 | 保留诊断；精确归档路径可消除名称歧义 |
 | Current task is a nested child | Its entire root tree appears first; ancestor and sibling ordering is retained |
 | Current identity missing/invalid | Directory descending order, no promotion or false marker |
 | Missing/empty document | Distinct `Document not created` / `Document is empty` |
