@@ -23,6 +23,7 @@ Small-feature usage and implementation notes live in root `docs/`, not in this s
 - Read [Architecture](architecture.md) and the topic that owns the behavior being changed, including its cited source and tests.
 - Read the [shared guides](../guides/index.md); for an integration change, trace the whole boundary before choosing an edit point.
 - Identify execution root, context key, source/target ownership and allowed side effects. Do not infer approval from a pointer or status alone.
+- Read [Documentation Maintenance](../documentation.md) for documentation changes; keep specs English and feature/procedure docs Chinese.
 - Check [Quality Guidelines](quality-guidelines.md) before selecting validation commands.
 
 ## Quality Check

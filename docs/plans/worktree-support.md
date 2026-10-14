@@ -1,3 +1,5 @@
+> **历史设计与证据：** 本文保留当时方案和测试记录，不代表当前接口或本次验证。当前说明见[任务派发](../dispatch.md)、[托管执行协议](../worktree-execution.md)和[运行时基线](../runtime-baseline.md)；历史测试计数、类型检查、部署状态不能解释为今天的结果。
+
 > **2026-10-13 接口更新：** 以下为首版工具设计与历史验证记录，不再作为当前调用说明。管理核心已迁入原生 Python，固定入口 `python3 .trellis/scripts/worktree.py <create|adopt|status|prepare|recover|remove> --task <task>`；默认预览，批准后 `--confirm`。旧 `trellis_worktree` 不再注册，stop 合并到 `trellis_dispatch action=stop`，v1 记录继续使用。当前说明见 [README](../../README.md#worktree-usage)。历史测试计数/TypeScript验证不代表本次重构验证；新证据记录在任务 implement.md。
 
 # pi-trellis 任务级 Worktree 支持实施计划

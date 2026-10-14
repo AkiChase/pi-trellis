@@ -275,6 +275,10 @@ migration or automatic runtime upgrade is provided.
 
 ## Development checks
 
+Detailed offline provider procedures: [provider guide](docs/testing/provider.md).
+Authorized real terminal validation: [tmux guide](docs/testing/tmux.md).
+Neither guide is a fresh test report or permission to install/run against personal state.
+
 Pi supplies `@earendil-works/pi-tui` as a `*` peer dependency; it is not bundled
 or installed separately. Direct-TS tests use the real public TUI export via a
 test-only loader alias, analogous to the provider probe. If local peers are

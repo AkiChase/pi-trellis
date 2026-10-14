@@ -18,6 +18,7 @@ Use these guides before nontrivial changes in this single-package Pi extension, 
 - Read the task's approved artifacts and explicitly selected role context. A JSONL manifest selects relevant specs/research; it does not automatically load every guideline or spawn every role.
 - Search actual owners/callers/tests before changing a value or adding a helper. Prefer `rg -n` over searching installed/generated copies as if they were source.
 - Identify the smallest behavior gap, where it lives, expected files/side effects and explicit exclusions. Ask before expanding scope.
+- Read [Documentation Maintenance](../documentation.md) when moving or rewriting documents; do not lose valid contracts or rewrite archived evidence.
 - Read the relevant layer/topic and the matching thinking guide. Confirm which state is authoritative and what must survive failure.
 
 ## Evidence-Based Review

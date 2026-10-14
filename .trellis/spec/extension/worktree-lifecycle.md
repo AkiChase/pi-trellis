@@ -2,6 +2,8 @@
 
 ## Applicability and Invariants
 
+This spec retains development and safety contracts, not a second command manual. Read the Chinese [execution procedure](../../../docs/worktree-execution.md) for ordered operations and [dispatch usage](../../../docs/dispatch.md) for tool calls. Preserve these invariants when changing any owner below.
+
 Use this guide for `runtime/pi_trellis_worktree/`, `lib/worktree-query.ts`, `lib/bindings.ts`, `lib/executions.ts` and `lib/subagent-rpc.ts`. pi-trellis manages a persistent task directory, then uses the provider's public cwd RPC. It does not modify providers, use temporary subagent isolation, automatically advance phases, install dependencies, commit, merge or delete branches.
 
 Caller approval is required before using `--confirm`; a CLI flag is not proof of consent. Management runs through `python3 .trellis/scripts/worktree.py`; `trellis_worktree` is not registered. Each mutating CLI operation previews by default, accepts explicit `--task`, and requires approved `--confirm`. Operation-specific argparse rejects abbreviation, duplicates, unknown/inapplicable options and empty/control-character values before repository access. `status` cannot confirm. JSON stdout is one object; errors/progress go to stderr. A source-wide exclusive lock serializes confirmed management transitions and dispatch reservations. Source-execution terminal/shutdown updates use the same lock with conditional request checks and deferred retry on contention; managed terminal writes and stop requests retain their existing no-lock contract. Existing lock files require inspection, not automatic stale-lock deletion.
@@ -113,7 +115,7 @@ Use [Quality Guidelines](quality-guidelines.md) for fixture and validation conve
 
 ## Migration and Deployment
 
-Native management is the only lifecycle core; TS manager/preparation/cleanup/Git modules are retired. `scripts/deploy-worktree.py` deploys the fixed entry and private modules separately from the active_task.py patch; installer `--no-patch` still deploys them. Full recorded digests authorize updates only for untouched known files. Unknown/customized, missing recorded files, unsafe symlinks and incompatible manifests fail before writes. Deployment check/dry-run is read-only and modes survive atomic replacement; multi-file interruption is diagnosed, not silently repaired. CLI never invokes Node, providers or an installer. Material eligibility is limited to newly prepared snapshots; identity/lease paths remain v1, without old material migration. Extension updates need reload/restart; no workflow or customized-agent rewrite accompanies migration.
+Native management is the only lifecycle core; TS manager/preparation/cleanup/Git modules are retired. `scripts/deploy-worktree.py` remains native-only development deployment tooling; the current Pi-only installer never runs it or `scripts/patch-trellis.py`. Supported full-project publication is explicit initialization/resource management, not the historical installer `--no-patch` path. Full recorded digests authorize development deployment updates only for untouched known files. Unknown/customized, missing recorded files, unsafe symlinks and incompatible manifests fail before writes. Deployment check/dry-run is read-only and modes survive atomic replacement; multi-file interruption is diagnosed, not silently repaired. CLI never invokes Node, providers or an installer. Material eligibility is limited to newly prepared snapshots; identity/lease paths remain v1, without old material migration. Extension updates need reload/restart; no workflow or customized-agent rewrite accompanies migration.
 
 Evidence: `tests/worktree-cli.test.mjs`, `tests/python/test_worktree.py` and migrated worktree/preparation/dispatch fixtures cover fixed deployed entry, Node-unavailable execution, explicit source pins, cross-language records/locks, complete material rejection and deployment preservation. Python 3.10+ syntax; verified native platform/version is macOS/Python 3.14.7, not a cross-platform guarantee.
 
@@ -124,19 +126,11 @@ Evidence: `tests/worktree-cli.test.mjs`, `tests/python/test_worktree.py` and mig
 
 Apply when changing CLI parameters, Python/host queries, approval flags or execution fields. Management has one Python implementation; host events remain TS-owned.
 
-### Signatures
+### Interfaces and Validation
 
-```bash
-python3 .trellis/scripts/worktree.py create --task .trellis/tasks/<slug> [--base <ref>] [--branch <name>] [--confirm] [--json]
-python3 .trellis/scripts/worktree.py adopt --task .trellis/tasks/<slug> --path <registered-path> [--confirm] [--json]
-python3 .trellis/scripts/worktree.py remove --task .trellis/tasks/<slug> --integrated-into <ref> [--confirm] [--json]
-```
+Management uses the fixed project Python CLI with explicit task selection and operation-specific flags; exact usage belongs in [execution procedures](../../../docs/worktree-execution.md) and each command's `--help`. Host dispatch retains `{agent, task?, prompt}`; `{action: "stop", task?}` requests stop. Exact empty optional host placeholders mean omitted; CLI explicit empty values are errors.
 
-Host calls retain `{agent, task?, prompt}` for dispatch; `{action: "stop", task?}` requests stop. Exact empty optional host placeholders mean omitted; CLI explicit empty values are errors.
-
-### Contracts
-
-CLI success JSON has `ok: true` plus management result fields; failure has `ok: false, error` and nonzero exit. Progress/diagnostics use stderr. `--task` is explicit, `--cwd` defaults to actual cwd. Target task CLI receives its binding context ID and sanitized Git environment; it never writes with the source session pin.
+CLI success JSON has `ok: true` plus management fields; failure has `ok: false, error` and nonzero exit. Progress/diagnostics use stderr. Target task CLI receives its binding context ID and sanitized Git environment, never the source session pin.
 
 ### Validation and Error Matrix
 
@@ -147,12 +141,6 @@ CLI success JSON has `ok: true` plus management result fields; failure has `ok: 
 | missing ready material or changed pointer | Reject dispatch without spawn/reservation |
 | present null execution record / nonpositive PID | Invalid record / owner death unproven; no recovery bypass |
 | approved remove but dirty/nonancestor/current cwd | Reject and preserve worktree/records |
-
-### Good / Base / Bad Cases
-
-- Good: preview create, obtain approval, confirm; then separately preview/approve prepare and dispatch.
-- Base: `status --task ... --json` reads existing records without mutation.
-- Bad: use `--confirm` as proof of consent, pass bind path to create, or clear occupancy immediately after a successful stop reply.
 
 ### Tests Required
 

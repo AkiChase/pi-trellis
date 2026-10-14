@@ -28,22 +28,17 @@ For authorized regeneration, follow the full isolated generation commands in `do
 
 ## Bundled vs Deployed Agents
 
-`extensions/trellis.ts:deployAgents()` deploys package `agents/*.md` to project `.pi/agents/` once per root in the process. Its separate `.pi/.pi-trellis-hashes.json` uses 12-character SHA-256 prefixes, unlike the full provenance hashes. Do not confuse their purposes.
+Bundled `agents/*.md` are package outputs; project `.pi/agents/*.md` are published only by explicitly approved initialization/adoption/resource actions in `lib/initialization/`. Session startup never deploys or upgrades roles. Project schema-2 `.trellis/.pi-trellis.json` records full hashes/modes; the old truncated `.pi/.pi-trellis-hashes.json` is inactive historical evidence, not current write authority.
 
-| Current target | Action |
-| --- | --- |
-| Missing | Copy package document and record package hash |
-| Same content as package | Keep file, repair recorded hash if needed |
-| Content matches recorded old hash | Update untouched older copy and record new hash |
-| Different content without matching recorded hash | Preserve customization; notify in UI |
+Safe resource updates preserve customized files and reject modified executable/role conflicts before publication. Identity-only setup preserves deployed roles. Explicit adoption of a manifest-less project is a different, destructive-confirmed action: it replaces old runtime/roles and managed root blocks without backups while preserving project documents/history. Do not conflate adoption approval with a safe update or automatic startup overwrite. See [initialization details](../../../docs/initialization.md).
 
-Unreadable/unwritable files degrade independently; losing the deployment manifest loses the safe-update path, not the user's custom content. This is a content/hash policy, not transactional deployment or path isolation: target/manifest writes are direct, with no exclusive-create, symlink-containment or concurrent-edit recheck. Do not promote the preservation policy into guarantees against concurrent writers or redirected paths. Deployment does not force-refresh already loaded agents or delete removed package files. Reload/restart and inspect deployed files after an upgrade. Managed dispatch separately rejects incompatible customized frontmatter rather than overwriting it; see [Worktree Lifecycle](../extension/worktree-lifecycle.md).
+Publication uses contained regular paths, source/manifest validation, under-lock rechecks and mode-preserving per-file atomic replacement; it is not a multi-file transaction or OS sandbox. Partial failure preserves published files; an existing lock needs inspection. Managed dispatch separately rejects incompatible customized frontmatter rather than overwriting it. Children need persistent adapter configuration, not merely a parent-only `-e`; see [Worktree Lifecycle](../extension/worktree-lifecycle.md).
 
-Evidence: `tests/agent-context-integration.test.mjs` verifies untouched old copy upgrade, custom research preservation and missing implement creation. `tests/agent-documents.test.mjs` verifies tools, attribution, fallback, scoped check behavior, research write boundary and rejection of unreviewed anchors. The optional real-provider probe verifies parser/runner mechanisms, not model compliance.
+Evidence: `tests/initialization.test.mjs`, `tests/adopt-project.test.mjs`, `tests/apply-template.test.mjs` and `tests/agent-context-integration.test.mjs` cover publication, customization/identity preservation and host guards. `tests/agent-documents.test.mjs` covers attribution, tools, fallback, scoped check, research boundaries and drift rejection. The optional real-provider probe verifies mechanisms, not model compliance.
 
 ## License and Attribution Boundary
 
-`LICENSE` covers original/new runtime code under MIT. Bundled adapted upstream documents retain **AGPL-3.0-only**, with attribution/modification notes and `licenses/trellis-AGPL-3.0.txt`. `scripts/patch-trellis.py` embeds Trellis-derived code blocks and explicitly carries their upstream AGPL attribution. Preserve notices in adaptation/patch sources and shipped materials.
+`LICENSE` covers original integration/native code under MIT; maintained Trellis-derived runtime code retains AGPL. Bundled adapted upstream documents retain **AGPL-3.0-only**, with attribution/modification notes and `licenses/trellis-AGPL-3.0.txt`. `scripts/patch-trellis.py` embeds Trellis-derived code blocks and explicitly carries their upstream AGPL attribution. Preserve notices in adaptation/patch sources and shipped materials.
 
 `package.json` declares `(MIT AND AGPL-3.0-only)`. Do not describe the complete distribution as MIT-only, wholly upstream-free, or free of Trellis material. The fixed `runtime/common/` and supported task/context/journal/developer entries are now vendored Trellis 0.6.16 AGPL material, with per-file source/output hashes in `resources/runtime-baseline.json`. Native `runtime/pi_trellis_worktree/` remains original MIT code. These are separate from the 0.6.17 adapted-role baseline. The provenance record is not legal advice for every downstream combination, but release claims must not erase the existing attribution/license split.
 

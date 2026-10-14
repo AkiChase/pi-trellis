@@ -1,121 +1,38 @@
-# Fixed Runtime Baseline
+# 固定运行时基线
 
-## Source and License
+## 来源与许可
 
-`resources/runtime-baseline.json` schema v1 records a fixed **Trellis 0.6.16**
-source category. All 28 original project Python files were byte-compared against
-that installed npm release's `dist/templates/trellis/scripts/` files. The package
-vendors only the five supported entries and their AST import closure (24 original
-files), not unused `cli_adapter.py`, `task_queue.py`, root `__init__.py` or
-`hooks/linear_sync.py`. The original full SHA-256 inventory remains in the
-manifest. No verified upstream Git revision is asserted.
+`resources/runtime-baseline.json` schema v1 记录固定 **Trellis 0.6.16** 来源。原项目 28 个 Python 文件与已安装 npm release 的 `dist/templates/trellis/scripts/` 逐字节比较；包只收录五个支持入口及 AST import closure（24 个原文件），不含未使用的 cli_adapter.py/task_queue.py/root __init__.py/hooks/linear_sync.py。Manifest 保留完整原始 SHA-256 inventory，不声称已核上游 Git revision。
 
-Trellis-derived entries/common modules retain **AGPL-3.0-only**, Mindfold LLC
-attribution and modification notices; the license is shipped in
-`licenses/trellis-AGPL-3.0.txt`. New shared `common/task_records.py` is maintained
-as part of that AGPL adaptation. Native `runtime/pi_trellis_worktree/`,
-`worktree.py` and private `query-worktree.py` remain original **MIT** pi-trellis
-code, initially moved byte-identically from `python/`. Current native changes retain
-that original source hash/revision and record distinct output hashes with `modified: true`.
-The adapted agent documents' **0.6.17**
-source and `docs/agent-baseline.json` are independent; do not conflate versions.
+Trellis 派生 entries/common 保留 **AGPL-3.0-only**、Mindfold LLC attribution 与修改声明，完整许可在 `licenses/trellis-AGPL-3.0.txt`。新增 `common/task_records.py` 属 AGPL 适配。Native `runtime/pi_trellis_worktree/`、worktree.py、private query-worktree.py 保持原创 **MIT**：最初从 python/ 字节一致迁入，后续修改保留原始 source hash/revision，记录不同 output hash 与 `modified: true`。角色来源是独立 **0.6.17**，见 [agent-baseline.json](agent-baseline.json)，不能混版本。
 
-Each runtime file has `sourceSha256`, final `sha256`, source path, origin and
-license. `releaseId` is `pi-trellis-runtime-v1-` plus SHA-256 of compact sorted
-JSON `{schemaVersion, files: {path: outputHash}}`; package version alone does not
-authorize deployment. Python **3.10** is the syntax floor checked with AST
-`feature_version=(3,10)` and in-memory compilation. Executed interpreter evidence
-is macOS/Python 3.14.7, not a tested 3.10-to-3.14 or Windows matrix.
+每个 runtime 文件有 sourceSha256、最终 sha256、source path、origin、license。Release ID 是 `pi-trellis-runtime-v1-` 加 compact sorted JSON `{schemaVersion, files: {path: outputHash}}` 的 SHA-256，package version 本身不授权部署。Python **3.10** 是 AST feature_version=(3,10) 与内存编译核验的语法下限；执行证据是 macOS/Python 3.14.7，不是完整 3.10–3.14 或 Windows 测试矩阵。
 
-## Deployment Boundary
+## 部署与更新
 
-Package `runtime/` is source; project commands still run `.trellis/scripts/`.
-This runtime child does not deploy scripts or initialize projects. Existing
-`scripts/install.sh` and `scripts/patch-trellis.py` remain legacy until the
-separate initialization/migration work replaces installation behavior.
-`scripts/deploy-worktree.py` still deploys **only** the native CLI/modules,
-now reading from `runtime/`; it never deploys Trellis common modules or query.
-There is one native algorithm implementation, not parallel `python/` copies.
+包 runtime/ 是源码，项目 CLI 执行 `.trellis/scripts/`。安装包不自动部署项目；明确确认的 `/trellis-init` 管理创建、接管与资源更新，见[初始化](initialization.md)。`scripts/install.sh` 现为 Pi-only wrapper，不执行历史 patch/部署；`scripts/patch-trellis.py` 是历史工具，`scripts/deploy-worktree.py` 只部署 native CLI/modules，不部署 Trellis common/query，不能绕过 manifest 作为全项目初始化。Native 算法只有一份，不再并存 python/ 实现。
 
-Supported fixed entries: `task.py`, `get_context.py`, `add_session.py`,
-`init_developer.py`, `get_developer.py`, `worktree.py`. Query is a private host
-entry. All entries suppress import bytecode. Task/context/developer operations
-require no global `trellis`; update/version probes and update-marker writes are
-removed. Config imports retain existing package-related configuration reading
-for compatibility; no new frontend/backend or package detection is implemented.
+支持固定入口：task.py/get_context.py/add_session.py/init_developer.py/get_developer.py/worktree.py；query 是 private host 入口。均 suppress bytecode。Task/context/developer 不需 global trellis，去除 update/version probe 与 update marker 写入。Config 保留现有 package-related 读取兼容，不新建 frontend/backend/package detection。
 
-## Task and Session Contracts
+## 任务与会话契约
 
-- Pi owns key derivation. Python accepts an explicitly supplied, trimmed
-  `TRELLIS_CONTEXT_ID` matching `[A-Za-z0-9_-]{1,128}`; invalid overrides fail
-  rather than sanitize into another key. No platform/ticket/sole-session
-  inference, even when the legacy fallback keyword is true.
-- `ActiveTask.valid` authorizes only an existing task with a valid bounded
-  record. Invalid references retain `raw_ref`, `error`, `state` and source for
-  diagnostics, but `task_path` and `get_current_task()` become `None`.
-- Resolution requires a lexical descendant of `.trellis/tasks` and a real
-  descendant of its resolved store. The explicitly external top-level **source**
-  task store is allowed; arbitrary external paths/task links are not. Record
-  reads require a regular `task.json` inside the same store, at most **1 MiB**,
-  a nonempty object and at least one identity/status field. Present identity
-  fields must be nonempty strings; status is limited to 128 characters, other
-  projected strings to 8192. Optional malformed values do not crash readers;
-  children project only safe strings from the first 512 entries.
-- `start` requires identity and valid record before binding/status/hooks. Missing
-  or invalid records fail. `current --json` returns null plus diagnostic on
-  invalid pointers/tasks, distinct from `no-task`/`no-identity`; both invalid
-  and absent task cases exit nonzero.
-- `deactivate` unlinks **only its own key** and returns prior authorization only
-  after unlink succeeds. Session runtime ancestors must be local directories;
-  symlinked ancestors cannot authorize reads, start, deactivate or archive. A final
-  pointer symlink is invalid and deactivate may remove that link only, not its target.
-  Clearing its corrupt/stale pointer reports diagnostics
-  without hooks; repeated/missing deactivate runs none. Unlink failure exits nonzero.
-  Valid deactivation invokes `after_deactivate` once, without changing task status,
-  archiving or recording a journal. The old `finish` command and `after_finish`
-  hook are not supported.
-- Context/package/journal CLI readers refuse invalid pointer state; direct
-  context readers retain `task_error`. Raw stale references never select task
-  files, packages, journal metadata or hook paths. Hooks revalidate records.
-  Existing host error/display adaptation remains separate integration work.
-  `task.py validate` shares bounded record authorization, rejecting invalid or
-  outside-store task.json instead of raw metadata reads.
-- Journals auto-stage developer journal/index products and the **exact validated
-  task path**, including an archived task's month path, never its basename.
-  External task stores cannot be staged by the local Git repository and are
-  skipped, never remapped to a local victim.
-- Archive auto-stage/commit includes the **actual moved destination**, source
-  deletion and explicitly edited child **task.json** files—not the whole archive
-  or child directories. Existing unrelated staged entries are preserved by
-  explicit commit pathspecs. Archive destination ancestors and dangling links
-  are rejected before status, child records or session pointers change. Git
-  subprocess environments remove inherited
-  `GIT_*` overrides; arbitrary trusted hooks still execute shell commands.
+- Pi 推导 key，Python 只接显式 trimmed TRELLIS_CONTEXT_ID，须匹配 `[A-Za-z0-9_-]{1,128}`；畸形 override 失败，不 sanitize 到另一 key。无 platform/ticket/sole-session 推断，即使旧 fallback 参数为 true。
+- ActiveTask.valid 只授权有效有界 record 的既有任务。畸形引用保留 raw_ref/error/state/source 供诊断，但 task_path/get_current_task() 为 None。
+- 路径须为 `.trellis/tasks` lexical descendant，realpath 位于 resolved store；只允许 top-level source external task store，非任意 external/task link。task.json 须同 store 内 regular file、最多 1 MiB、nonempty object 且至少一 identity/status 字段。Present identity 非空 string；status 最多 128 字符，其他 projected string 最多 8192；可选 malformed 不崩 reader，children 只投影前 512 项 safe string。
+- start 在 pointer/status/hooks 前要求 identity 与有效 record，缺失/畸形失败。current --json 遇坏 pointer/task 返回 null 与 diagnostic，区别 no-task/no-identity；坏任务与无任务均非零 exit。
+- deactivate 只 unlink 自己 key，成功后才返回先前授权。Session runtime 祖先必须本地目录，symlink 祖先不授权读/start/deactivate/archive。Final pointer symlink 无效，可只删 link 不碰 target；清坏/stale pointer 报诊断无 hook，重复/缺失也无 hook，unlink 失败非零退出。有效 deactivate 调 after_deactivate 一次，不改 status/archive/journal；旧 finish/after_finish 不支持。
+- Context/package/journal reader 拒绝坏 pointer；直接 reader 保 task_error。Raw stale ref 不选择 task files/package/journal/hook path，hook 再校验；task.py validate 复用有界 record 授权，不直接信任外部 metadata。
+- Journal 只 stage developer journal/index 与**精确验证 task path**（含归档 month），不按 basename。External store 不属于本地 Git，跳过而不映射到本地同名对象。
+- Archive 只 stage 实际 moved destination、source deletion、显式改动 child task.json，不整个 archive/child directory。显式 commit pathspec 保留无关 staged；destination ancestor/dangling link 在改 status/child/pointer 前拒绝。Git subprocess 清 inherited GIT_*，可信 hook 仍可执行 shell。
 
-## Developer Contract
+## 开发者身份
 
-Names are trimmed safe single segments, allowing reasonable Unicode and spaces.
-Reject empty/dot/traversal/separators (including whitespace-padded dot segments),
-control/format/surrogate characters and
-names longer than 255 characters. Existing effective identity is never switched:
-same-name requests are no-ops; different requests fail and report actual identity.
-Unsafe environment/file identities fail rather than feed workspace paths. Local
-identity/workspace/file symlinks refuse initialization; existing journal/index bytes are
-preserved. Identity publication follows successful scaffold creation and uses
-exclusive create; this is not a general initialization transaction.
+名字 trimmed 为 safe single segment，可合理 Unicode/空格；拒绝 empty/dot/traversal/separator（含 padded dot）、control/format/surrogate、超过 255 字符。有效 identity 不切换：同名 no-op，异名失败并报告实际名字。危险 env/file identity 不用于 workspace path；identity/workspace/file symlink 拒绝初始化。已有 journal/index 保留；scaffold 完成后 exclusive create identity，不是通用 init 事务。
 
-## Verification and Deferred Work
+## 验证与历史边界
 
-`tests/runtime-contracts.test.mjs` copies the **full runtime** into disposable Git
-projects, covering real script effects, forbidden reads/hooks/commits, real child
-binding/deactivate/non-resurrection, preserved identity/index/history, source/output
-hashes, import closure, syntax and `npm pack --dry-run` contents. It uses the real
-host preload (`tests/host-tui.mjs`, explicit `PI_TRELLIS_TEST_HOST` if needed).
-Fixture commits are not user-project commits. Native worktree/material/dispatch
-regressions verify current behavior and source/output provenance separately.
+`tests/runtime-contracts.test.mjs` 把完整 runtime 放入 disposable Git project，核真实 script effects、禁止 read/hook/commit、child bind/deactivate/non-resurrection、identity/index/history、source/output hashes、import closure、syntax 和 npm pack --dry-run。使用 real host preload（host-tui.mjs；必要时 PI_TRELLIS_TEST_HOST）。Fixture commit 不是用户仓库 commit 授权。Native worktree/material/dispatch 回归另核当前行为和 provenance。
 
-Deferred: hierarchy cycles/rendering, rename pointer redesign, journal semantic
-retry changes, snapshot symlink/mode fixes, effective provider adapter detection,
-init UI/resource publication and repository migration. These tests are not a
-real-model/provider/TUI acceptance test or OS sandbox proof. There is no package
-lint/typecheck script; direct TS execution is not static checking.
+早期 runtime 子任务曾把 hierarchy/rename/journal retry/snapshot/provider adapter/init UI/repository migration 列为后续；这是一段历史范围，不代表这些领域今天全部未实现。当前初始化/adapter/迁移状态见[初始化](initialization.md)，层级浏览见[任务浏览器](task-viewer.md)，材料与派发见[执行协议](worktree-execution.md)。未覆盖的平台或行为仍须按当次验证报告说明。
+
+这些测试不是真实模型/provider/TUI 验收或 OS 沙箱证明。无 lint/typecheck script，直接 TS 执行不是静态检查；实际宿主/终端操作分别见[provider 探针](testing/provider.md)和[tmux 指南](testing/tmux.md)。

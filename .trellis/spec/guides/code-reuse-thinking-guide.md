@@ -34,7 +34,7 @@ Python owns complete management/readiness validation; the host reuses it through
 - `runPython()` in the entrypoint and `materials.py:task_cli()` in preparation both spawn Python, but optional discovery can degrade while target readiness must fail, and cwd/key ownership differs.
 - General material loading may accept a top-level external task store; worktree preparation requires a local target store. Sharing a helper must preserve the stricter policy.
 - Ordinary Agent injection and managed RPC share `buildTaskContext()`/`assembleDispatchPrompt()`, but only managed dispatch validates readiness, host cwd and occupancy. Hooks cannot promise interception of third-party RPC.
-- Full source/adapted SHA-256 in `docs/agent-baseline.json` records a source/output relationship that can be checked against available files; without the source, it is not independent integrity proof. Truncated deployment hashes only determine whether a user's copy is treated as untouched. They are not the same manifest.
+- Full source/adapted SHA-256 in `docs/agent-baseline.json` records a source/output relationship checked against available files; without the source, it is not independent upstream integrity proof. The schema-2 project resource manifest records installed ownership for safe updates. Historical truncated deployment hashes are inactive and must not be restored as current authority.
 - Binding `ready`, provider `completed` and accepted work are different states. A common state formatter must not imply equivalence.
 
 ## Decide Whether to Extract

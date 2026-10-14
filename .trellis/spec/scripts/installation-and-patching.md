@@ -20,7 +20,7 @@ Unknown files and customized root blocks are never overwritten by init. Incomple
 
 `scripts/deploy-worktree.py` remains a development utility for native files only; it is not the supported full-project initializer. `scripts/patch-trellis.py` remains historical focused patch tooling, not a step in the current installer. Do not instruct users to run either to bypass the distribution manifest.
 
-This repository was migrated explicitly after verifying the old scaffold and skills. Its existing config/workflow/spec/workspace were preserved with honest project-snapshot provenance; only selected current instruction references changed. Old `.version`/`.template-hashes.json` and extra unused source files are inactive upstream evidence, not authority for future `trellis update`. Other repositories have no public legacy migration API.
+This repository was migrated explicitly after verifying the old scaffold and skills. Its existing config/workflow/spec/workspace were preserved with honest project-snapshot provenance; only selected current instruction references changed. Old `.version`/`.template-hashes.json` and extra unused source files are inactive upstream evidence, not authority for future `trellis update`. Other repositories can use explicit manifest-less adoption; there is no arbitrary upstream migration API. Adoption replaces executable/role copies and managed root blocks by confirmation, unlike safe updates; see [initialization](../../../docs/initialization.md).
 
 ## Workflow and Skill Resource Contracts
 

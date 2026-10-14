@@ -17,6 +17,7 @@ Use this layer for `scripts/install.sh`, `scripts/patch-trellis.py`, `scripts/sy
 - Read the complete script and corresponding tests before changing an option, replacement anchor or output document.
 - Identify whether the operation edits package source, a disposable generated baseline, or a user project. Installation/regeneration in a real project needs separate approval.
 - For deployment changes also read `lib/initialization/engine.ts` and [Session and Context](../extension/session-and-context.md).
+- For documentation/provenance changes read [Documentation Maintenance](../documentation.md); project specs are English and root docs Markdown is Chinese.
 - Check the source manifest and provenance together; historical plan wording is not the current runtime contract.
 
 ## Quality Check

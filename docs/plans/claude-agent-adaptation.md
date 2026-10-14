@@ -1,3 +1,5 @@
+> **历史设计与证据：** 以下为当时计划及执行记录，不是当前调用/部署手册，也不是本次测试结果。当前角色来源见[同步说明](../trellis-agent-sync.md)，派发见[任务派发](../dispatch.md)，部署见[初始化](../initialization.md)，实际探针操作见[测试指南](../testing/provider.md)。
+
 # pi-trellis Claude Code 版 Agent 适配实施计划
 
 状态：A1/A2 和简化真实模型 implement/check 验收已完成；research 与截断 fallback 模型质量未验证。后续 W1–W5 首版 worktree 核心闭环已实现并通过实际 Pi/Trellis 离线集成。

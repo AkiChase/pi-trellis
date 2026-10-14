@@ -48,18 +48,16 @@ Integration fixtures model documented Python `start/current` or `set_active_task
 
 Add negative tests at the boundary where a new input or transition is accepted. Examples of meaningful assertions: foreign pointer does not enter the prompt; parent pointer remains after child finish; source index/content stays byte-identical; conflicting target/custom agent is not overwritten; unknown startup retains a lease; later change makes a check snapshot stale. An error message alone does not prove preservation.
 
-## Optional Real-Host/Provider Probe
+## Optional Real-Host/Provider and Terminal Validation
 
-`tests/provider-contracts.mjs` is outside the default `*.test.mjs` glob and requires explicit installed paths:
+The installed-host/provider probe is optional and outside the default test glob. It requires explicit existing paths and approval, uses scripted offline responses and temporary configuration, and must not install conflicting providers into a live session. See the Chinese [provider procedure](../../../docs/testing/provider.md) for commands and coverage. It is not real-model obedience, full managed lifecycle, sandbox or terminal acceptance. Report NOT_RUN when unavailable or unapproved.
 
-```bash
-node tests/provider-contracts.mjs --host <Pi-node_modules> --provider <provider-package-root>
-```
+Real terminal validation is a separate evidence layer. For an authorized run, use a unique tmux server, temporary HOME/agent/config/cwd/session directories, an existing CLI, explicit extension loading, bounded condition-based waits and owned-resource cleanup. Verify an actual new output frame after resize, action/focus evidence and OS-level process exit. Component/fake-dialog tests do not prove appearance, physical mouse/IME or arbitrary themes; scripted providers do not prove online model quality. Keep reusable steps in the Chinese [tmux guide](../../../docs/testing/tmux.md), not historical PASS counts here.
 
-Repeat `--provider` to probe separate implementations. The script uses real parser/runner/loader and public RPC with scripted offline responses, temporary configuration and no model network. It includes role tools, target materials/cwd, late extension tool availability, missing target, real IDs/result/steering and service shutdown. It is not a real-model obedience test, comprehensive sandbox test, or substitute for task acceptance. Do not install conflicting providers into a live session or run the probe without the required paths/approval. If not run, say so.
 
 ## Review and Documentation Gate
 
+- Follow [Documentation Maintenance](../documentation.md): specs retain reusable constraints, Chinese docs retain usage/procedures, and task research retains historical evidence.
 - Read the full relevant source/test before documenting a contract; snippets/search hits locate evidence but do not replace review.
 - Review staged, unstaged, untracked and explicitly supplied-base committed changes. An empty unstaged diff is not evidence of no work.
 - Use `git diff --check`, but inspect new untracked Markdown separately for whitespace, empty headings and stale guidance.

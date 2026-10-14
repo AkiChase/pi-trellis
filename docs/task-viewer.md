@@ -1,72 +1,56 @@
-# Read-only Task Browser
+# 只读任务浏览器
 
-## 1. Scope / Trigger
+## 入口与职责
 
-`/trellis-task-viewer` is a native Pi command crossing UI, session-pointer and task-file boundaries. Presentation belongs to `lib/task-browser/{command,component}.ts`; bounded disk reads and hierarchy projection belong to `reader.ts`. The extension supplies command-time root and session key, not runtime authorization. This browser does not change the persistent unfinished-task count.
+在 Pi 交互终端运行 `/trellis-task-viewer`，不带参数；多余参数显示 usage，旧 `/trellis-task` 不注册。命令无需当前任务、已部署 runtime、subprocess 或模型请求；每次调用解析项目根，不改常驻 unfinished-task count 或任何生命周期状态。非项目/非 TUI 模式给英文通知。
 
-## 2. Signatures
+UI 属 `lib/task-browser/{command,component}.ts`，有界磁盘读取/层级投影属 reader.ts。扩展提供 command-time root/session key，不授予 runtime 执行权限。接口：readTasks(root) 返回 tasks/rows/diagnostics/complete；readCurrentTaskIdentity(root,key) 只解析 supplied pointer 的 canonical task directory，不打开 task record；readDocument(root,task,section) 支持 prd/design/implement，状态 ready/empty/missing/removed/error；TaskBrowser 的 render/handleInput/invalidate 管理一次交互。
 
-- `/trellis-task-viewer` accepts no arguments; extra input displays usage. The old `/trellis-task` command is not registered.
-- `registerTaskBrowserCommand(pi, { findRoot(cwd), currentTask(root, ctx) })` registers one command.
-- `readTasks(root): TaskSnapshot` returns validated `tasks`, ordered tree `rows`, bounded `diagnostics`, and `complete`.
-- `readCurrentTaskIdentity(root, key): string | undefined` resolves only the supplied session pointer's canonical task directory; it never opens that task's record.
-- `readDocument(root, task, section): TaskDocument`, where section is `prd | design | implement` and state is `ready | empty | missing | removed | error`.
-- `TaskBrowser.render(width)`, `handleInput(data)`, `invalidate()` implement one custom interaction.
+## 列表与层级
 
-## 3. Contracts
+- 仅展示 task store 直属非归档目录，包括仍未归档的 completed record；排除 canonical archive descendants，canonical alias 去重。先按目录名 lexical descending，再投影树：根与 sibling 保序，child 留 parent 下。同日名称确定性倒序，不推断 creation time/status 权重，MM-DD 不能区分年份。
+- 当前 session task 所在**整个顶层树**置首，保 ancestor/sibling 顺序；坏/缺 current identity 不置顶。Refresh 先重排再按 canonical identity 恢复选择。坏/cyclic hierarchy 不使有效任务重复或丢失。
+- Label 为净化目录 basename、` · `、原 title/name/id fallback，相同不重复。宽度先保 current marker/status，再分 tree prefix/directory/title；极窄会裁 directory，完整详情可滚动。Overview 明确 Name/Title/Path，header 标 Directory descending / Current tree first。
+- 归档引用可见索引优先；未命中目录名或 `.trellis/tasks/<目录名>` 按 archive/YYYY-MM 查询，也支持精确归档路径与顶层归档 alias。只读相关候选、不递归加载 archive tree；归档 child 隐藏，归档 parent 的可见 child 留顶层。Canonical 去重，不同对象重名为歧义；合法隐藏引用无缺失 warning，真正缺失/损坏/越界有 diagnostic，不改 task record。
 
-- Resolve root per command invocation. Browser entry does not require a current task, verified runtime deployment, subprocess or model request.
-- Enumerate immediate task directories only; exclude canonical archive descendants and deduplicate canonical aliases. Include completed records still outside archive. Sort immediate directory names lexicographically descending before tree projection: roots and siblings retain that order, children remain beneath parents. Same-day names descend deterministically; MM-DD prefixes do not distinguish years, and no creation-time/status weighting is inferred. The UI promotes the current session task's entire top-level tree ahead of other roots, retaining ancestor and sibling order; invalid/missing current identity leaves descending order unchanged. Refresh reorders before recovering canonical selection. Preserve each valid task once despite malformed/cyclic hierarchy links.
-- Resolve task paths with the existing task-store containment owner; only the top-level external task-store exception is supported. Artifact/record files must resolve inside their selected canonical task directory.
-- 归档层级引用：可见任务索引优先。未命中的目录名或 `.trellis/tasks/<目录名>` 引用按 `archive/YYYY-MM/<目录名>` 查找，也支持精确 `.trellis/tasks/archive/YYYY-MM/<目录名>` 与指向归档对象的顶层 alias。只读取相关候选记录，不递归加载归档树；归档子任务不展示，归档父任务的可见子任务留在顶层。候选沿用任务目录 containment 与记录大小、UTF-8、regular-file 校验；同 canonical identity 去重，不同归档对象重名视为歧义。合法隐藏引用不产生缺失警告，真正缺失、损坏或越界仍有诊断；不修改任何任务记录。
-- Pointer reads use `.trellis/.runtime/sessions/<key>.json` through `checkedPath`; invalid/unreadable pointers yield no current marker, not blocked browsing. A marker is displayed only for an identity in the validated snapshot.
-- Record/pointer reads are bounded at 1 MiB; documents at 2 MiB. Validate UTF-8/NUL and descriptor regular-file type, use nonblocking/no-follow final opens, and read at most limit + 1 bytes. This is not an OS sandbox against concurrent ancestor replacement.
-- List labels show the sanitized directory basename followed by ` · ` and the original title/name/id fallback; identical values are not repeated. Protect current marker/status before allocating remaining width to tree prefix, directory identifier, then title. Extreme widths may truncate the identifier; full detail stays scrollable. Overview explicitly includes existing Name, Title and Path values. The list header states `Directory descending` and `Current tree first`.
-- English application labels do not translate original task/document content. Strip untrusted terminal controls before adding trusted theme/Markdown styling.
-- Use `ctx.mode === "tui"` and `ctx.ui.custom()` with full-terminal overlay; complete via the supplied callback. Unsupported modes report English notices without a model turn.
-- Up/Down/PageUp/PageDown navigate; Enter opens; Left/Right selects Overview/PRD/Design/Implement; Esc returns/closes; `r` explicitly rereads. Return preserves list position, refresh preserves canonical selection when present, and each section owns its scroll offset.
-- Host Markdown plus `getMarkdownTheme()` renders supported syntax. Theme invalidation clears colored caches; resize recomputes widths/offset bounds. Cache content by identity/section/width until explicit refresh/invalidation.
-- Images become readable source tokens without destroying surrounding tables, lists, headings or shared link definitions. No HTML/diagram execution or remote fetch. Parser failure displays a warning and complete scrollable document source.
+## 键位与呈现
 
-## 4. Validation & Error Matrix
-
-| Input/condition | Observable result |
+| 动作 | 键位 |
 | --- | --- |
-| No project / non-TUI / extra arguments | English notice; no custom UI or lifecycle action |
-| No task records in a valid empty store | `No tasks found` |
-| Missing record, invalid JSON/UTF-8, escaping symlink, unreadable or special file | Bounded warning, `complete=false`; not a verified empty store |
-| Dangling archive | Incomplete store diagnostic, not silent archive absence |
-| 可见任务引用合法归档父/子任务 | 不产生缺失警告；归档对象不进入可见树 |
-| 归档引用缺失、损坏、越界或不同对象重名 | 保留诊断；精确归档路径可消除名称歧义 |
-| Current task is a nested child | Its entire root tree appears first; ancestor and sibling ordering is retained |
-| Current identity missing/invalid | Directory descending order, no promotion or false marker |
-| Missing/empty document | Distinct `Document not created` / `Document is empty` |
-| Task identity removed/replaced | Removed-task message; do not jump detail to a different task |
-| Oversized or invalid document | Error diagnostic, no truncated-success rendering |
-| Long valid document/Overview | All content scrollable; avoid variadic push of unbounded rendered arrays |
-| Host Markdown throws | English warning plus full plain source fallback |
-| Invalid current pointer or FIFO record target | No blocking read of task.json and no false current marker |
+| 列表选择/详情滚动 | Up/Down、PageUp/PageDown |
+| 打开详情 | Enter |
+| 切换 Overview/PRD/Design/Implement | Left/Right |
+| 返回列表/关闭 | Esc |
+| 明确重新读取 | r |
 
-## 5. Good / Base / Bad Cases
+返回保列表位置，刷新保仍存在的 canonical selection，各 section 独立 scroll offset。ctx.mode 为 tui 时用 ctx.ui.custom 全终端 overlay，通过 supplied callback 完成；unsupported mode 无模型回合。英文应用 label 不翻译原任务/文档。
 
-- Good: Chinese PRD with code, checklist and wrapped table uses native theme while the page labels remain English.
-- Base: No active task and no deployed CLI still permits browsing valid task files.
-- Bad: Opening a FIFO pointed-to record to establish the current marker can block the entire Pi process; resolve pointer directory identity independently.
-- Bad: Literalizing a complete image-containing table row destroys native Markdown structure; adapt the image token and retain the other cells.
+用宿主 Markdown/getMarkdownTheme；theme invalidation 清 colored cache，resize 重算 width/offset；按 identity/section/width 缓存到 explicit refresh/invalidation。先剥离不可信 terminal control，再加可信 style。图片保可读 source token、不破坏周围表格/list/heading/shared link definition；不执行 HTML/diagram，不 remote fetch。Parser 错误显示 warning 与完整可滚动 source，不能吞错变空文档。
 
-## 6. Tests Required
+## 文件与错误边界
 
-`tests/task-browser-reader.test.mjs` asserts canonical archive/alias rules, malformed records, UTF-8/size/type/containment bounds, deterministic descending hierarchy, directory/title labels and missing/removed document distinctions. `tests/task-browser-ui.test.mjs` asserts current-root promotion, nested ancestor preservation, refresh identity recovery, full Name/Title/Path, long-identifier scrolling and old-command absence, and uses actual host peers to assert navigation, refresh/selection, supported Markdown and source fallback, long-document end reachability, Unicode column/row bounds, English labels and original content.
+路径复用 task-store containment，只有 top-level external store 例外；record/artifact 须在选中 canonical task directory。Pointer 通过 checkedPath 读 `.trellis/.runtime/sessions/<key>.json`，坏/不可读只无 current marker，不阻浏览；marker 只能属于有效 snapshot。
 
-Preservation tests compare all fixture files, session pointers, Git index bytes and porcelain status; browser commands must not call task/context CLI or trigger a model turn. Offline actual-host regular/fullscreen lifecycle tests assert theme invalidation reaches the overlay and completion restores editor focus/text. These tests are not actual PTY acceptance. Follow [Quality Guidelines](../.trellis/spec/extension/quality-guidelines.md) for host resolution and unpinned test subprocesses; parallel resource failures remain failed gates until rerun.
+Record/pointer 最多 1 MiB，document 最多 2 MiB；验证 UTF-8/NUL、descriptor regular-file，final open nonblocking/no-follow，最多 limit+1 bytes。不是对并发祖先替换的 OS 沙箱。
 
-## 7. Wrong vs Correct
+| 状态 | 结果 |
+| --- | --- |
+| 有效空 store | No tasks found |
+| 坏 JSON/UTF-8、缺 record、escaping symlink、不可读/special file | 有界 warning，complete=false，不冒充空项目 |
+| Dangling archive | Incomplete diagnostic，不静默当缺 archive |
+| 合法归档 parent/child 引用 | 无缺失警告，归档对象不展示 |
+| 归档缺失/损坏/越界/不同对象重名 | Diagnostic；精确归档路径可消歧义 |
+| 缺失/空文档 | Document not created / Document is empty |
+| Task identity removed/replaced | Removed-task 提示，不跳到别的对象 |
+| 超限/坏文档 | Error，不截断后报成功 |
+| 长文档/Overview | 完整滚动，不把无界 rendered array 传给 variadic push |
+| Markdown 抛错 | 英文 warning + 完整 plain source fallback |
+| 坏 pointer/FIFO target | 不阻塞读 record，不伪造 current marker |
 
-```typescript
-// Wrong: a large valid document may overflow the function argument stack.
-lines.push(...renderedLines);
-// Correct: avoid unbounded call arguments, preserving all scrollable content.
-lines = lines.concat(renderedLines);
-```
+## 验证
 
-Do not catch renderer failure and display an empty document, translate task data, fetch image URLs, or change session/task state as a side effect of viewing details.
+Reader tests 覆盖 archive/alias/UTF-8/size/type/containment、倒序层级、label 和 document states。UI tests 覆盖 current-root promotion/ancestor、refresh identity、Name/Title/Path、长 identifier/doc end reachability、旧 command absence、真实 host peer 的 navigation/Markdown/fallback/Unicode 行列边界与英文 label。
+
+Preservation 断言比较 fixture files、pointer、Git index 与 porcelain；浏览不能调 task/context CLI 或模型。Offline actual-host regular/fullscreen lifecycle 核 theme invalidation 和恢复 editor focus/text，不等于实际 PTY。Host preload 和 unpinned subprocess 见[质量规范](../.trellis/spec/extension/quality-guidelines.md)，真实终端见[tmux 指南](testing/tmux.md)。并行 resource failure 仍是失败 gate，须重跑才可接受。
+
+实现长文档时避免 `lines.push(...renderedLines)` 的 argument-stack 风险，使用 concat 等有界调用。浏览不编辑、不切任务、不执行 lifecycle、不搜索归档内容，也不 fetch 图片。

@@ -1,245 +1,91 @@
-# Pi Initialization Contract
+# 项目初始化
 
-## Commands and ownership
+## 命令与确认
 
-`/trellis-init [--user <name>] [--check | --help]` is registered even without a
-`.trellis` directory. Adoption of an existing manifest-less project is an explicit
-menu action, not an automatic migration; see "Adopting an existing project".
-Only native UI confirmation authorizes publication; no-UI
-invocation returns a custom status message without a model turn or writes.
-Unknown/repeated/missing parameters fail first. No force, arbitrary upstream
-migration or non-interactive write protocol is provided.
+```text
+/trellis-init
+/trellis-init --user "Your Name"
+/trellis-init --check
+/trellis-init --help
+```
 
-## Managed resource updates and useful status
+命令在没有 `.trellis/` 时也注册。只有原生 UI 确认授权写入；无 UI 调用返回状态/指引，不触发模型回合或写文件。未知、重复、缺值参数先失败，无 force、任意上游迁移或非交互写协议。菜单、help、通知保持英文，`--user` 跳过选名字，不跳过最终确认。
 
-An initialized healthy project exposes `Update project resources`, `Apply template`,
-`View project status`, and `Cancel`. Update also restores missing managed files; there is no separate repair menu.
-When nothing needs changing, it reports `Project resources are up to date.`.
-Resource status lists installed/available runtime
-IDs and individual missing, modified, current, safe-update and preserved-document paths;
-it is not merely a duplicate of the menu summary. Skills load from the installed package.
+`lib/initialization/engine.ts` 管理 inspect/plan/apply，`command.ts` 管理交互。包的 `runtime/` 是源码，不依赖外部 CLI 或 trellis-core 生成项目。任务默认结构来自 `common.task_store.task_skeleton`，开发者/journal 来自 `common.developer.developer_skeleton`，CLI 创建复用相同工厂。
 
-`lib/initialization/resources.ts` builds a read-only update/repair preview. Only files
-matching their recorded installed fingerprint can be updated; missing owned files can
-be restored. Modified runtime/role files block publication rather than being overwritten.
-Untouched package-default documents can update, while customized/default or originally
-preserved documents remain user content. Existing identity, tasks, logs, session state
-and bootstrap/onboarding tasks are not recreated. Unknown inventory/schema requires
-explicit reconciliation; this is not a general legacy migration API.
+新项目创建固定 runtime、三角色、可编辑 Pi workflow/config/spec 入口与 thinking guides、identity/workspace 和 bootstrap 任务。支持的 clone 设置 identity 时只补缺失 identity/workspace/onboarding，保留历史与其他任务。同名无操作，异名冲突；保留合理 Unicode/空格，拒绝危险路径片段。Onboarding 使用上游兼容的小写/NFKD slug，复用时核实际 creator/assignee/record/PRD，冲突报错；已归档 onboarding 不阻止重建缺失活动目录。不生成 frontend/backend 规则或自动扫描代码。
 
-Publication requires confirmation, locks and fresh rechecks, and writes the manifest
-last. It is per-file atomic, not a multi-file transaction: interrupted writes are retained;
-retry accepts exact new package bytes as already applied, not arbitrary changes. Old
-completed init records are retained as audit history outside live initialization recovery.
-Successful changes refresh host state and reload resources. `--check` is read-only.
+## 更新托管资源
 
-## Adopting an existing project
+已初始化项目提供 `Update project resources`、`View project status`、`Cancel`；健康 ready 项目还提供 `Apply template`。更新也修复缺失托管文件，无独立 repair 菜单；无变化显示 `Project resources are up to date.`。状态列出 installed/available runtime ID 和每个文件的 missing、modified、current、safe-update、preserved 状态，而非只有菜单摘要。Skills 从已安装包加载。
 
-`lib/initialization/adoption.ts` owns the only supported path from an existing
-`.trellis/` project without a managed manifest (`unsupported`) to a managed one.
-`adoptPlan()` is read-only and requires that state: a published manifest, an
-initialization operation record, an existing lock, a managed worktree binding, HOME,
-an unsupported Python, or any symlinked/nonregular managed path refuses before writes.
+`lib/initialization/resources.ts` 构建只读预览：匹配已记录指纹的文件才可更新，缺失 owned 文件可恢复；修改过的 runtime/role 阻止发布，不能强制覆盖。未改 package-default 文档可更新，定制文档和原先 preserved 文档仍属用户。不会重建已有 identity/tasks/logs/session/bootstrap/onboarding。未知 inventory/schema 需明确处理，不是通用旧版迁移 API。
 
-Native select/confirm dialogs render every title line without a viewport, so dialog text is
-bounded: `boundedDialog()` caps any dialog body at 14 lines with a `/trellis-init --check`
-pointer, and the adoption confirmation reports per-state **counts** plus a legacy path count
-instead of enumerating files. Status notifications and `--check` carry the complete per-path
-report, including every row: `Install`/`Replace` for the 35 runtime and role
-paths, `Create` for missing bundled templates, `Preserve` for existing template targets,
-`Current` for already-identical bytes and mode, `Replace block`/`Append block`/`Create`/
-`Append journal attribute` for root files, and `Legacy — left in place` for `.trellis/.version`,
-`.trellis/.template-hashes.json`, `.pi/.pi-trellis-hashes.json`, `.trellis/agents` and
-non-inventory `.trellis/scripts` entries. The legacy inventory is bounded (recursion depth and
-total entry caps, symlinks listed rather than followed) and omitted counts are reported.
+确认后加锁、重新检查，manifest 最后写入。单文件原子发布，不是多文件事务；中断保留已写文件，重试只接受精确新包字节作为已执行结果，不接受任意修改。旧完成 init record 作为审计保留，不参与 live recovery。成功刷新宿主并 reload；`--check` 只读。
 
-Adoption **replaces** older runtime/role copies and the `AGENTS.md`/`.gitignore` managed
-blocks **without backups**, by explicit user decision. When a marker is present,
-`replaceBlock()` requires exactly one well-formed pair, rewrites only the marked region and
-preserves the surrounding bytes; a root file with no marker is appended through the existing
-strict `appendBlock()` rule, and repeated, incomplete, malformed or unknown markers are
-rejected. Adoption keeps the original file mode and never deletes anything. Existing template
-targets are not written: their provenance becomes
-`preserved-project` with the actual fingerprint and the project Git revision (or `null`).
-Identity, tasks, journals, project spec files and config remain byte-identical, and no
-bootstrap/onboarding task is created; a project without identity becomes `supported` and
-reuses the existing identity flow. The planned manifest must satisfy the authoritative
-manifest validator while the plan is still read-only, before any file is written.
+## 接管无 manifest 的已有项目
 
-`applyAdoptPlan()` rebuilds and compares the plan signature, takes the shared
-`init.lock`, rechecks every guard before each write, publishes the manifest last, and then
-requires `verifyRuntime()` plus a `ready`/`supported` inspection. No operation record is
-written: because the manifest publishes last, an interrupted adoption leaves the project
-unsupported with already-written resources retained, and the next preview reports them as
-`Current` so an explicit reconfirmation completes the work. Failure messages state that
-partial files are preserved with no backups or rollback. `--check` and `View project status`
-report the adoption preview read-only, and degrade to the plain inspection summary when the
-project cannot be adopted.
+已有 `.trellis/` 但无托管 manifest 的 unsupported 项目，只有显式 `Adopt existing project` 能转成托管项目。`lib/initialization/adoption.ts` 的 `adoptPlan()` 只读；已发布 manifest、init operation record、锁、托管 worktree 绑定、HOME、不支持的 Python 或 managed 路径 symlink/nonregular 都在写前拒绝。
 
-## Explicit template adoption
+原生 select/confirm 标题无 viewport，`boundedDialog()` 将 body 限 14 行并提示 `/trellis-init --check`。接管确认显示各状态计数和 legacy 路径数量，完整路径报告在 status/`--check`：35 个 runtime/role 路径的 `Install`/`Replace`，缺失模板的 `Create`，已有模板的 `Preserve`，字节/模式相同的 `Current`，根文件的 `Replace block`/`Append block`/`Create`/`Append journal attribute`。`.trellis/.version`、`.trellis/.template-hashes.json`、`.pi/.pi-trellis-hashes.json`、`.trellis/agents` 与非 inventory 脚本标 `Legacy — left in place`。Legacy 枚举有深度/总量限制，symlink 只列出不跟随，报告省略数量。
 
-On a healthy existing source project, `Apply template` offers `Workflow`, `Spec`,
-or `Workflow + Spec`. One action-list confirmation shows `Replace`, `Create`,
-and `Same`; there is no diff viewer or per-file selection. Cancel is read-only.
-This explicitly replaces user documents, unlike safe resource update.
+接管经过用户确认后**无备份替换**旧 runtime/role 与 AGENTS/gitignore managed block。存在 marker 时，`replaceBlock()` 要求唯一完整成对标记，只替换区域，保留外围字节；无 marker 则按严格 `appendBlock()` 添加；重复/不完整/畸形/未知标记拒绝。保留原文件 mode，不删除任何内容。
 
-Workflow selects only `.trellis/workflow.md`. Spec selects only the bundled
-`spec/index.md` and three `spec/guides/` index/reuse/cross-layer documents.
-Other project spec files, config, runtime, agents, identity, tasks and journals
-remain unchanged. Same means matching bytes and mode; those files are not written.
-Selected template provenance is changed to exact `package-default`, including
-Same documents, so future safe updates can recognize adoption.
+已有模板不写入，来源记为 `preserved-project`，使用实际指纹和项目 Git revision（或 null）。Identity/tasks/journals/spec/config 字节不变，不建 bootstrap/onboarding；无 identity 的项目进入 supported 后复用独立身份流程。计划仍只读时必须通过权威 manifest validator。
 
-`templatePlan()` reconstructs the fixed allowlist and package bytes, requires a
-current unmodified runtime through the authoritative validator, and guards the
-manifest, initialization operation record and all selected documents. Before
-manifest publication, current package provenance must still match the confirmed
-plan, even though the selected document outputs have now changed.
-`applyTemplatePlan()` rechecks under the shared initialization lock. Before any
-replacement, all replaced files (with original modes) and the original manifest
-are backed up beneath `.trellis/.runtime/template-backups/<uuid>/`, retaining
-project-relative paths. The result reports the backup location. Symlinks,
-nonregular/oversized files, forged or stale plans and changed package hashes fail.
-Publication is per-file atomic, not transactional: on partial failure, backups
-and already published files remain, the error names the backup, and no automatic
-rollback or implicit recovery is attempted. The manifest is published last.
-Success refreshes host context; no runtime deployment, hooks, task activation,
-installation or automatic reload occurs. Remote templates are not supported.
+`applyAdoptPlan()` 重建/比较签名、取得共享 init.lock、每次写前重查，manifest 最后发布，再要求 `verifyRuntime()` 与 ready/supported inspection。没有 operation record：中断保留 unsupported 状态和已写资源，下次预览标 Current，重新确认才能完成。错误明确说明保留部分文件、无备份/回滚。不能接管时，`--check`/status 退回普通 inspection 摘要。
 
-`lib/initialization/engine.ts` owns read-only `inspect()` / `plan()` and approved
-`apply()`. Package runtime source remains in `runtime/`; no external CLI or
-`trellis-core` dependency generates files. Canonical task defaults come from
-`common.task_store.task_skeleton`; developer/journal bytes come from the pure
-`common.developer.developer_skeleton`. CLI creation shares these factories.
+## 显式采用模板
 
-Fresh projects receive runtime/three roles, editable Pi workflow/config/empty
-spec entry and thinking guides, identity/workspace, and bootstrap task. Identity
-setup on a supported clone adds only missing identity/workspace/onboarding.
-History and other tasks remain byte-identical. Same identity is a no-op;
-different identity conflicts. Unicode/spaces are preserved; unsafe path segments
-are rejected. Onboarding uses the upstream-compatible lowercase/NFKD slug,
-checks actual creator/assignee/record/PRD on reuse and diagnoses collisions.
-Archived onboarding does not suppress recreating an absent active directory.
+健康已有源项目的 `Apply template` 可选 Workflow、Spec 或 Workflow + Spec。一份 Replace/Create/Same 列表确认，无 diff viewer 或逐文件选取；取消只读。它**明确替换用户文档**，不同于安全资源更新。
 
-## Release and publication
+- Workflow 只选 `.trellis/workflow.md`。
+- Spec 只选 bundled `spec/index.md` 与三份 `spec/guides/` index/reuse/cross-layer 文档。
+- 其他项目 spec/config/runtime/agents/identity/tasks/journals 不变。
+- Same 指字节与 mode 相同，不写；选中模板（含 Same）的来源改为精确 package-default，供以后安全更新识别。
 
-Package `resources/runtime-baseline.json` is the source/output provenance and
-runtime release identity. `resources/template-baseline.json` and
-`resources/skill-baseline.json` record curated resource hashes/licensing;
-`docs/agent-baseline.json` is the independent adapted-role source record.
+`templatePlan()` 重建固定 allowlist 和包字节，要求当前未修改 runtime，保护 manifest、init operation 与选中文档。`applyTemplatePlan()` 在共享锁下重查；替换前把原文档（含 mode）及 manifest 备份到 `.trellis/.runtime/template-backups/<uuid>/`，保留相对路径并报告位置。Symlink、nonregular、oversized、伪造/过时计划与包 hash 变化拒绝；manifest 发布前，即使文档已换，仍核当前包 provenance。
 
-Project `.trellis/.pi-trellis.json` **schemaVersion 2** has exactly four fields:
-`schemaVersion`, `runtimeReleaseId`, `files`, `templates`. This replaces the
-unreleased schema 1; there is no schema-1 fallback or general migration API.
-The independent runtime release ID/baseline schema remains unchanged.
+单文件原子而非事务；失败保留备份和已写文件，错误指向 backup，不自动回滚/隐式恢复。Manifest 最后发布。成功只刷新 context，无 runtime 部署、hooks、任务激活、安装或自动 reload；不支持远程模板。
 
-- `files` contains exactly the 32 runtime and three role paths. Each record has
-  exactly `sha256`, `mode`, `kind` (`runtime` or `agent`), `source`; all four
-  values must match the package baseline. Runtime disk bytes/modes are checked
-  before supported execution. Role publication remains approved-init-only;
-  identity setup preserves deployed roles, including later customizations.
-- `templates` contains exactly the eight known workflow/config/ignore/workspace
-  index/spec entry/thinking-guide targets, never arbitrary paths. Every record
-  has exactly `origin`, `sha256`, `mode`, `source`. Fresh init emits only
-  `package-default`, with exact package initial hash, mode 0644 and canonical
-  `resources/templates/...` source. A false canonical hash/mode/source is rejected.
-- `preserved-project` describes content retained by a separately reviewed,
-  one-time repository migration, not content installed from the package. It
-  records the actual initial lowercase 64-hex SHA-256 and integer mode 0–0777,
-  or **both** `sha256: null` and `mode: null` for an absent target. Its `source`
-  is exactly `{kind: "project-snapshot", revision: <null or lowercase 40/64-hex>}`.
-  The revision identifies the diagnostic snapshot, not a file/executable or
-  authority to fetch, read or write content. Unknown fields, malformed hashes,
-  modes, mixed nulls, source labels/revisions and unknown targets are rejected.
+## Manifest 与来源
 
-Template provenance is a bounded initial declaration, not authentication of
-historical deployment or permission to overwrite user edits; current template
-bytes need not match it, and an initially absent target may remain absent.
-Managed template paths/ancestors still reject symlinks/nonregular targets.
-Public init cannot request preserved provenance or initialize a manifest-less
-legacy project; that project uses the separate explicit adoption action, which is
-the only producer of `preserved-project` provenance. Supported clone identity setup preserves the entire existing
-manifest and project templates. Unknown/custom role definitions collide during
-fresh init and are preserved.
+`resources/runtime-baseline.json` 是运行时来源/产物与 release identity；template/skill-baseline 保存 curated resource hashes/licensing；`docs/agent-baseline.json` 独立记录角色来源。来源与许可详见[运行时基线](runtime-baseline.md)。
 
-Root AGENTS/ignore blocks append only when absent or reuse exact known blocks;
-custom/repeated/malformed/unknown markers conflict. Outside bytes and original
-file modes are preserved. The precise journal merge=union rule is additive;
-conflicting journal attributes refuse publication. Symlink/dangling/nonregular
-managed paths and ancestors are rejected; root itself may resolve normally.
-HOME and managed worktree initialization are rejected.
+项目 `.trellis/.pi-trellis.json` schemaVersion 2 恰有 `schemaVersion`、`runtimeReleaseId`、`files`、`templates` 四字段；替换未发布 schema 1，无 schema-1 fallback 或通用迁移 API。Runtime baseline 自身 schema/release ID 不变。
 
-Recovery treats persisted records as untrusted: the plan hash detects drift but
-does not grant write ownership. Validators reject unknown schema fields and
-reconstruct runtime/role/template/identity/task bytes from package resources and
-the shared runtime skeletons. Non-root actions can only create missing files;
-root actions must append the exact canonical block while proving the original
-prefix hash, retaining mode and rejecting duplicate/conflicting blocks/attributes.
-The exact fixed resource set/source/kind/hash/mode and separate bounded template
-provenance are validated. Fresh initialization/recovery additionally requires
-**canonical package-default** template and manifest outputs, not merely a valid
-installed manifest. Preserved provenance cannot authorize a template action,
-arbitrary output, identity-time template write or legacy initialization.
-Required outputs are checked before final manifest
-publication and completion. An incomplete operation blocks runtime verification
-even if its manifest has already been published.
+| 字段 | 校验与含义 |
+| --- | --- |
+| files | 恰 32 runtime + 3 role 路径；每条恰 sha256/mode/kind（runtime 或 agent）/source，四值须符合包基线。运行前核 runtime 字节/mode；角色只在获准 init 发布，身份设置保留已部署角色及定制 |
+| templates | 恰八个已知 workflow/config/ignore/workspace index/spec entry/thinking-guide 路径，不能任意加路径；每条恰 origin/sha256/mode/source |
+| package-default | Fresh init 使用精确包初始 hash、0644 与 canonical resources/templates 来源；伪造 hash/mode/source 拒绝 |
+| preserved-project | 明确接管/已审核一次性迁移保留的内容，不是安装产物；实际初始小写 64-hex hash 与 0–0777 mode，缺失时两者同时 null；source 恰 kind: project-snapshot 和 revision: null 或小写 40/64-hex |
 
-Apply uses `.trellis/.runtime/init.lock` and a bounded schema-1
-`init-operation.json` with exact plan hash/original-output guards/completed
-steps. All preconditions are rechecked before locking and before publication.
-Each file publishes through exclusive same-directory temporary replacement.
-The final manifest follows required outputs; the operation remains incomplete
-until persisted identity/runtime/results verify. Failure preserves partial files,
-never rolls back by deleting user-visible tasks/history. Retry accepts only the
-same operation/release/developer with identical original or owned output bytes
-and modes. Divergent changes conflict. A remaining lock is never guessed stale
-or automatically removed. Directory creation before the first operation record
-and OS-level concurrent ancestor swaps remain conservative manual-reconciliation
-limits; this is not a whole-project transaction or an OS sandbox.
+Revision 仅诊断快照，不是文件/可执行来源或 fetch/read/write 授权。未知字段、畸形 hash/mode、混合 null、错误标签/revision/target 拒绝。模板 provenance 是有界初始声明，不是历史部署认证或覆盖用户改动权限；当前文档无需匹配初始 hash，初始缺失可继续缺失，但 managed 路径/祖先仍拒绝 symlink/nonregular。
 
-## Host integration
+普通 fresh init 不能直接请求 preserved provenance 或接管无 manifest legacy；接管使用独立显式菜单。支持 clone 身份设置保留完整 manifest 和模板；fresh init 遇未知/custom role 冲突并保留。
 
-Native dialogs work in interactive/RPC UI; input's second argument is a
-placeholder, not prefilled Git identity. History lists are bounded and unsafe
-candidates are skipped. Git suggestions use argv and sanitized Git environment.
-Python probing/generation uses argv, `-B` and copied no-bytecode environment.
-Init runs no hooks, task binding, install, code scan or model turn.
+AGENTS/ignore 根 block 仅在缺失时添加或复用精确已知 block，未知/定制/重复/畸形冲突；保留外围字节与 mode。Journal merge=union 属性只添加，冲突拒绝。Managed 路径/祖先 symlink（含 dangling）和 nonregular 拒绝，root 本身可正常 resolve；HOME 和 managed worktree 初始化拒绝。
 
-Success invalidates context/task/section/display caches. Fresh init reloads via
-command context to pick up root instructions/roles, then returns immediately.
-Skills are package resources, not `.pi/skills` copies or an extension bridge.
-The effective adapter guard uses the actual Pi package resolver, including
-normal project precedence and autoload:false delta semantics, with missing
-sources skipped rather than installed. Direct configuration assumes a trusted
-source host; temporary `-e` is not a persistent child adapter.
+## 中断与恢复边界
 
-Task pointer errors remain `task_error`, never a no_task planning breadcrumb.
-Only command-bearing bash/bash_bg/monitor inputs receive explicit session export;
-WebSocket monitors and non-command tools are unchanged. Related results invalidate
-context/task caches. All deployed releases, including manifest-less legacy
-projects, require successful complete resource-manifest/hash/mode verification
-before session adaptation, task/context Python execution or child binding.
-Absent, invalid, incomplete or mismatched manifests produce `task_error` and an
-actionable `/trellis-init --check` diagnostic, not `No active task`.
-`/trellis-init` remains registered in fresh and unsupported projects.
+持久记录不可信：planHash 检测漂移，不能授予写权限。Validator 拒绝未知字段，从包资源与共享 skeleton 重建 runtime/role/template/identity/task 字节；非根 action 只建缺失文件，根 action 必须证明原前缀 hash 并添加 canonical block，保留 mode、拒绝重复/冲突 marker/attribute。
 
-In an unsupported Trellis root, command tools block recognized task/context/
-developer/journal/worktree invocations (direct Python/script commands, common
-shell wrappers and runtime-module imports), as well as Trellis role launches.
-Ordinary file reads/searches, unrelated shell commands, other agents and
-WebSocket monitors remain available and unmodified. This bounded recognition
-is not an arbitrary-shell interpreter or a sandbox: dynamically constructed
-commands, external providers and independent direct subprocesses are not
-universally intercepted. Native worktree lifecycle algorithms are unchanged.
-The earlier unverified-execution probe is retained as historical red evidence;
-see the init task's `research/unsupported-runtime-fix.md` for the fix and tests.
+核完整固定 resource set/source/kind/hash/mode 与独立模板 provenance；fresh init/recovery 必须 canonical package-default 输出，不能仅凭有效 installed manifest。Preserved provenance 不授权模板 action、任意输出、身份阶段模板写入或旧项目初始化。最终 manifest 与完成前核所需输出；operation 未完成即阻 runtime，即使 manifest 已写。
 
-## Verification limits
+Apply 使用 `.trellis/.runtime/init.lock` 与有界 schema-1 init-operation.json，记录精确 planHash/original-output guards/completed steps；锁前/发布前重查。文件通过独占同目录临时替换，manifest 在所需输出后写，持久 identity/runtime/results 验证后才标 complete。失败保留文件，不删除任务/历史回滚；重试只接受同 operation/release/developer，且字节/mode 为原始或 owned 输出。漂移冲突，残留锁不猜 stale/自动删。首个 operation record 前的目录创建与 OS 并发祖先替换仍需保守人工处理，不是全项目事务或 OS 沙箱。
 
-Temporary full-runtime projects cover init/clone/no-op/collision/partial retry,
-phase parser and task/context/journal interoperability. Fake native dialogs
-cover English flows and cancellations; real Pi loader/resolver tests cover skill
-and command discovery/filtering. No real visual TUI, network model/provider,
-user-project deployment or broad Python/platform matrix is claimed. The package
-has no lint/typecheck script; Node TS execution is not static checking. The legacy
-installer and this repository's old scaffolding are migration-task work, not init.
+## 宿主集成
+
+- 原生 dialog 可用于 interactive/RPC UI；input 第二参数是 placeholder，不是 Git identity 预填。历史候选有界，跳过危险名字。Git/Python 使用 argv、净化环境、`-B`/no-bytecode。Init 不运行 hooks/绑定/install/代码扫描/模型回合。
+- 成功清 context/task/section/display caches。Fresh init 用 command context reload 根 instructions/roles 后立即返回。Skills 是包资源，不复制到 `.pi/skills` 或 extension bridge。
+- Adapter guard 用实际 Pi resolver，含 project precedence 与 autoload:false delta；缺来源跳过，不安装。可信 source host 的持久配置不同于父进程一次性 `-e`。
+- Pointer 错误保持 task_error，不变成 no_task。只有 command-bearing bash/bash_bg/monitor 显式 session export，WebSocket/其他工具不变；相关结果使缓存失效。
+- 所有已部署 release（含 manifest-less）在 session adaptation、task/context Python、child binding 前须完整 manifest/hash/mode 成功；缺失/畸形/不完整/不匹配给 task_error 与 `/trellis-init --check`，不是 No active task。
+- Unsupported root 阻止可识别 task/context/developer/journal/worktree shell 调用、常见 wrapper/module import 与 Trellis role launch；普通读取/搜索、无关 shell、其他 agent、WebSocket 仍可用。识别不是任意 shell 解释器或沙箱，动态构造命令、外部 provider/独立 subprocess 不保证拦截，native worktree 算法不变。
+
+## 验证边界
+
+临时完整 runtime 项目覆盖 init/clone/no-op/collision/partial retry、phase parser、task/context/journal；fake dialog 覆盖英文流程与取消，真实 Pi loader/resolver 覆盖 resource discovery/filter。已有 unsupported-execution 红证据属于历史，不能当当前行为；修复后回归在 `tests/initialization.test.mjs` 等测试中。
+
+这些证据不等于真实视觉 TUI、在线模型/provider、用户项目部署或全面 Python/平台矩阵。无 lint/typecheck script，Node TS 执行不是静态检查。[tmux 指南](testing/tmux.md)与[provider 探针](testing/provider.md)是另行授权的操作，不是本页通过记录。

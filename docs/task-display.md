@@ -1,18 +1,16 @@
-# Persistent Task Display
+# 常驻任务显示
 
-The task count widget/footer is a presentation feature owned by
-`extensions/trellis.ts`. It is independent of the read-only
-[Task Viewer](task-viewer.md).
+任务数量 widget/footer 属 `extensions/trellis.ts` 的显示功能，独立于只读[任务浏览器](task-viewer.md)。
 
-## Behavior
+## 行为与配置
 
-- `readUnfinishedTaskCount(root): number | undefined` rereads immediate project task directories on existing display refresh events. Exclude completed records and canonical archive descendants, deduplicate canonical aliases, and retain task-store containment validation. Unreadable/invalid enumeration yields unknown, not a partial or verified zero.
-- Widget mode renders `▸ trellis(N)` without a session task and adds existing task details when active. Positive counts use `accent`, zero `dim`, unknown `(?)` `muted`. Footer follows the same count semantics; `off` and unsupported projects clear the display.
-- Footer clipping uses host `visibleWidth()` / `truncateToWidth()` before theming, with a 34-terminal-column budget. Sanitize control input, preserve the count and fitting name/status, and cap long content. Byte length is not terminal width: `trellis(3): current ▸ in_progress` fits at 33 columns and must not become `cur…`.
+- `readUnfinishedTaskCount(root)` 在既有 display refresh 事件重新读项目直属任务目录。排除 completed 和 canonical archive descendants，canonical alias 去重，沿用 task-store containment；枚举不可读/畸形显示未知，不用部分计数冒充零。
+- 默认 widget 无 session task 时显示 `▸ trellis(N)`，有任务时追加原有任务详情。正数 accent、零 dim、未知 `(?)` muted。`TRELLIS_PI_STATUS=status` 改为 footer；off/unsupported 清显示。上下文注入不随显示模式改变。
+- Footer 用宿主 visibleWidth()/truncateToWidth()，先裁剪后 theme，预算 34 个 terminal column；净化控制字符，保数量与能放下的 name/status。Byte length 不是终端宽度：`trellis(3): current ▸ in_progress` 为 33 列，应完整保留。
+- Session start、turn end、task.py bash result 刷新；没有轮询或文件 watch。Footer 与其他扩展 status 共用行，宿主合并后的整体宽度仍可能裁剪。
 
-## Verification
+## 验证
 
-`tests/task-display.test.mjs` asserts count filtering/alias behavior, persistence/refresh transitions, theme/error degradation and Unicode/control width bounds. Production resolves TUI through the Pi loader; direct-TS tests use the real peer via the test-only preload documented in [Quality Guidelines](../.trellis/spec/extension/quality-guidelines.md).
+`tests/task-display.test.mjs` 覆盖数量/alias、持久显示与刷新、theme/error degradation、Unicode/control width。生产用 Pi loader 解析 TUI；直接 TS 测试用 real peer 和 test-only preload，见[质量规范](../.trellis/spec/extension/quality-guidelines.md)。组件测试不等于真实终端验收；实际操作见 [tmux 指南](testing/tmux.md)。
 
-See [README](../README.md#where-the-task-display-goes) for configuration and
-[the documentation index](index.md) for other feature documents.
+详细配置见 [README](../README.md#where-the-task-display-goes)，其他文档见[索引](index.md)。

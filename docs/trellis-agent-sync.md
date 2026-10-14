@@ -20,6 +20,8 @@ sha512-u65OJbzR3OBzFWybX/uzBXaZdzn+71Afaknodu0GUcFIrTyp3ZegK9rHNeTX0guHow35WXkqD
 
 ## 再生成与校验
 
+以下需要独立安装/再生成授权，不是日常测试前置；本次文档整理不执行。优先复用已核固定版本源码，获准后才下载；记录临时目录并仅清理自建路径。
+
 ```bash
 SYNC_ROOT="$(mktemp -d /tmp/pi-trellis-doc-sync.XXXXXX)"
 mkdir -p "$SYNC_ROOT/runtime" "$SYNC_ROOT/project"
@@ -55,7 +57,7 @@ npm test
 | research 禁止任意 Git 操作 | 允许只读 status/diff/log，禁止修改仓库 |
 | research 不得比较/批评实现 | 被明确要求时可以记录证据、风险和 trade-offs，不实施修改 |
 
-三个角色都使用 `isolation: off`，避免 provider 自动创建不含当前未提交任务材料的临时工作树。任务级 worktree 创建/准备/派发由 pi-trellis 管理工具实现，角色文本本身不管理生命周期；当前功能和边界见 [Worktree 计划](plans/worktree-support.md)。
+三个角色都使用 `isolation: off`，避免 provider 自动创建不含当前未提交任务材料的临时工作树。任务级 worktree 创建/准备/派发由 pi-trellis 管理工具实现，角色文本本身不管理生命周期；当前契约见[任务派发](dispatch.md)和[托管执行协议](worktree-execution.md)；[Worktree 计划](plans/worktree-support.md)只保留历史方案。
 
 **工具限制不是 shell 沙箱。** `extensions: true` 意味着 provider 继承已配置扩展，内建工具白名单不会自动约束所有 extension/MCP 工具。本包不硬编码搜索服务、自动安装 MCP 或伪造外部研究成果；没有外部工具时如实报告只完成本地研究。调用者仍须审查所加载的扩展与技能。
 
@@ -71,7 +73,7 @@ npm test
 
 ## 部署与升级
 
-`deployAgents()` 继续按 hash guard 更新宿主 `.pi/agents/`：未修改旧副本可升级，用户修改过的文件保留。升级不会改写其他项目或已打开的 agent；需要重新加载/重启并检查部署文件。
+角色只由明确确认的 `/trellis-init` 初始化/接管/资源更新发布，session startup 不部署或升级。当前 `.trellis/.pi-trellis.json` 用完整 hash/mode；旧 deployAgents()/截断 hash 是历史机制。安全资源更新保留定制并拒绝修改过的角色冲突；显式接管会按确认替换旧角色，是不同动作。见[初始化说明](initialization.md)。成功更新可刷新/reload，仍须检查部署结果，不能声称已运行 agent 会被改写。
 
 ## 同步历史
 
@@ -85,7 +87,7 @@ npm test
 
 ## 许可证
 
-上游生成文档及其适配保留 `AGPL-3.0-only`，修改日期/范围在本记录与转换代码中标明。全文见 [`licenses/trellis-AGPL-3.0.txt`](../licenses/trellis-AGPL-3.0.txt)。原有及新写运行时代码使用根 MIT LICENSE；本包元数据 `(MIT AND AGPL-3.0-only)` 表达同时含两类材料，不将上游文档重新许可为 MIT。
+上游生成文档及其适配保留 `AGPL-3.0-only`，修改日期/范围在本记录与转换代码中标明。全文见 [`licenses/trellis-AGPL-3.0.txt`](../licenses/trellis-AGPL-3.0.txt)。原创集成/native 代码使用根 MIT LICENSE；固定 Trellis 0.6.16 派生 runtime/common 与入口保留 AGPL，见[运行时基线](runtime-baseline.md)。本包元数据 `(MIT AND AGPL-3.0-only)` 表达同时含两类材料，不将上游文档重新许可为 MIT。
 
 这不是对所有组合/分发场景的法律意见。发布须附来源、修改记录与许可证，不能声称完整包无 Trellis 材料或 MIT-only。
 
@@ -93,4 +95,4 @@ npm test
 
 `npm test` 覆盖来源 hash、必要角色行为、材料/路径/预算、普通 Agent 注入、session 隔离和 hash-guard。`tests/provider-contracts.mjs` 可显式指定本机 Pi host 与 provider，在隔离配置目录以实际 parser/runner/loader 和脚本化离线模型响应检查工具与 cwd；不会使用个人凭据或调用在线模型。
 
-这些检查验证运行机制，不证明语言模型一定遵守每条职责，更不替代未来 worktree 隔离与真实模型的行为验收。验收证据见 [Agent 适配计划](plans/claude-agent-adaptation.md)。
+这些检查验证运行机制，不证明模型一定遵守职责，也不替代 worktree/终端或模型验收。操作见[provider 探针](testing/provider.md)和[tmux 指南](testing/tmux.md)；历史证据见[角色适配计划](plans/claude-agent-adaptation.md)，不是本次通过记录。
