@@ -1,0 +1,32 @@
+
+[Extensions]
+  trellis.ts
+
+
+ Warning: fd not found. Offline mode enabled, skipping download.
+
+ Warning: No models available. Use /login to log into a provider via OAuth or API key. See:
+
+ /Users/jyxc-dz-0101322/.pi/agent/install/releases/1.2.0/node_modules/@earendil-works/pi-coding-age
+ nt/docs/providers.md
+
+ /Users/jyxc-dz-0101322/.pi/agent/install/releases/1.2.0/node_modules/@earendil-works/pi-coding-age
+ nt/docs/models.md
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ Project: /private/tmp/pi-trellis-tmux.uQQhAS/project
+ Status: fresh
+ Developer: Not set
+ Workspace: Not set
+ Runtime release:
+ pi-trellis-runtime-v1-30ce60cc6cacb83752a231ded3730d578aec69deecf065dc62f141f6ff5eede9
+
+ → Initialize project
+   Cancel
+
+ ↑↓ navigate  enter select  escape/ctrl+c cancel
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+/private/tmp/pi-trellis-tmux.uQQhAS/project
+0.0%/0 (auto)                                                                                unknown

@@ -1,0 +1,32 @@
+
+ ▀▀█  v1.2.0
+ █▀ █ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ Pi can explain its own features and look up its docs. Ask it how to use or extend Pi.
+
+[Extensions]
+  trellis.ts
+
+
+ Error: Trellis runtime execution is blocked: Error: Project runtime is missing or modified:
+ .trellis/scripts/task.py. Run /trellis-init --check to inspect this project; explicit
+ initialization or reconciliation is required (no automatic migration).
+
+ Reloaded keybindings, extensions, skills, prompts, themes, and context files
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+/trellis
+────────────────────────────────────────────────────────────────────────────────────────────────────
+→ trellis-init  [t] Initialize Pi Trellis or set up developer identity (with confirmation)
+/private/tmp/pi-trellis-tmux.uQQhAS/project
+0.0%/0 (auto)                                                                                unknown

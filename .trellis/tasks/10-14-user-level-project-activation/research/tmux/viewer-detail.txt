@@ -1,0 +1,32 @@
+Trellis Tasks
+Overview | PRD | Design | Implement
+────────────────────────────────────────────────────────────────────────────────────────────────────
+00-bootstrap-guidelines · Bootstrap Project Guidelines
+Path: .trellis/tasks/00-bootstrap-guidelines
+Status: in_progress
+
+ID: bootstrap-guidelines
+Name: bootstrap-guidelines
+Title: Bootstrap Project Guidelines
+Priority: P1
+Assignee: Acceptance
+Created: 2026-10-14
+Children: None
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1–11/11 · ←/→ Section · ↑/↓ Scroll · PgUp/PgDn Page · r Refresh · Esc Back

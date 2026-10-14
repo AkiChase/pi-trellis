@@ -195,19 +195,19 @@
       "source": "runtime/common/task_records.py"
     },
     ".pi/agents/trellis-implement.md": {
-      "sha256": "4f7192a3118eccc92699efe1fed9cf8368e2d9b50028682ba30652e855b04d8a",
+      "sha256": "986ea4a4df6da8da0eae02c149c85bd540c8cbbf2201ca28dcbc830b0a1c1db2",
       "mode": 420,
       "kind": "agent",
       "source": "agents/trellis-implement.md"
     },
     ".pi/agents/trellis-check.md": {
-      "sha256": "afe276bcb225cb3e718e9b498d7b201c3666f1c3868fffe8dd6fe1c77f5553a2",
+      "sha256": "11274ee858db08c589b58bcc838d94debc5ca3b9bbdcbbfc1aa338c8860281c2",
       "mode": 420,
       "kind": "agent",
       "source": "agents/trellis-check.md"
     },
     ".pi/agents/trellis-research.md": {
-      "sha256": "fe9ba44ec6b216a7c697a13af054f8bc42beeb3821b4332e17ee34fd4acfcb18",
+      "sha256": "5247a7012d7f7f51d32e79ac5b7076b7e8126ba3509751786742a146e7ddcc94",
       "mode": 420,
       "kind": "agent",
       "source": "agents/trellis-research.md"

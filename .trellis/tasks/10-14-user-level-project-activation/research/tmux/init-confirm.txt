@@ -1,0 +1,32 @@
+ nt/docs/providers.md
+
+ /Users/jyxc-dz-0101322/.pi/agent/install/releases/1.2.0/node_modules/@earendil-works/pi-coding-age
+ nt/docs/models.md
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ Confirm Pi Trellis initialization
+ Project: /private/tmp/pi-trellis-tmux.uQQhAS/project
+ Operation: Initialize project
+ Developer: Acceptance
+ Workspace: .trellis/workspace/Acceptance (create)
+ Runtime release:
+ pi-trellis-runtime-v1-30ce60cc6cacb83752a231ded3730d578aec69deecf065dc62f141f6ff5eede9
+ Task: .trellis/tasks/00-bootstrap-guidelines (create)
+ No active task will be selected. No hooks, model turn, installation or Git actions.
+ Create: .trellis/scripts/add_session.py
+ Create: .trellis/scripts/common/__init__.py
+ Create: .trellis/scripts/common/active_task.py
+ Create: .trellis/scripts/common/config.py
+ Create: .trellis/scripts/common/developer.py
+ Create: .trellis/scripts/common/git.py
+ … 46 more lines; run /trellis-init --check for the full report.
+
+ → Yes
+   No
+
+ ↑↓ navigate  enter select  escape/ctrl+c cancel
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+/private/tmp/pi-trellis-tmux.uQQhAS/project
+0.0%/0 (auto)                                                                                unknown
