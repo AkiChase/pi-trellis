@@ -249,3 +249,39 @@ Kept widget/footer visible without an active task, added themed unfinished proje
 ### Next Steps
 
 - 如需验证实际 UI，可由用户自行 reload 后使用 Apply template；本任务已接受完成
+
+
+## Session 10: 修正 Trellis 收尾授权与自动提交
+<!-- trellis-session: v=2 fp=dde5f04e134209c7 -->
+
+**Date**: 2026-10-14
+**Task**: 修正 Trellis 收尾授权与自动提交
+**Branch**: `main`
+
+### Summary
+
+统一 finish-work 授权，默认沿用配置自动提交归档与日志；保留显式限制、并行范围保护与失败核实。用户指定的 Session 7/8 残留日志已单独提交，本任务已验收归档。
+
+### Main Changes
+
+- Skill/workflow/completed breadcrumb 与两份 adapted hash、回归测试同步；不修改 Python 自动提交逻辑
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8e5aa2d` | fix: restore configured Trellis wrap-up commits |
+| `8bc285a` | chore: commit pending Trellis session journals |
+| `93600d1` | docs: record wrap-up policy verification checkpoints |
+
+### Testing
+
+- [OK] [OK] focused 61/61；full 347/347；diff whitespace passed。主会话自查，未独立 review；无 lint/typecheck 脚本，非真实模型遵循验证
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 无本任务待办；未 push/install/sync/reload，部署资源并行改动保留

@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 9
+- **Total Sessions**: 10
 - **Last Active**: 2026-10-14
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~251 | Active |
+| `journal-1.md` | ~287 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 10 | 2026-10-14 | 修正 Trellis 收尾授权与自动提交 | `8e5aa2d`, `8bc285a`, `93600d1` | `main` |
 | 9 | 2026-10-14 | 完成 Apply template 功能与收尾 | `300f2cc` | `main` |
 | 8 | 2026-10-14 | 澄清 Trellis 解绑与收尾命名 | `74670d7` | `main` |
 | 7 | 2026-10-14 | Trellis task browser delivery | `b3880c4` | `main` |
