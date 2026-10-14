@@ -61,6 +61,22 @@ test('username completion quotes Unicode/spaces/quotes reversibly and requires n
  assert.equal(existsSync(join(f.root,'.trellis/.developer')),false);
 });
 
+test('Apply template uses scope selection and one action-list confirmation, cancel is read-only',async t=>{
+ const f=fixture(t);apply(plan(f.root,'Dev'));writeFileSync(join(f.root,'.trellis/workflow.md'),'custom');
+ const before=readFileSync(join(f.root,'.trellis/workflow.md'));
+ f.selections.push('Apply template','Workflow + Spec','Cancel');await f.run('');
+ assert.deepEqual(readFileSync(join(f.root,'.trellis/workflow.md')),before);assert.ok(!existsSync(join(f.root,'.trellis/.runtime/template-backups')));
+ assert.deepEqual(f.dialogs.at(-1).options,['Cancel','Apply template']);assert.match(f.dialogs.at(-1).title,/Replace  .trellis\/workflow.md/);assert.match(f.dialogs.at(-1).title,/Same  .trellis\/spec\/index.md/);
+ f.selections.push('Apply template','Workflow + Spec','Apply template');await f.run('');
+ assert.notDeepEqual(readFileSync(join(f.root,'.trellis/workflow.md')),before);assert.equal(f.refreshes,1);assert.equal(f.reloads,0);assert.match(f.notices.at(-1).text,/Template applied.*\nBackup:/);
+ assert.ok(!f.dialogs.some(d=>d.message));
+});
+
+test('Apply template is available without developer identity and hidden for unhealthy runtime',async t=>{
+ const f=fixture(t);apply(plan(f.root,'Dev'));rmSync(join(f.root,'.trellis/.developer'));f.selections.push('Apply template','Spec','Apply template');await f.run('');assert.ok(!existsSync(join(f.root,'.trellis/.developer')));assert.equal(f.refreshes,1);
+ rmSync(join(f.root,'.trellis/scripts/task.py'));f.selections.push('Cancel');await f.run('');assert.ok(!f.dialogs.at(-1).options.includes('Apply template'));
+});
+
 test('update restores missing resources with confirmation and status contains per-file health',async t=>{
  const f=fixture(t);apply(plan(f.root,'Dev'));rmSync(join(f.root,'.trellis/scripts/task.py'));
  f.selections.push('View project status');await f.run('');assert.match(f.notices.at(-1).text,/Missing — will restore/);

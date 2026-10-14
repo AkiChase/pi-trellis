@@ -10,8 +10,8 @@ migration or non-interactive write protocol is provided.
 
 ## Managed resource updates and useful status
 
-An initialized project exposes `Update project resources`, `View project status`,
-and `Cancel`. Update also restores missing managed files; there is no separate repair menu.
+An initialized healthy project exposes `Update project resources`, `Apply template`,
+`View project status`, and `Cancel`. Update also restores missing managed files; there is no separate repair menu.
 When nothing needs changing, it reports `Project resources are up to date.`.
 Resource status lists installed/available runtime
 IDs and individual missing, modified, current, safe-update and preserved-document paths;
@@ -30,6 +30,36 @@ last. It is per-file atomic, not a multi-file transaction: interrupted writes ar
 retry accepts exact new package bytes as already applied, not arbitrary changes. Old
 completed init records are retained as audit history outside live initialization recovery.
 Successful changes refresh host state and reload resources. `--check` is read-only.
+
+## Explicit template adoption
+
+On a healthy existing source project, `Apply template` offers `Workflow`, `Spec`,
+or `Workflow + Spec`. One action-list confirmation shows `Replace`, `Create`,
+and `Same`; there is no diff viewer or per-file selection. Cancel is read-only.
+This explicitly replaces user documents, unlike safe resource update.
+
+Workflow selects only `.trellis/workflow.md`. Spec selects only the bundled
+`spec/index.md` and three `spec/guides/` index/reuse/cross-layer documents.
+Other project spec files, config, runtime, agents, identity, tasks and journals
+remain unchanged. Same means matching bytes and mode; those files are not written.
+Selected template provenance is changed to exact `package-default`, including
+Same documents, so future safe updates can recognize adoption.
+
+`templatePlan()` reconstructs the fixed allowlist and package bytes, requires a
+current unmodified runtime through the authoritative validator, and guards the
+manifest, initialization operation record and all selected documents. Before
+manifest publication, current package provenance must still match the confirmed
+plan, even though the selected document outputs have now changed.
+`applyTemplatePlan()` rechecks under the shared initialization lock. Before any
+replacement, all replaced files (with original modes) and the original manifest
+are backed up beneath `.trellis/.runtime/template-backups/<uuid>/`, retaining
+project-relative paths. The result reports the backup location. Symlinks,
+nonregular/oversized files, forged or stale plans and changed package hashes fail.
+Publication is per-file atomic, not transactional: on partial failure, backups
+and already published files remain, the error names the backup, and no automatic
+rollback or implicit recovery is attempted. The manifest is published last.
+Success refreshes host context; no runtime deployment, hooks, task activation,
+installation or automatic reload occurs. Remote templates are not supported.
 
 `lib/initialization/engine.ts` owns read-only `inspect()` / `plan()` and approved
 `apply()`. Package runtime source remains in `runtime/`; no external CLI or

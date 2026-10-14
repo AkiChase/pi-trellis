@@ -1,8 +1,8 @@
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
-import { applyResourcePlan, resourcePlan, resourceStatus } from "./resources.ts";
+import { applyResourcePlan, resourcePlan, resourceStatus, templatePlan, applyTemplatePlan, type TemplateScope } from "./resources.ts";
 import { inspect, plan, apply, validateUsername, type Inspection, type InitPlan } from "./engine.ts";
 
-export const INIT_HELP = "Usage: /trellis-init [--user <username>] [--check | --help]\nInitializes a new project or sets up identity on a supported clone.\nAll writes require native UI confirmation. Managed resources can be updated or repaired without resetting user data. No force, active task selection, hooks, install or Git actions.";
+export const INIT_HELP = "Usage: /trellis-init [--user <username>] [--check | --help]\nInitializes a new project or sets up identity on a supported clone.\nAll writes require native UI confirmation. Managed resources can be updated or repaired without resetting user data. Apply template explicitly replaces selected Workflow/Spec documents with backups. No force, active task selection, hooks, install or Git actions.";
 export function parseInitArguments(args: string): { user?: string; check: boolean; help: boolean } {
 	if (args.length > 4096) throw new Error("Initialization arguments are too long");
 	const tokens: string[] = [];
@@ -52,6 +52,23 @@ async function chooseUsername(state: Inspection, ctx: ExtensionCommandContext): 
 		try { return validateUsername(name); } catch (error) { ctx.ui.notify(String(error), "error"); }
 	}
 }
+async function applyTemplates(ctx: ExtensionCommandContext, notify: (text: string) => void): Promise<boolean> {
+ const scopes: Record<string, TemplateScope> = { "Workflow": "workflow", "Spec": "spec", "Workflow + Spec": "both" };
+ const choice = await ctx.ui.select("Apply template · Choose scope", [...Object.keys(scopes), "Cancel"]);
+ if (!choice || !Object.hasOwn(scopes, choice)) return false;
+ const value = templatePlan(ctx.cwd, scopes[choice]);
+ const summary = [
+  `Apply template · ${choice}`,
+  ...value.rows.map(row => `${row.state}  ${row.path}`),
+  "",
+  "Replace files will be overwritten; backups will be saved under .trellis/.runtime/template-backups/.",
+  "Same files will not be written. Other project files remain unchanged.",
+ ].join("\n");
+ if (await ctx.ui.select(summary, ["Cancel", "Apply template"]) !== "Apply template") return false;
+ const backup = applyTemplatePlan(value);
+ notify(`Template applied.${backup ? `\nBackup: ${backup}` : " No files changed."}`);
+ return true;
+}
 export function registerInitCommand(pi: ExtensionAPI, refresh: (ctx: ExtensionCommandContext, root: string) => Promise<void>): void {
 	pi.registerCommand("trellis-init", {
 		description: "Initialize Pi Trellis or set up developer identity (with confirmation)",
@@ -78,10 +95,11 @@ export function registerInitCommand(pi: ExtensionAPI, refresh: (ctx: ExtensionCo
 				if (state.developer && parsed.user && parsed.user !== state.developer) throw new Error(`Developer conflict: actual ${state.developer}; requested ${parsed.user}. Existing identity preserved.`);
 				if (state.state === "unsupported") { notify(resourceStatus(state.root), "error"); return; }
 				if (state.state === "ready" && parsed.user) { notify(statusSummary(state) + "\nAlready ready; no files changed."); return; }
-				const menu = ["Update project resources", "View project status", "Cancel"];
+				const menu = ["Update project resources", ...(state.state === "ready" ? ["Apply template"] : []), "View project status", "Cancel"];
 				if (state.state !== "fresh" && state.state !== "incomplete" && state.state !== "supported") {
 					const choice = await ctx.ui.select(statusSummary(state), menu);
 					if (choice === "View project status") { notify(resourceStatus(state.root)); return; }
+					if (choice === "Apply template") { if (await applyTemplates(ctx, notify)) await refresh(ctx, state.root); return; }
 					if (choice === "Update project resources") {
 						const update = resourcePlan(state.root, "update");
 						if (update.report.conflicts.length) throw new Error(`Modified managed files are preserved: ${update.report.conflicts.join(", ")}`);
@@ -94,7 +112,8 @@ export function registerInitCommand(pi: ExtensionAPI, refresh: (ctx: ExtensionCo
 				}
 				if (!["fresh", "supported", "incomplete"].includes(state.state)) { notify(statusSummary(state), "error"); return; }
 				const action = state.state === "fresh" ? "Initialize project" : state.state === "incomplete" ? "Retry interrupted initialization" : "Set up developer identity";
-				const choice = await ctx.ui.select(statusSummary(state), [action, ...(state.state !== "fresh" ? ["View project status"] : []), "Cancel"]);
+				const choice = await ctx.ui.select(statusSummary(state), [action, ...(state.state === "supported" ? ["Apply template"] : []), ...(state.state !== "fresh" ? ["View project status"] : []), "Cancel"]);
+				if (choice === "Apply template") { if (await applyTemplates(ctx, notify)) await refresh(ctx, state.root); return; }
 				if (choice === "View project status") { notify(resourceStatus(state.root)); return; }
 				if (choice !== action) return;
 				const user = parsed.user ?? await chooseUsername(state, ctx);

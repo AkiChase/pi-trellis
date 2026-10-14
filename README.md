@@ -39,6 +39,11 @@ existing different identity is a conflict, not a silent switch. No frontend/back
 project-type detection, multiple-package setup, remote templates or arbitrary upstream migration.
 Existing managed projects can review resource updates or restore missing resources
 through `/trellis-init`. Status shows per-file health and installed/available versions.
+Healthy existing projects also offer **Apply template**: choose Workflow, Spec, or both,
+then confirm one Replace/Create/Same file list. This explicitly adopts the bundled
+workflow and four basic spec documents, with replaced files and original provenance
+backed up under `.trellis/.runtime/template-backups/`. Project-only spec files and
+runtime/config/identity/tasks/journals remain unchanged; no diff viewer or automatic merge.
 
 `.trellis/.pi-trellis.json` records the installed runtime release, hashes/modes and resource
 provenance separately from the package baseline. Unknown collisions and customized root
