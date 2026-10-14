@@ -285,3 +285,25 @@ Kept widget/footer visible without an active task, added themed unfinished proje
 ### Next Steps
 
 - 无本任务待办；未 push/install/sync/reload，部署资源并行改动保留
+
+
+## Session 11: Adopt existing Trellis project
+<!-- trellis-session: v=2 fp=ba5b6ec1132ecb76 -->
+
+**Date**: 2026-10-14
+**Task**: Adopt existing Trellis project
+**Branch**: `main`
+
+### Summary
+
+Added the explicit Adopt existing project action so a legacy .trellis project without a managed manifest can enter the fixed runtime: new lib/initialization/adoption.ts (read-only plan, shared init.lock, manifest published last, idempotent recovery without an operation record), replaceBlock/projectRevision primitives, and the unsupported /trellis-init menu. Existing workflow/config/spec/tasks/journals/identity stay byte-identical as preserved-project provenance; legacy files are kept and listed; no backups and no deletion by user decision. Also fixed unbounded dialog text across initialization dialogs after the user reported options being pushed off screen (host extension-selector renders every title line with no viewport). Independent trellis-check fixed 9 issues and added 13 negative/preservation assertions; final npm test 374/374.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a3b7c1b` | fix: keep initialization dialog text bounded |
+
+### Status
+
+[OK] **Completed**
