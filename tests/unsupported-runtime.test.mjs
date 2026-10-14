@@ -40,7 +40,7 @@ for(const state of ['absent manifest','mismatched bytes','corrupt manifest','inc
   await f.handlers.get('before_agent_start')({prompt:'inspect',systemPromptOptions:{sections}},f.ctx);
   assert.ok(!existsSync(join(f.root,'executed-unverified')), 'before_agent_start executed unverified runtime');
   await f.handlers.get('before_agent_start')({prompt:'Active task: .trellis/tasks/task\nTrellis agent: trellis-implement\n\nwork',systemPromptOptions:{sections}},f.ctx);
-  assert.match(f.messages.at(-1).content,/task_error/);assert.doesNotMatch(f.messages.at(-1).content,/No active task/);
+  assert.deepEqual(f.messages,[], 'unsupported project must not inject workflow or task-state');
   assert.deepEqual(sections,{});assert.ok(f.notices.some(s=>/trellis-init/.test(s)));
   assert.ok(!existsSync(join(f.root,'executed-unverified')));assert.ok(!existsSync(join(f.root,'bound-unverified')));
   assert.ok(!existsSync(join(f.root,`.trellis/.runtime/sessions/${__internals.contextKey(f.root,f.ctx)}.json`)));

@@ -104,3 +104,14 @@ test('dialog text stays bounded for huge legacy inventories and long plans; full
  const g=fixture(t,{selections:['Initialize project'],confirm:true});await g.run('--user Dev');
  const message=g.dialogs.find(d=>d.message).message;assert.ok(message.split('\n').length<=14,'initialization confirmation must stay bounded');assert.match(message,/more lines; run \/trellis-init --check/);
 });
+
+
+test('init from Git subdirectory targets nearest repository root, not cwd',async t=>{
+ const f=fixture(t,{selections:['Initialize project'],confirm:true});mkdirSync(join(f.root,'.git'));const sub=join(f.root,'src');mkdirSync(sub);f.ctx.cwd=sub;
+ await f.run('--user Dev');assert.equal(inspect(f.root).state,'ready');assert.equal(existsSync(join(sub,'.trellis')),false);assert.ok(f.dialogs.some(d=>(d.title??'').includes(f.root)));assert.equal(f.reloads,1);
+});
+
+test('existing project template action from subdirectory uses discovered root',async t=>{
+ const f=fixture(t);apply(plan(f.root,'Dev'));const sub=join(f.root,'src');mkdirSync(sub);f.ctx.cwd=sub;writeFileSync(join(f.root,'.trellis/workflow.md'),'custom');
+ f.selections.push('Apply template','Workflow','Apply template');await f.run('');assert.notEqual(readFileSync(join(f.root,'.trellis/workflow.md'),'utf8'),'custom');assert.equal(existsSync(join(sub,'.trellis')),false);assert.equal(f.refreshes,1);assert.ok(f.dialogs.at(-1).title.includes(`Project: ${inspect(f.root).root}`));
+});

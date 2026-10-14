@@ -2,7 +2,7 @@ import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-c
 import { TaskBrowser } from "./component.ts";
 
 export function registerTaskBrowserCommand(pi: ExtensionAPI, dependencies: {
-	findRoot: (cwd: string) => string | undefined;
+	findRoot: (cwd: string, ctx: ExtensionCommandContext) => string | undefined;
 	currentTask: (root: string, ctx: ExtensionCommandContext) => string | undefined;
 }): void {
 	pi.registerCommand("trellis-task-viewer", {
@@ -14,7 +14,9 @@ export function registerTaskBrowserCommand(pi: ExtensionAPI, dependencies: {
 			};
 			if (args.trim()) { notice("Usage: /trellis-task-viewer — browse tasks without changing them."); return; }
 			if (ctx.mode !== "tui") { notice("/trellis-task-viewer requires interactive terminal mode. Custom task browsing is unavailable in RPC, print, and JSON modes."); return; }
-			const root = dependencies.findRoot(ctx.cwd);
+			let root: string | undefined;
+			try { root = dependencies.findRoot(ctx.cwd, ctx); }
+			catch (error) { notice(`Trellis browsing unavailable: ${String(error)}. Run /trellis-init --check or /reload.`); return; }
 			if (!root) { notice("No Trellis project found. Open /trellis-task-viewer inside a project with .trellis/tasks."); return; }
 			await ctx.ui.custom<void>((tui, _theme, _keys, done) => new TaskBrowser(
 				root, tui, () => ctx.ui.theme, () => done(), () => dependencies.currentTask(root, ctx),

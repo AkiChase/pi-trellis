@@ -1,6 +1,7 @@
 import { adoptPlan, applyAdoptPlan, adoptionSummary, adoptionDialog } from "./adoption.ts";
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { applyResourcePlan, resourcePlan, resourceStatus, templatePlan, applyTemplatePlan, type TemplateScope } from "./resources.ts";
+import { initializationRoot } from "../project-state.ts";
 import { inspect, plan, apply, validateUsername, type Inspection, type InitPlan } from "./engine.ts";
 
 export const INIT_HELP = "Usage: /trellis-init [--user <username>] [--check | --help]\nInitializes a new project, adopts an existing manifest-less project, or sets up identity on a supported clone.\nAll writes require native UI confirmation. Managed resources can be updated or repaired without resetting user data. Apply template explicitly replaces selected Workflow/Spec documents with backups. No force, active task selection, hooks, install or Git actions.";
@@ -64,13 +65,14 @@ async function chooseUsername(state: Inspection, ctx: ExtensionCommandContext): 
 		try { return validateUsername(name); } catch (error) { ctx.ui.notify(String(error), "error"); }
 	}
 }
-async function applyTemplates(ctx: ExtensionCommandContext, notify: (text: string) => void): Promise<boolean> {
+async function applyTemplates(ctx: ExtensionCommandContext, root: string, notify: (text: string) => void): Promise<boolean> {
  const scopes: Record<string, TemplateScope> = { "Workflow": "workflow", "Spec": "spec", "Workflow + Spec": "both" };
  const choice = await ctx.ui.select("Apply template · Choose scope", [...Object.keys(scopes), "Cancel"]);
  if (!choice || !Object.hasOwn(scopes, choice)) return false;
- const value = templatePlan(ctx.cwd, scopes[choice]);
+ const value = templatePlan(root, scopes[choice]);
  const summary = [
   `Apply template · ${choice}`,
+  `Project: ${root}`,
   ...value.rows.map(row => `${row.state}  ${row.path}`),
   "",
   "Replace files will be overwritten; backups will be saved under .trellis/.runtime/template-backups/.",
@@ -88,7 +90,7 @@ export function registerInitCommand(pi: ExtensionAPI, refresh: (ctx: ExtensionCo
 			try {
 				const flags = ["--user", "--check", "--help"];
 				if (prefix.startsWith("--user ")) {
-					const state = inspect(process.cwd());
+					const state = inspect(initializationRoot(process.cwd()));
 					return [...state.workspaces, ...(state.gitSuggestion ? [state.gitSuggestion] : [])].filter(n => n.startsWith(prefix.slice(7))).map(n => ({ value: `--user ${JSON.stringify(n)}`, label: n }));
 				}
 				return flags.filter(f => f.startsWith(prefix)).map(f => ({ value: f, label: f }));
@@ -102,7 +104,7 @@ export function registerInitCommand(pi: ExtensionAPI, refresh: (ctx: ExtensionCo
 			try {
 				const parsed = parseInitArguments(args);
 				if (parsed.help) { notify(INIT_HELP); return; }
-				const state = inspect(ctx.cwd);
+				const state = inspect(initializationRoot(ctx.cwd));
 				// Status stays read-only and never throws: an unadoptable project still reports its state.
 				const health = () => {
 					if (state.state !== "unsupported") return resourceStatus(state.root);
@@ -126,7 +128,7 @@ export function registerInitCommand(pi: ExtensionAPI, refresh: (ctx: ExtensionCo
 				if (state.state !== "fresh" && state.state !== "incomplete" && state.state !== "supported") {
 					const choice = await ctx.ui.select(boundedDialog(statusSummary(state)), menu);
 					if (choice === "View project status") { notify(resourceStatus(state.root)); return; }
-					if (choice === "Apply template") { if (await applyTemplates(ctx, notify)) await refresh(ctx, state.root); return; }
+					if (choice === "Apply template") { if (await applyTemplates(ctx, state.root, notify)) await refresh(ctx, state.root); return; }
 					if (choice === "Update project resources") {
 						const update = resourcePlan(state.root, "update");
 						if (update.report.conflicts.length) throw new Error(`Modified managed files are preserved: ${update.report.conflicts.join(", ")}`);
@@ -140,7 +142,7 @@ export function registerInitCommand(pi: ExtensionAPI, refresh: (ctx: ExtensionCo
 				if (!["fresh", "supported", "incomplete"].includes(state.state)) { notify(statusSummary(state), "error"); return; }
 				const action = state.state === "fresh" ? "Initialize project" : state.state === "incomplete" ? "Retry interrupted initialization" : "Set up developer identity";
 				const choice = await ctx.ui.select(boundedDialog(statusSummary(state)), [action, ...(state.state === "supported" ? ["Apply template"] : []), ...(state.state !== "fresh" ? ["View project status"] : []), "Cancel"]);
-				if (choice === "Apply template") { if (await applyTemplates(ctx, notify)) await refresh(ctx, state.root); return; }
+				if (choice === "Apply template") { if (await applyTemplates(ctx, state.root, notify)) await refresh(ctx, state.root); return; }
 				if (choice === "View project status") { notify(resourceStatus(state.root)); return; }
 				if (choice !== action) return;
 				const user = parsed.user ?? await chooseUsername(state, ctx);

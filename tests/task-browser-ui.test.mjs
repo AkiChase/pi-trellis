@@ -1,13 +1,15 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { chmodSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { stripVTControlCharacters as plain } from "node:util";
 import test from "node:test";
 import { getMarkdownTheme, initTheme } from "@earendil-works/pi-coding-agent";
 import { Markdown, compositeTuiLine, visibleWidth } from "@earendil-works/pi-tui";
-import trellis, { __internals } from "../extensions/trellis.ts";
+import { __internals } from "../extensions/trellis.ts";
+import { registerTaskBrowserCommand } from "../lib/task-browser/command.ts";
+import { readCurrentTaskIdentity } from "../lib/task-browser/reader.ts";
 import { TaskBrowser, readableMarkdown } from "../lib/task-browser/component.ts";
 
 const hostTheme = await import(new URL("./modes/interactive/theme/theme.js", import.meta.resolve("@earendil-works/pi-coding-agent")));
@@ -457,7 +459,8 @@ function capture(root) {
 }
 function commandFixture(f) {
   const commands = new Map(), messages = [], notices = [];
-  trellis({ registerCommand: (name, value) => commands.set(name, value), registerTool: () => {}, on: () => {}, events: { on: () => () => {} }, sendMessage: message => messages.push(message) });
+  const pi = { registerCommand: (name, value) => commands.set(name, value), sendMessage: message => messages.push(message) };
+  registerTaskBrowserCommand(pi, { findRoot: cwd => existsSync(join(cwd, ".trellis/tasks")) ? cwd : undefined, currentTask: (root, ctx) => readCurrentTaskIdentity(root, __internals.contextKey(root, ctx)) });
   let component, customCount = 0, completed = 0;
   const ctx = { cwd: f.root, mode: "tui", hasUI: true, sessionManager: { getSessionId: () => "browser-only", getSessionFile: () => undefined }, ui: {
     get theme() { return hostTheme.theme; }, notify: value => notices.push(value),

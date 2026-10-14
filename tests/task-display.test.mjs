@@ -24,7 +24,7 @@ function setup(t) {
   const record = (name, value = { status: "planning" }) => put(`.trellis/tasks/${name}/task.json`, JSON.stringify(value));
   installRuntimeFixture(root);
   const handlers = new Map(), display = { status: undefined, widget: undefined }, messages = [];
-  trellis({ events: { on: () => () => {}, emit: () => {} }, registerCommand: () => {}, registerTool: () => {}, on: (name, fn) => handlers.set(name, fn), sendMessage: message => messages.push(message), getAllTools: () => [{ name: "Agent" }] });
+  trellis({ events: { on: () => () => {}, emit: () => {} }, registerCommand: () => {}, registerTool: () => {}, on: (name, fn) => { const previous = handlers.get(name); handlers.set(name, previous ? async (...args) => { await previous(...args); await fn(...args); } : fn); }, sendMessage: message => messages.push(message), getAllTools: () => [{ name: "Agent" }] });
   const ctx = { cwd: root, hasUI: true, sessionManager: { getSessionId: () => "display", getSessionFile: () => undefined }, ui: {
     theme, setWidget: (key, lines, options) => { assert.equal(key, "trellis"); display.widget = lines; display.options = options; },
     notify: () => {},

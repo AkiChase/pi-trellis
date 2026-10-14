@@ -1,0 +1,5 @@
+{"file":".trellis/spec/development/index.md","reason":"source ownership、root/session、runtime/dispatch安全与文档职责"}
+{"file":".trellis/spec/testing/index.md","reason":"真实SDK和fixture证据、公开provider边界、检查命令与限制"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"复用宿主resolver，不复制过滤或管理算法"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"command/tool/skills注册和初始化reload跨层契约"}
+{"file":".trellis/tasks/10-14-user-level-project-activation/research/host-resource-lifecycle.md","reason":"宿主生命周期及真实只读过滤实验"}

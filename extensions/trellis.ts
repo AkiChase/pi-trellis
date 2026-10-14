@@ -19,7 +19,7 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from "node:fs";
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { stripVTControlCharacters } from "node:util";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
@@ -31,7 +31,8 @@ import { containsPath } from "../lib/config.ts";
 import { registerInitCommand } from "../lib/initialization/command.ts";
 import { registerTaskBrowserCommand } from "../lib/task-browser/command.ts";
 import { readCurrentTaskIdentity } from "../lib/task-browser/reader.ts";
-import { checkedPath, verifyRuntime } from "../lib/initialization/engine.ts";
+import { checkedPath } from "../lib/initialization/engine.ts";
+import { findProjectRoot, requireProjectRuntime } from "../lib/project-state.ts";
 
 /** The slice of pi's Theme this extension uses. Narrow on purpose: `ctx.ui.theme` is always present, even in the no-op UI. */
 type ThemeColorToken = "accent" | "success" | "warning" | "error" | "muted" | "dim" | "text";
@@ -151,18 +152,12 @@ interface ActiveTask {
 /**
  * Walk up from `cwd` looking for a `.trellis/` directory.
  *
- * Resolved on every use rather than captured once: a session's cwd can change
- * during its lifetime (RPC / pi-web / project switch), and baking a root in
- * would leak project A's context into project B.
+ * Resolve every event from its current cwd. Pi 1.2 keeps cwd fixed for an
+ * AgentSession; the runner also guards unexpected foreign-cwd events rather
+ * than inheriting another project's context.
  */
 function findRoot(cwd: string | undefined): string | undefined {
-	let dir = resolve(cwd || process.cwd());
-	for (;;) {
-		if (existsSync(join(dir, ".trellis"))) return dir;
-		const parent = dirname(dir);
-		if (parent === dir) return undefined;
-		dir = parent;
-	}
+	return findProjectRoot(cwd || process.cwd());
 }
 
 function scriptPath(root: string, name: string): string {
@@ -170,7 +165,7 @@ function scriptPath(root: string, name: string): string {
 }
 
 function requireRuntime(root: string): void {
-	if (!verifyRuntime(root)) throw new Error("Unsupported Trellis runtime: supported project manifest is missing");
+	requireProjectRuntime(root);
 }
 
 function runtimeDiagnostic(error: unknown): string {
@@ -817,6 +812,7 @@ async function refreshDisplay(ctx: ExtensionContext, known?: Session): Promise<v
 		}
 
 		const task = await sessionTask(current);
+		requireRuntime(current.root);
 		const count = readUnfinishedTaskCount(current.root);
 		const theme = ctx.ui.theme as ExtensionTheme;
 		if (DISPLAY_MODE === "status") {
@@ -872,20 +868,55 @@ export default function (pi: ExtensionAPI): void {
 	registerInitCommand(pi, async (ctx, root) => {
 		contextCache.clear(); taskCache.clear(); taskErrors.clear(); workflowCache.delete(root);
 		sectionCache.clear(); lastStateSent.clear();
-		await refreshDisplay(ctx);
+		await refreshProjectDisplay(ctx);
 	});
-	registerTaskBrowserCommand(pi, {
-		findRoot,
-		currentTask: (root, ctx) => readCurrentTaskIdentity(root, contextKey(root, ctx)),
-	});
-	registerDispatchTool(pi, async (ctx) => {
-		const current = session(ctx);
-		return current ? (await sessionTask(current))?.dir : undefined;
-	});
+	let registeredRoot: string | undefined;
+	let startupCwd: string | undefined;
+	const refreshProjectDisplay = async (ctx: ExtensionContext, known?: Session) => {
+		try {
+			if ((registeredRoot && findRoot(ctx.cwd) !== registeredRoot) || (!registeredRoot && startupCwd !== undefined && ctx.cwd !== startupCwd)) { clearDisplay(ctx); return; }
+			await refreshDisplay(ctx, known);
+		} catch { clearDisplay(ctx); }
+	};
+	const registerProjectCapabilities = (root: string) => {
+		if (registeredRoot) return;
+		registeredRoot = root;
+		registerTaskBrowserCommand(pi, {
+			findRoot: (cwd, ctx) => {
+				try {
+					const found = findRoot(cwd);
+					if (!found || found !== registeredRoot) throw new Error("Project changed; reload before browsing Trellis tasks");
+					requireRuntime(found);
+					return found;
+				} catch (error) { clearDisplay(ctx); throw error; }
+			},
+			currentTask: (root, ctx) => readCurrentTaskIdentity(root, contextKey(root, ctx)),
+		});
+		const guardedPi = Object.create(pi) as ExtensionAPI;
+		guardedPi.registerTool = tool => pi.registerTool({ ...tool, execute: async (...args) => {
+			const ctx = args[4];
+			try {
+				if (findRoot(ctx.cwd) !== registeredRoot) throw new Error("Project changed; reload before Trellis dispatch");
+				requireRuntime(registeredRoot!);
+			} catch (error) { clearDisplay(ctx); throw error; }
+			return tool.execute(...args);
+		} });
+		registerDispatchTool(guardedPi, async (ctx) => {
+			const current = session(ctx);
+			if (current?.root !== registeredRoot) throw new Error("Project changed; reload before Trellis dispatch");
+			return current ? (await sessionTask(current))?.dir : undefined;
+		});
+	};
 
 	// ---- M1 / M4 / M2: session bootstrap -----------------------------------
 
 	pi.on("session_start", async (_event, ctx) => {
+		startupCwd ??= ctx.cwd;
+		if (!registeredRoot && ctx.cwd !== startupCwd) {
+			clearDisplay(ctx);
+			if (ctx.hasUI) ctx.ui.notify("Project changed; reload to activate Trellis in this project", "warning");
+			return;
+		}
 		let current: Session | undefined;
 		try { current = session(ctx); }
 		catch (error) { if (ctx.hasUI) ctx.ui.notify(runtimeDiagnostic(error), "error"); clearDisplay(ctx); return; }
@@ -893,7 +924,12 @@ export default function (pi: ExtensionAPI): void {
 			if (ctx.hasUI) clearDisplay(ctx);
 			return;
 		}
-
+		if (registeredRoot && registeredRoot !== current.root) {
+			clearDisplay(ctx);
+			if (ctx.hasUI) ctx.ui.notify("Project changed; reload to activate Trellis in this project", "warning");
+			return;
+		}
+		registerProjectCapabilities(current.root);
 
 		// Behavioural version check: if the CLI contract moved, say so once
 		// instead of degrading silently.
@@ -923,15 +959,18 @@ export default function (pi: ExtensionAPI): void {
 			}
 		}
 
-		await refreshDisplay(ctx, current);
+		await refreshProjectDisplay(ctx, current);
 	});
 
 	// ---- M1: prompt sections -----------------------------------------------
 
 	pi.on("before_agent_start", async (event, ctx) => {
+		let initial: Session | undefined;
+		try { initial = session(ctx); }
+		catch { clearDisplay(ctx); return; }
 		try {
-			let current = session(ctx);
-			if (!current) return;
+			let current = initial;
+			if (!current || (registeredRoot && current.root !== registeredRoot) || (!registeredRoot && startupCwd !== undefined && ctx.cwd !== startupCwd)) { clearDisplay(ctx); return; }
 			const facts = parseDispatchFacts("prompt" in event ? event.prompt : "");
 			if (facts?.role && roleBySession.get(current.identity) !== facts.role) {
 				roleBySession.set(current.identity, facts.role);
@@ -984,13 +1023,13 @@ export default function (pi: ExtensionAPI): void {
 				});
 			}
 		} catch (error) {
-			// Preserve the diagnostic rather than making invalid runtime look task-less.
 			const content = `Status: task_error\nTrellis context diagnostic: ${runtimeDiagnostic(error)}`;
 			const identity = `${ctx.cwd}::${ctx.sessionManager.getSessionId()}::error`;
 			if (lastStateSent.get(identity) !== content) {
 				lastStateSent.set(identity, content);
 				pi.sendMessage({ customType: STATE_MESSAGE_TYPE, content, display: false });
 			}
+			clearDisplay(ctx);
 		}
 	});
 
@@ -999,15 +1038,26 @@ export default function (pi: ExtensionAPI): void {
 	pi.on("tool_call", async (event, ctx) => {
 		// Discovery is not authorization. Unsupported roots still allow ordinary
 		// read/search commands and non-Trellis agents, but cannot execute runtime.
-		const root = findRoot(ctx.cwd);
+		const input = event.input as { command?: unknown; subagent_type?: unknown };
+		const trellisExecution = (["bash", "bash_bg", "monitor"].includes(event.toolName) && typeof input.command === "string" && invokesRuntime(input.command)) ||
+			(event.toolName === "Agent" && isTrellisRole(input.subagent_type));
+		let root: string | undefined;
+		try { root = findRoot(ctx.cwd); }
+		catch (error) {
+			clearDisplay(ctx);
+			if (trellisExecution) return { block: true, reason: `${runtimeDiagnostic(error)} No command or child was started.` };
+			return;
+		}
+		if ((registeredRoot && root !== registeredRoot) || (!registeredRoot && startupCwd !== undefined && ctx.cwd !== startupCwd)) {
+			clearDisplay(ctx);
+			if (trellisExecution) return { block: true, reason: "Project changed; reload before Trellis execution. No command or child was started." };
+			return;
+		}
 		if (!root) return;
 		try { requireRuntime(root); }
 		catch (error) {
-			const input = event.input as { command?: unknown; subagent_type?: unknown };
-			if ((["bash", "bash_bg", "monitor"].includes(event.toolName) && typeof input.command === "string" && invokesRuntime(input.command)) ||
-				(event.toolName === "Agent" && isTrellisRole(input.subagent_type))) {
-				return { block: true, reason: `${runtimeDiagnostic(error)} No command or child was started.` };
-			}
+			clearDisplay(ctx);
+			if (trellisExecution) return { block: true, reason: `${runtimeDiagnostic(error)} No command or child was started.` };
 			return;
 		}
 		try {
@@ -1075,21 +1125,22 @@ export default function (pi: ExtensionAPI): void {
 				contextCache.delete(cacheKeyFor(current.root, current.key));
 				sectionCache.delete(current.cacheKey); lastStateSent.delete(current.cacheKey);
 			}
-			await refreshDisplay(ctx, current);
+			await refreshProjectDisplay(ctx, current);
 		} catch {
-			// ignore
+			clearDisplay(ctx);
 		}
 	});
 
 	pi.on("agent_end", async (_event, ctx) => {
-		await refreshDisplay(ctx);
+		await refreshProjectDisplay(ctx);
 	});
 
 	// ---- Cleanup -----------------------------------------------------------
 
 	pi.on("session_shutdown", (_event, ctx) => {
 		clearDisplay(ctx);
-		const root = findRoot(ctx.cwd);
+		let root: string | undefined;
+		try { root = findRoot(ctx.cwd); } catch { return; }
 		if (!root) return;
 		// Cleanup is bookkeeping, not runtime execution; unsupported roots must
 		// not throw here or retain a previously supported session's binding memo.
