@@ -424,3 +424,40 @@ viewer 区分归档隐藏与真正缺失；归档父子不展示，合法引用�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 16: 任务浏览面板列对齐与溢出省略
+<!-- trellis-session: v=2 fp=0e085a930bfa06c8 -->
+
+**Date**: 2026-10-14
+**Task**: 任务浏览面板列对齐与溢出省略
+**Branch**: `main`
+
+### Summary
+
+完成并接受 Task Browser 状态、目录名与标题分列对齐及按列省略，保留窄窗口降级和原交互；已归档任务，保留并行修改。
+
+### Main Changes
+
+- 统一状态列和全列表目录名预算，标题使用余宽，滚动不跳列，长字段独立省略；同步用户指南。
+- 单阶段主会话直接实施、自检并提交 c3c1ac1；归档 bd49b7e，本会话绑定已清除。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c3c1ac1` | fix: align task browser columns and truncate each field |
+
+### Testing
+
+- [OK] 最终聚焦 57/57；与提交字节一致的隔离阶段全量 410/410，exit 0。
+- [OK] 共享工作区全量 414/415：并行初始化测试 messages 未定义，未混入本阶段；首次 peer、断言和临时副本无 Git 失败均保留在证据。
+- [OK] git diff --check 与提交范围检查通过；无独立 review、静态检查脚本或真实 tmux/PTY 视觉验收。
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 未安装、同步、重载或推送；其他 runtime-tool-names/user-level-project-activation 工作保持不变。
