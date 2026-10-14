@@ -1,6 +1,15 @@
+import { basename } from "node:path";
 import { getMarkdownTheme, type Theme } from "@earendil-works/pi-coding-agent";
 import { Markdown, Text, matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi, type TUI } from "@earendil-works/pi-tui";
 import { displayValue, readDocument, readTasks, safeText, taskLabel, type BrowserTask, type TaskDocument, type TaskSnapshot } from "./reader.ts";
+
+type ListLayout = { name: number; title: number };
+
+/** Clip before padding so Unicode and ANSI never consume another column's budget. */
+function listCell(text: string, width: number): string {
+	const clipped = truncateToWidth(text, width, "…");
+	return clipped + " ".repeat(Math.max(0, width - visibleWidth(clipped)));
+}
 
 const SECTIONS = ["Overview", "PRD", "Design", "Implement"] as const;
 const DOCUMENT_SECTIONS = ["prd", "design", "implement"] as const;
@@ -90,6 +99,7 @@ export class TaskBrowser {
 	private offsets = [0, 0, 0, 0];
 	private documents = new Map<number, TaskDocument>();
 	private cachedBody?: { key: string; lines: string[] };
+	private cachedListLayout?: { width: number; layout: ListLayout };
 	private bodyHeight = 1;
 	private current?: string;
 	private closed = false;
@@ -124,7 +134,7 @@ export class TaskBrowser {
 		while (end < rows.length && rows[end].prefix) end++;
 		if (start > 0) this.snapshot.rows = rows.slice(start, end).concat(rows.slice(0, start), rows.slice(end));
 	}
-	invalidate(): void { this.cachedBody = undefined; }
+	invalidate(): void { this.cachedBody = undefined; this.cachedListLayout = undefined; }
 	private refresh(): void {
 		const identity = this.snapshot.rows[this.selected]?.task.identity;
 		const next = readTasks(this.root);
@@ -210,17 +220,36 @@ export class TaskBrowser {
 		this.cachedBody = { key, lines };
 		return lines;
 	}
-	private listLine(index: number, width: number): string {
+	private listLayout(width: number): ListLayout {
+		if (this.cachedListLayout?.width === width) return this.cachedListLayout.layout;
+		// Marker (2), bounded status (13), and one gap. Small windows favor identity.
+		const available = Math.max(0, width - 16);
+		let desired = 0;
+		let hasTitles = false;
+		for (const row of this.snapshot.rows) {
+			const name = safeText(basename(row.task.dir));
+			desired = Math.max(desired, Math.min(48, visibleWidth(row.prefix + name)));
+			if (safeText(row.task.title || name) !== name) hasTitles = true;
+		}
+		const name = available < 36 || !hasTitles ? available : Math.min(desired, Math.floor(available * 0.6));
+		const title = available < 36 || !hasTitles ? 0 : available - name - 3;
+		const layout = { name, title };
+		this.cachedListLayout = { width, layout };
+		return layout;
+	}
+	private listLine(index: number, width: number, layout: ListLayout): string {
 		const row = this.snapshot.rows[index];
 		let line: string;
 		if (row) {
-			// Protect the current marker/status before allocating the remaining title width.
 			const marker = this.isCurrent(row.task) ? "* " : "  ";
-			const status = safeText(row.task.status);
-			const prefix = marker + `[${status}] `;
+			const name = safeText(basename(row.task.dir));
+			const title = safeText(row.task.title || name);
 			line = this.theme.fg(this.isCurrent(row.task) ? "accent" : "dim", marker) +
-				this.theme.fg(statusColor(row.task.status), `[${status}] `) +
-				this.theme.fg("text", truncateToWidth(row.prefix + taskLabel(row.task), Math.max(0, width - visibleWidth(prefix)), "…"));
+				this.theme.fg(statusColor(row.task.status), listCell(`[${safeText(row.task.status)}]`, 13)) + " " +
+				this.theme.fg("text", listCell(row.prefix + name, layout.name));
+			if (layout.title > 0 && title !== name) {
+				line += this.theme.fg("dim", " · ") + this.theme.fg("text", truncateToWidth(title, layout.title, "…"));
+			}
 		} else line = this.theme.fg("error", `Warning: ${this.snapshot.diagnostics[index - this.snapshot.rows.length]}`);
 		line = truncateToWidth(line, width, "…");
 		return index === this.selected ? this.theme.bg("userMessageBg", line + " ".repeat(Math.max(0, width - visibleWidth(line)))) : line;
@@ -248,7 +277,8 @@ export class TaskBrowser {
 			this.listOffset = Math.max(0, Math.min(this.listOffset, Math.max(0, total - this.bodyHeight)));
 			if (this.selected < this.listOffset) this.listOffset = this.selected;
 			if (this.bodyHeight > 0 && this.selected >= this.listOffset + this.bodyHeight) this.listOffset = this.selected - this.bodyHeight + 1;
-			body = total ? Array.from({ length: Math.min(this.bodyHeight, total - this.listOffset) }, (_, index) => this.listLine(this.listOffset + index, width)) : [this.theme.fg("muted", "No tasks found")].slice(0, this.bodyHeight);
+			const layout = this.listLayout(width);
+			body = total ? Array.from({ length: Math.min(this.bodyHeight, total - this.listOffset) }, (_, index) => this.listLine(this.listOffset + index, width, layout)) : [this.theme.fg("muted", "No tasks found")].slice(0, this.bodyHeight);
 			position = total ? `${this.selected + 1}/${total}` : "0/0";
 		} else {
 			const lines = this.detailBody(width);

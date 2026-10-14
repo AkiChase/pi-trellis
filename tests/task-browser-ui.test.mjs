@@ -84,9 +84,9 @@ test("viewer shows English identity, original title, explicit metadata and desce
   f.press("r");
   f.setCurrent(f.browser.snapshot.tasks[0].identity); f.press("r");
   const list = f.render(100).join("\n");
-  assert.match(list, /\* \[in_progress\] 10-14-english-slug · 中文标题/);
+  assert.match(list, /\* \[in_progress\]\s+10-14-english-slug\s+· 中文标题/);
   assert.match(list, /Directory descending/);
-  assert.match(f.render(39).join("\n"), /\* \[in_progress\] 10-14-english-slug/);
+  assert.match(f.render(39).join("\n"), /\* \[in_progress\]\s+10-14-english-slug/);
   for (const width of [1, 8, 20, 39, 80]) f.render(width);
   f.tui.terminal.rows = 30;
   const detail = f.press("enter", 100).join("\n");
@@ -116,6 +116,83 @@ test("current task promotes its complete ancestor tree and refresh preserves sel
   assert.equal(f.browser.snapshot.rows[f.browser.selected].task.identity, selected);
   f.setCurrent("missing-identity"); f.press("r"); assert.deepEqual(dirs(), initial);
   f.setCurrent(undefined); f.press("r"); assert.deepEqual(dirs(), initial);
+});
+
+test("list columns align statuses, Unicode names and titles with independent ellipses", t => {
+  const f = fixture(t, 0);
+  const records = [
+    ["z-short", "planning", "短标题"],
+    ["y-中文é🙂", "in_progress", "组合👨‍👩‍👧‍👦👍🏽标题"],
+    ["x-" + "long-".repeat(35), "completed", "TITLE " + "中文".repeat(60)],
+    ["w-same", "task_error", "w-same"],
+    ["v-custom", "custom-".repeat(15), "自定义状态标题"],
+    ["u-child", "planning", "子标题"],
+    ["t-grandchild", "completed", "孙标题"],
+  ];
+  for (const [name, status, title] of records) f.put(`.trellis/tasks/${name}/task.json`, JSON.stringify({
+    title, status, ...(name === "u-child" ? { parent: "z-short" } : name === "t-grandchild" ? { parent: "u-child" } : {}),
+  }));
+  f.tui.terminal.rows = 30; f.press("r");
+  const body = width => f.render(width).slice(3, 3 + records.length);
+  const lines = body(100);
+  const titled = lines.filter(line => line.includes(" · "));
+  assert.equal(titled.length, records.length - 1);
+  assert.equal(new Set(titled.map(line => visibleWidth(line.slice(0, line.indexOf(" · "))))).size, 1);
+  for (const row of f.browser.snapshot.rows) {
+    const name = row.task.dir.split("/").at(-1);
+    if (name.startsWith("x-long")) continue; // This directory is intentionally clipped.
+    const line = lines.find(line => line.includes(row.prefix + name));
+    assert.equal(visibleWidth(line.slice(0, line.indexOf(row.prefix + name))), 16);
+  }
+  assert.ok(lines.some(line => line.includes("└─ u-child")));
+  assert.ok(lines.some(line => line.includes("   └─ t-grandchild")));
+  assert.ok(lines.some(line => line.includes("组合👨‍👩‍👧‍👦👍🏽标题")));
+  const long = lines.find(line => line.includes("x-long"));
+  assert.match(long, /…\s+· TITLE .*…$/);
+  assert.match(lines.find(line => line.includes("v-custom")), /\[custom-.*…/);
+  assert.equal(lines.find(line => line.includes("w-same")).split("w-same").length - 1, 1);
+  assert.match(body(39).find(line => line.includes("x-long")), /…$/);
+  assert.ok(body(51).every(line => !line.includes(" · ")));
+  assert.ok(body(52).some(line => line.includes(" · ")));
+  const raw = f.browser.render(100).slice(3, 3 + records.length);
+  for (const [name, status] of records.filter(([, status]) => ["planning", "in_progress", "completed"].includes(status))) {
+    const index = f.browser.snapshot.rows.findIndex(row => row.task.dir.endsWith(`/${name}`));
+    const color = status === "planning" ? "warning" : status === "in_progress" ? "accent" : "success";
+    const renderedStatus = hostTheme.theme.fg(color, `[${status}]`.padEnd(13));
+    assert.ok(raw[index].includes(renderedStatus), `${status}: original color preserved`);
+  }
+  for (let width = 1; width <= 125; width++) f.render(width);
+  const selectedLine = f.browser.render(100)[3];
+  assert.match(selectedLine, /\x1b\[48;/, "selected row retains background");
+});
+
+test("list layout stays stable across scrolling and recomputes on resize and refresh", t => {
+  const f = fixture(t, 30);
+  const exactOnly = fixture(t, 0);
+  exactOnly.put(".trellis/tasks/exact-name/task.json", JSON.stringify({ title: "TITLE", status: "planning" }));
+  exactOnly.press("r");
+  assert.match(exactOnly.render(100).join("\n"), /exact-name · TITLE/);
+  assert.doesNotMatch(exactOnly.render(100)[3], /…/);
+  f.record(0, { title: "远端标题" });
+  f.put(`.trellis/tasks/00-${"long".repeat(40)}/task.json`, JSON.stringify({ title: "离屏标题", status: "completed" }));
+  f.press("r");
+  const titleColumn = width => {
+    const lines = f.render(width).slice(3, -1).filter(line => line.includes(" · "));
+    const columns = lines.map(line => visibleWidth(line.slice(0, line.indexOf(" · "))));
+    assert.equal(new Set(columns).size, 1);
+    return columns[0];
+  };
+  const wide = titleColumn(100);
+  for (let i = 0; i < 25; i++) { f.press("down", 100); assert.equal(titleColumn(100), wide); }
+  assert.notEqual(titleColumn(80), wide);
+  assert.equal(titleColumn(100), wide);
+  rmSync(join(f.root, `.trellis/tasks/00-${"long".repeat(40)}`), { recursive: true });
+  f.press("r", 100);
+  assert.ok(titleColumn(100) < wide, "refresh releases the removed name's column budget");
+  const exact = "n".repeat(10);
+  f.put(`.trellis/tasks/${exact}/task.json`, JSON.stringify({ title: "TITLE", status: "planning" }));
+  f.press("r", 100); f.browser.listOffset = 0; f.browser.selected = 0;
+  assert.ok(f.render(100).some(line => line.includes(`${exact} · TITLE`)), "exact-fit name has no ellipsis");
 });
 
 test("long directory identifiers precede titles and remain fully scrollable in detail", t => {
@@ -300,7 +377,7 @@ test("refresh rereads title, current identity and documents; removal does not ju
   const identity = f.browser.snapshot.rows[8].task.identity;
   f.setCurrent(identity); f.record(3, { title: "Fresh 中文 title" }); f.press("r");
   assert.equal(f.browser.snapshot.rows[f.browser.selected].task.identity, identity);
-  assert.match(f.render().join("\n"), /\* \[planning\] 03 · Fresh 中文 title/);
+  assert.match(f.render().join("\n"), /\* \[planning\]\s+03\s+· Fresh 中文 title/);
   f.press("enter"); f.press("right");
   assert.match(f.render().join("\n"), /Document not created/);
   f.put(".trellis/tasks/03/prd.md", "# New document");
@@ -401,8 +478,8 @@ test("registered command uses command-time root and disk-only own session withou
   f.put(".trellis/.runtime/sessions/foreign.json", JSON.stringify({ current_task: ".trellis/tasks/00" }));
   await command.handler("", harness.ctx);
   const lines = harness.component().render(80).map(plain);
-  assert.match(lines.join("\n"), /\* \[planning\] 01 · 任务 1/);
-  assert.doesNotMatch(lines.join("\n"), /\* \[planning\] 00 · 任务 0/);
+  assert.match(lines.join("\n"), /\* \[planning\]\s+01\s+· 任务 1/);
+  assert.doesNotMatch(lines.join("\n"), /\* \[planning\]\s+00\s+· 任务 0/);
   harness.component().handleInput(keys.escape); assert.equal(harness.completed(), 1);
   harness.ctx.cwd = g.root;
   await command.handler("", harness.ctx);
