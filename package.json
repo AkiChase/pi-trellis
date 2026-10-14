@@ -6,7 +6,7 @@
     "test": "node --import ./tests/host-tui.mjs --test tests/*.test.mjs",
     "test:provider": "node tests/provider-contracts.mjs"
   },
-  "description": "Project-local pi extension for Trellis: isolated task context, JSONL material injection, and Claude-based agents adapted for Pi.",
+  "description": "User-level Pi extension with project-scoped Trellis initialization, context, task UI, and role dispatch.",
   "license": "(MIT AND AGPL-3.0-only)",
   "keywords": [
     "pi-package",
@@ -18,9 +18,7 @@
     "extensions": [
       "extensions/trellis.ts"
     ],
-    "skills": [
-      "skills"
-    ]
+    "skills": []
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*",

@@ -124,7 +124,7 @@ test("session startup never deploys or upgrades project agent definitions", asyn
   await f.handlers.get("session_start")({}, f.ctx("deploy"));
   assert.equal(readFileSync(join(f.root, ".pi/agents/trellis-check.md"), "utf8"), "custom or older role");
   assert.equal(readFileSync(join(f.root, ".pi/agents/trellis-implement.md"), "utf8"), readFileSync(new URL("../agents/trellis-implement.md", import.meta.url), "utf8"));
-  assert.ok(!f.handlers.has("resources_discover"));
+  assert.ok(f.handlers.has("resources_discover"));
 });
 
 for (const source of ['session-fallback:foreign', 'session:foreign', undefined]) {

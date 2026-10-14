@@ -96,10 +96,10 @@ test('task_error stays distinct from no_task and command tools scope/invalidate 
  await before();assert.match(messages.at(-1).content,/task_error/);assert.doesNotMatch(messages.at(-1).content,/No active task/);const ws={ws:{url:'ws://localhost'}};await handlers.get('tool_call')({toolName:'monitor',input:ws},ctx);assert.deepEqual(ws,{ws:{url:'ws://localhost'}});
 });
 
-test('unsupported deployed release produces task_error and blocks command/role execution while WebSocket/non-Trellis reads are untouched',async t=>{
+test('unsupported deployed release injects no state and blocks command/role execution while WebSocket/non-Trellis reads are untouched',async t=>{
  const f=fixture(t);apply(plan(f.root,'Dev'));const file=join(f.root,'.trellis/.pi-trellis.json'),m=JSON.parse(readFileSync(file));m.runtimeReleaseId='wrong';writeFileSync(file,JSON.stringify(m));
  const handlers=new Map(),messages=[];trellis({on:(n,h)=>handlers.set(n,h),registerCommand:()=>{},registerTool:()=>{},events:{on:()=>()=>{},emit:()=>{}},sendMessage:m=>messages.push(m)});const ctx={cwd:f.root,hasUI:false,ui:{},sessionManager:{getSessionId:()=>f.root,getSessionFile:()=>undefined}};
- await handlers.get('before_agent_start')({prompt:'inspect',systemPromptOptions:{sections:{}}},ctx);assert.match(messages.at(-1).content,/task_error/);
+ await handlers.get('before_agent_start')({prompt:'inspect',systemPromptOptions:{sections:{}}},ctx);assert.deepEqual(messages,[]);
  for(const tool of ['bash','bash_bg','monitor'])assert.equal((await handlers.get('tool_call')({toolName:tool,input:{command:'task.py deactivate'}},ctx)).block,true);
  assert.equal((await handlers.get('tool_call')({toolName:'Agent',input:{subagent_type:'trellis-implement',prompt:'work'}},ctx)).block,true);
  assert.equal(await handlers.get('tool_call')({toolName:'monitor',input:{ws:{url:'ws://localhost'}}},ctx),undefined);assert.equal(await handlers.get('tool_call')({toolName:'read',input:{path:'README.md'}},ctx),undefined);

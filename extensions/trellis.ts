@@ -1,12 +1,12 @@
 /**
- * pi-trellis — a project-local pi extension that adapts pi to a Trellis project.
+ * pi-trellis — a user-level Pi extension activated within supported Trellis projects.
  *
  * Scope (see design doc §2):
  *   M1  session / task context injection via systemPrompt sections + per-turn state message
  *   M2  active-task status in the footer
  *   M3  role-specific JSONL/artifact material handed to trellis-* subagents
  *   M4  explicit initialization and manifest-managed project resources
- *   M5  skills load from the Pi package manifest
+ *   M5  conditional skills discovered through Pi's public package resolver
  *
  * No Trellis runtime implementation is copied into this TypeScript extension.
  * Bundled agent documents retain their upstream license; see docs/trellis-agent-sync.md.
@@ -32,6 +32,7 @@ import { registerInitCommand } from "../lib/initialization/command.ts";
 import { registerTaskBrowserCommand } from "../lib/task-browser/command.ts";
 import { readCurrentTaskIdentity } from "../lib/task-browser/reader.ts";
 import { checkedPath } from "../lib/initialization/engine.ts";
+import { projectSkillPaths } from "../lib/adapter-resources.ts";
 import { findProjectRoot, requireProjectRuntime } from "../lib/project-state.ts";
 
 /** The slice of pi's Theme this extension uses. Narrow on purpose: `ctx.ui.theme` is always present, even in the no-op UI. */
@@ -960,6 +961,23 @@ export default function (pi: ExtensionAPI): void {
 		}
 
 		await refreshProjectDisplay(ctx, current);
+	});
+
+	pi.on("resources_discover", async (event, ctx) => {
+		try {
+			const root = findRoot(event.cwd);
+			if (!root || root !== registeredRoot || findRoot(ctx.cwd) !== root) return;
+			requireRuntime(root);
+			const skillPaths = await projectSkillPaths(event.cwd, ctx.isProjectTrusted());
+			// Resolution is asynchronous; discovery must not publish skills from a
+			// runtime that became invalid while the host resolved package resources.
+			if (findRoot(ctx.cwd) !== root) return;
+			requireRuntime(root);
+			return { skillPaths };
+		} catch (error) {
+			if (ctx.hasUI) ctx.ui.notify(`Trellis skills unavailable: ${String(error)}`, "warning");
+			return;
+		}
 	});
 
 	// ---- M1: prompt sections -----------------------------------------------

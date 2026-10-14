@@ -23,13 +23,13 @@ env -u TRELLIS_CONTEXT_ID node --import ./tests/host-tui.mjs --test tests/projec
 
 ## Stage 2：条件skills和真实宿主验收
 
-- [ ] manifest.skills显式空；新增resources_discover，只在有效项目返回skills。
-- [ ] 公开resolver+只读虚拟Settings视图处理本包default/explicit/delta/trust，永久adapterConfigured不放宽；无install/global修改。
-- [ ] SDK集成 fixture：user/local settings、fresh/valid/unhealthy/clone无身份，commands/tool registry 与模型声明分别断言，skills资源和命令提示断言。
-- [ ] init确认→reload后完整能力，repair→reload，reload移除runtime后只有init，恢复/新会话不重复注册订阅。
-- [ ] 过滤matrix：normal skills[]、plain白名单、+加法、delta empty/exclusion、用户项目重复声明、untrusted、临时-e、noSkills、显式静态来源限制。
-- [ ] 验证fresh启动没有Trellis子进程/项目写入，错误cwd不注入；不以mock command列表替代真实SDK。
-- [ ] focused、full与独立check后阶段提交（代码、manifest、耦合tests一同）。
+- [x] manifest.skills显式空；新增resources_discover，只在有效项目返回skills。
+- [x] 公开resolver+只读虚拟Settings视图处理本包default/explicit/delta/trust，永久adapterConfigured不放宽；无install/global修改。
+- [x] SDK集成 fixture：user/local settings、fresh/valid/unhealthy/clone无身份，commands/tool registry 与模型声明分别断言，skills资源和命令提示断言。
+- [x] init确认→reload后完整能力，repair→reload，reload移除runtime后只有init，恢复/新会话不重复注册订阅。
+- [x] 过滤matrix：normal skills[]、plain白名单、+加法、delta empty/exclusion、用户项目重复声明、untrusted、临时-e、noSkills、显式静态来源限制。
+- [x] 验证fresh启动没有Trellis子进程/项目写入，错误cwd不注入；不以mock command列表替代真实SDK。
+- [x] focused、full与独立check后阶段提交（代码、manifest、耦合tests一同）。
 
 ```bash
 env -u TRELLIS_CONTEXT_ID node --import ./tests/host-tui.mjs --test tests/skill-resources.test.mjs tests/project-activation.test.mjs tests/project-activation-host.test.mjs tests/agent-context-integration.test.mjs tests/init-command.test.mjs tests/worktree-protocol.test.mjs
@@ -66,3 +66,7 @@ Markdown相对links/anchors含untracked文件用本仓现有或临时只读检�
 ## Stage 1 验证与检查点
 
 主最终122/122，补充38/38；独立自修后130/130自然exit0、display mode12/12，主核实际diff及报告接受Stage1。静态skills仍属于后续Stage2。检查点hash提交后记录，不含部署runtime/workflow并行修改。
+
+## Stage 2 验证与检查点
+
+独立最终full442/442自然exit0（bj0baztlt），focused95/95，主核自修scope+async revalidation及实际SDK断言后接受。Stage1hash568634f；Stage2提交后记录hash。未PTY/provider/持久会话switch/resume端到端，保留mock会话生命周期和真实SDKreload证据边界。
