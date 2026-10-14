@@ -4,7 +4,7 @@
 
 `resources/runtime-baseline.json` schema v1 记录固定 **Trellis 0.6.16** 来源。原项目 28 个 Python 文件与已安装 npm release 的 `dist/templates/trellis/scripts/` 逐字节比较；包只收录五个支持入口及 AST import closure（24 个原文件），不含未使用的 cli_adapter.py/task_queue.py/root __init__.py/hooks/linear_sync.py。Manifest 保留完整原始 SHA-256 inventory，不声称已核上游 Git revision。
 
-Trellis 派生 entries/common 保留 **AGPL-3.0-only**、Mindfold LLC attribution 与修改声明，完整许可在 `licenses/trellis-AGPL-3.0.txt`。新增 `common/task_records.py` 属 AGPL 适配。Native `runtime/pi_trellis_worktree/`、worktree.py、private query-worktree.py 保持原创 **MIT**：最初从 python/ 字节一致迁入，后续修改保留原始 source hash/revision，记录不同 output hash 与 `modified: true`。角色来源是独立 **0.6.17**，见 [agent-baseline.json](agent-baseline.json)，不能混版本。
+Trellis 派生 entries/common 保留 **AGPL-3.0-only**、Mindfold LLC attribution 与修改声明，完整许可在 `licenses/trellis-AGPL-3.0.txt`。新增 `common/task_records.py` 属 AGPL 适配。Native `runtime/pi_trellis_worktree/`、worktree.py、private query-worktree.py 保持原创 **MIT**：最初从 python/ 字节一致迁入，后续修改保留原始 source hash/revision，记录不同 output hash 与 `modified: true`。角色来源是独立 **0.6.17**，见 [角色基线](../resources/agent-baseline.json)，不能混版本。
 
 每个 runtime 文件有 sourceSha256、最终 sha256、source path、origin、license。Release ID 是 `pi-trellis-runtime-v1-` 加 compact sorted JSON `{schemaVersion, files: {path: outputHash}}` 的 SHA-256，package version 本身不授权部署。Python **3.10** 是 AST feature_version=(3,10) 与内存编译核验的语法下限；执行证据是 macOS/Python 3.14.7，不是完整 3.10–3.14 或 Windows 测试矩阵。
 

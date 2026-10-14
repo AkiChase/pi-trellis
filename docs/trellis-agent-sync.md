@@ -6,7 +6,7 @@
 
 用户在 2026-10-12 授权修正上游文档中不正确或不适用于 Pi 的说明。保留职责、递归保护、实施/自修复/研究持久化原则和报告结构；正文差异集中在平台接口、安全边界与不完整上下文处理。
 
-来源与产物 SHA-256 见 [`agent-baseline.json`](agent-baseline.json)，转换实现见 [`scripts/sync-agents.mjs`](../scripts/sync-agents.mjs)。转换遇到不匹配的上游段落即失败，不静默生成未审核版本。
+来源与产物 SHA-256 见 [`resources/agent-baseline.json`](../resources/agent-baseline.json)，转换实现见 [`scripts/sync-agents.mjs`](../scripts/sync-agents.mjs)。转换遇到不匹配的上游段落即失败，不静默生成未审核版本。
 
 上游：<https://github.com/mindfold-ai/Trellis>
 

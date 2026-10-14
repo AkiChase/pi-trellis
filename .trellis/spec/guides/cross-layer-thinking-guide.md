@@ -13,7 +13,7 @@ Use this guide for changes spanning Pi events, Python CLI/pointers, JSONL/artifa
 | Source task/config → Git plan → authoritative binding + target marker → task-only prepare → target pointer/readiness | `runtime/pi_trellis_worktree/{manager,records,materials}.py`, shared host persistence in `lib/bindings.ts`; worktree/preparation tests |
 | Ready target → source-host role config → lease → public spawn cwd/off → provider ID/terminal event → snapshot/status | `lib/subagent-rpc.ts`, `lib/executions.ts`; `tests/dispatch.test.mjs` |
 | Approved clean target + preserving reference → ancestry/ignored-risk preview → ordinary Git removal → unbind | `runtime/pi_trellis_worktree/manager.py:remove`; cleanup cases in `tests/preparation.test.mjs` |
-| Fixed upstream Claude docs → adaptation/full hashes → approved resource publication | `scripts/sync-agents.mjs`, `docs/agent-baseline.json`, `lib/initialization/{engine,resources,adoption}.ts`; agent document/initialization tests |
+| Fixed upstream Claude docs → adaptation/full hashes → approved resource publication | `scripts/sync-agents.mjs`, `resources/agent-baseline.json`, `lib/initialization/{engine,resources,adoption}.ts`; agent document/initialization tests |
 | Explicit package install → confirmed initialization/resource publication | `scripts/install.sh`, `lib/initialization/`; installer/initialization tests; native-only development deployment remains separate |
 | Authorized historical patch tooling → focused active-task patch | `scripts/patch-trellis.py`; `tests/trellis-patches.test.mjs`; not part of current installation |
 

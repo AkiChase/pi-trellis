@@ -2,7 +2,7 @@
 
 ## Baseline and Source Evidence
 
-Bundled `agents/trellis-{implement,check,research}.md` derive from **`@mindfoldhq/trellis@0.6.17` generated `.claude/agents/`**, not verbatim official Pi assets. `docs/agent-baseline.json` records version, platform `claude`, adaptation date and full source/adapted SHA-256 per role. `docs/trellis-agent-sync.md` records the fixed npm artifact integrity and generation procedure. No verified upstream commit is asserted because npm gitHead was unavailable.
+Bundled `agents/trellis-{implement,check,research}.md` derive from **`@mindfoldhq/trellis@0.6.17` generated `.claude/agents/`**, not verbatim official Pi assets. `resources/agent-baseline.json` records version, platform `claude`, adaptation date and full source/adapted SHA-256 per role. `docs/trellis-agent-sync.md` records the fixed npm artifact integrity and generation procedure. No verified upstream commit is asserted because npm gitHead was unavailable.
 
 Use source/tests and `README.md` for current runtime/worktree behavior. The provenance doc's older worktree-plan/future-verification wording is historical context, not permission to override today's implemented ready/RPC/occupancy contract.
 
@@ -16,7 +16,7 @@ Use source/tests and `README.md` for current runtime/worktree behavior. The prov
 - Check includes staged/untracked and explicitly supplied `Review base` committed diffs, fixes only clear in-scope issues and validates the final version.
 - Research persists findings under active task `research/`, uses only actually available external tools and reports missing access instead of inventing citations.
 
-`synchronize(sourceDirectory, check)` adapts all three roles, computes source/output hashes and writes bundled documents plus `docs/agent-baseline.json`, or compares them in check mode:
+`synchronize(sourceDirectory, check)` adapts all three roles, computes source/output hashes and writes bundled documents plus `resources/agent-baseline.json`, or compares them in check mode:
 
 ```bash
 node scripts/sync-agents.mjs <fixed-version-generated-.claude/agents> --check

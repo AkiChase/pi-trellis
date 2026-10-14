@@ -6,7 +6,7 @@ import { adaptAgent } from "../scripts/sync-agents.mjs";
 
 const root = new URL("../", import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), "utf8");
-const baseline = JSON.parse(read("docs/agent-baseline.json"));
+const baseline = JSON.parse(read("resources/agent-baseline.json"));
 function agent(role) {
   const text = read(`agents/trellis-${role}.md`);
   const header = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(text);

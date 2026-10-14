@@ -80,7 +80,7 @@ export function synchronize(sourceDirectory, check = false) {
       if (readFileSync(dest, "utf8") !== adapted) throw new Error(`${role}: adapted document differs`);
     } else writeFileSync(dest, adapted);
   }
-  const manifestPath = new URL("docs/agent-baseline.json", root);
+  const manifestPath = new URL("resources/agent-baseline.json", root);
   if (check) {
     if (JSON.stringify(JSON.parse(readFileSync(manifestPath, "utf8"))) !== JSON.stringify(manifest)) throw new Error("Baseline manifest differs");
   } else writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);

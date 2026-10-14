@@ -50,7 +50,7 @@
 
 ## Manifest 与来源
 
-`resources/runtime-baseline.json` 是运行时来源/产物与 release identity；template/skill-baseline 保存 curated resource hashes/licensing；`docs/agent-baseline.json` 独立记录角色来源。来源与许可详见[运行时基线](runtime-baseline.md)。
+`resources/runtime-baseline.json` 是运行时来源/产物与 release identity；template/skill-baseline 保存 curated resource hashes/licensing；`resources/agent-baseline.json` 独立记录角色来源。来源与许可详见[运行时基线](runtime-baseline.md)。
 
 项目 `.trellis/.pi-trellis.json` schemaVersion 2 恰有 `schemaVersion`、`runtimeReleaseId`、`files`、`templates` 四字段；替换未发布 schema 1，无 schema-1 fallback 或通用迁移 API。Runtime baseline 自身 schema/release ID 不变。
 

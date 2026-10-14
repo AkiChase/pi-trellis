@@ -123,7 +123,7 @@ export function packageResources(): InstalledManifest["files"] {
 		const source = `runtime/${path}`;
 		files[`.trellis/scripts/${path}`] = { sha256: record.sha256, mode: lstatSync(checkedPath(packageRoot, source)).mode & 0o777, kind: "runtime", source };
 	}
-	const agents = JSON.parse(readFileSync(join(packageRoot, "docs/agent-baseline.json"), "utf8"));
+	const agents = JSON.parse(readFileSync(join(packageRoot, "resources/agent-baseline.json"), "utf8"));
 	for (const role of ["implement", "check", "research"]) {
 		const source = `agents/trellis-${role}.md`, sha256 = digest(readFileSync(checkedPath(packageRoot, source)));
 		if (sha256 !== agents.files[role]?.adapted) throw new Error(`Package role hash mismatch: ${role}`);
