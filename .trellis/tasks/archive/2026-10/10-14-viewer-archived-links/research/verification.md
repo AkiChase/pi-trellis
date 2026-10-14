@@ -14,4 +14,4 @@
 无独立 reviewer，采用先前明确的主会话自检路径。无 lint/typecheck 命令，无真实 PTY 或 live reload；不安装/push/archive。此次是局部功能契约，已有通用 containment/只读/错误规范适用，更新 docs/task-viewer.md，不新增功能性 spec。
 
 ## 提交边界
-单阶段仅 reader、reader tests、viewer 文档和本任务材料。并行 dispatch/runtime-tool-names 修改不进入提交。任务仍 in_progress，等待用户实际验收与收尾授权。
+单阶段仅 reader、reader tests、viewer 文档和本任务材料。并行 dispatch/runtime-tool-names 修改不进入提交。实施检查点：`db7be05`。用户随后明确“收尾吧”，接受交付并授权本任务归档、会话解绑和日志记录；不授权 push。
