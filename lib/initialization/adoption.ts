@@ -1,6 +1,6 @@
 import { closeSync, lstatSync, mkdirSync, openSync, readFileSync, readdirSync, unlinkSync } from "node:fs";
 import { dirname } from "node:path";
-import { checkedPath, defaultTemplates, digest, inspect, journalAttributes, packageResources, packageRoot, projectRevision, replaceBlock, template, verifyRuntime, type Fingerprint, type InstalledManifest } from "./engine.ts";
+import { checkedPath, defaultTemplates, digest, inspect, journalAttributes, packageResources, packageRoot, projectRevision, replaceBlock, template, validateManifest, verifyRuntime, type Fingerprint, type InstalledManifest } from "./engine.ts";
 import { atomicFile, equal, read, stamp } from "./resources.ts";
 
 const MANIFEST = ".trellis/.pi-trellis.json", LOCK = ".trellis/.runtime/init.lock", OPERATION = ".trellis/.runtime/init-operation.json";
@@ -16,6 +16,9 @@ export function adoptPlan(rootInput: string): AdoptPlan {
  const state = inspect(rootInput), root = state.root;
  if (state.state !== "unsupported" || state.diagnostics.some(d => d.includes("lock exists"))) throw new Error(`Adoption requires an existing manifest-less source project. ${state.diagnostics.join(" ")}`);
  if (read(root, MANIFEST) || read(root, OPERATION)) throw new Error("Existing manifest or initialization operation requires explicit reconciliation before adoption");
+ // An existing lock is never removed or guessed stale, independently of the inspection diagnostic text.
+ try { lstatSync(checkedPath(root, LOCK)); throw new Error("Initialization lock exists; inspect its owner before adopting"); }
+ catch (e) { if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e; }
  const value: AdoptPlan = { root, releaseId: state.releaseId, rows: [], changes: [], guards: { [MANIFEST]: null, [OPERATION]: null }, manifest: { schemaVersion: 2, runtimeReleaseId: state.releaseId, files: packageResources(), templates: {} }, legacy: [] };
  const revision = projectRevision(root);
  function add(path: string, data: Buffer, mode: number, label: string) {
@@ -40,8 +43,8 @@ export function adoptPlan(rootInput: string): AdoptPlan {
   }
  }
  for (const [path, source, start, end] of [["AGENTS.md", "agents-block.md", "<!-- TRELLIS:START -->", "<!-- TRELLIS:END -->"], [".gitignore", "root.gitignore-block.txt", "# pi-trellis:ignore:start", "# pi-trellis:ignore:end"]]) {
-  const before = stamp(root, path);
-  add(path, replaceBlock(read(root, path), template(source), start, end), before?.mode ?? 0o644, before ? "Replace block" : "Create");
+  const before = stamp(root, path), existing = read(root, path);
+  add(path, replaceBlock(existing, template(source), start, end), before?.mode ?? 0o644, existing?.includes(start) ? "Replace block" : before ? "Append block" : "Create");
  }
  add(".gitattributes", journalAttributes(read(root, ".gitattributes"), template("journal.gitattributes")), stamp(root, ".gitattributes")?.mode ?? 0o644, "Append journal attribute");
  function legacy(path: string) { value.legacy.push(path); }
@@ -50,9 +53,10 @@ export function adoptPlan(rootInput: string): AdoptPlan {
  }
  let visited = 0;
  function scan(path: string, depth = 0) {
-  if (++visited > 4096 || depth > 32) throw new Error("Legacy script inventory exceeds safety bound; inspect manually");
+  if (depth > 32) throw new Error("Legacy script inventory exceeds safety bound; inspect manually");
   try {
    for (const entry of readdirSync(checkedPath(root, path), { withFileTypes: true })) {
+    if (++visited > 4096) throw new Error("Legacy script inventory exceeds safety bound; inspect manually");
     const child = `${path}/${entry.name}`;
     if (entry.isSymbolicLink()) { legacy(child); continue; }
     if (entry.isDirectory()) scan(child, depth + 1);
@@ -61,6 +65,8 @@ export function adoptPlan(rootInput: string): AdoptPlan {
   } catch (e) { if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e; }
  }
  scan(".trellis/scripts");
+ // The authoritative validator must accept the manifest before any write, not only after publication.
+ validateManifest(value.manifest);
  return value;
 }
 function signature(value: AdoptPlan): string { return digest(JSON.stringify({ ...value, changes: value.changes.map(c => ({ ...c, data: c.data.toString("base64") })) })); }
@@ -94,6 +100,7 @@ export function applyAdoptPlan(value: AdoptPlan, options: { afterWrite?: (path: 
   const result = inspect(root);
   if (!["ready", "supported"].includes(result.state)) throw new Error("Adoption result did not verify");
   return result;
- } catch (error) { throw new Error(`${String(error)}\nPartial files are preserved; no backups or rollback. If no manifest was published, review /trellis-init and confirm adoption again.`); }
- finally { unlinkSync(checkedPath(root, LOCK)); }
+ } catch (error) { throw new Error(`${String(error)}\nPartial files are preserved; no backups or rollback. If no manifest was published, review /trellis-init and confirm adoption again.`, { cause: error }); }
+ // Only the lock created above is released; a missing lock must not mask the original failure.
+ finally { try { unlinkSync(checkedPath(root, LOCK)); } catch (e) { if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e; } }
 }

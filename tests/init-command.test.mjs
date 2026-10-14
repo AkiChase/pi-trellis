@@ -87,6 +87,8 @@ test('update restores missing resources with confirmation and status contains pe
 });
 
  test('Adopt native menu confirms once, cancels read-only, then reloads with supported runtime',async t=>{
- const f=fixture(t);mkdirSync(join(f.root,'.trellis'));f.selections.push('Adopt existing project','Cancel');await f.run('');assert.ok(!existsSync(join(f.root,'.trellis/.pi-trellis.json')));assert.deepEqual(f.dialogs.at(-1).options,['Cancel','Adopt existing project']);assert.match(f.dialogs.at(-1).title,/without backups/);
- f.selections.push('Adopt existing project','Adopt existing project');await f.run('');assert.equal(inspect(f.root).state,'supported');assert.equal(f.reloads,1);assert.equal(f.refreshes,1);assert.match(f.notices.at(-1).text,/Project adopted/);
+ const f=fixture(t);mkdirSync(join(f.root,'.trellis'));writeFileSync(join(f.root,'.trellis/workflow.md'),'legacy workflow');
+ await f.run('--check');assert.match(f.notices.at(-1).text,/Adopt existing project/);assert.match(f.notices.at(-1).text,/Preserve  \.trellis\/workflow\.md/);assert.equal(f.dialogs.length,0);assert.deepEqual(readdirSync(join(f.root,'.trellis')),['workflow.md']);
+ f.selections.push('Adopt existing project','Cancel');await f.run('');assert.ok(!existsSync(join(f.root,'.trellis/.pi-trellis.json')));assert.deepEqual(f.dialogs.at(-1).options,['Cancel','Adopt existing project']);assert.match(f.dialogs.at(-1).title,/without backups/);assert.equal(f.reloads,0);assert.equal(f.refreshes,0);
+ f.selections.push('Adopt existing project','Adopt existing project');await f.run('');assert.equal(inspect(f.root).state,'supported');assert.equal(f.reloads,1);assert.equal(f.refreshes,1);assert.match(f.notices.at(-1).text,/Project adopted/);assert.equal(readFileSync(join(f.root,'.trellis/workflow.md'),'utf8'),'legacy workflow');
  });

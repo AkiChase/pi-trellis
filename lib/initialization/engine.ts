@@ -136,7 +136,7 @@ export function defaultTemplates(): Record<string, Fingerprint & { origin: "pack
 		origin: "package-default", sha256: digest(template(source)), mode: 0o644, source: `resources/templates/${source}`,
 	}]));
 }
-function validateManifest(manifest: unknown): asserts manifest is InstalledManifest {
+export function validateManifest(manifest: unknown): asserts manifest is InstalledManifest {
 	fields(manifest, ["schemaVersion", "runtimeReleaseId", "files", "templates"], "project resource manifest");
 	if (manifest.schemaVersion !== 2 || manifest.runtimeReleaseId !== runtimeBaseline().releaseId || !object(manifest.files) || !object(manifest.templates)) throw new Error("Unsupported project runtime release; explicit upgrade is not available");
 	const expected = packageResources();
@@ -258,9 +258,10 @@ export function appendBlock(original: Buffer | undefined, block: Buffer, start: 
 export function replaceBlock(original: Buffer | undefined, block: Buffer, start: string, end: string): Buffer {
 	const value = original ?? Buffer.alloc(0), first = value.indexOf(start), last = value.indexOf(end);
 	if (first === -1 && last === -1) return appendBlock(original, block, start, end);
-	if (first === -1 || last < first || value.indexOf(start, first + start.length) !== -1 || value.indexOf(end, last + end.length) !== -1) throw new Error("Existing managed block is repeated, incomplete or malformed");
+	// Repeat detection searches from the next byte so self-overlapping marker spellings also conflict.
+	if (first === -1 || last < first || value.indexOf(start, first + 1) !== -1 || value.indexOf(end, last + 1) !== -1) throw new Error("Existing managed block is repeated, incomplete or malformed");
 	const prefix = value.subarray(0, first), suffix = value.subarray(last + Buffer.byteLength(end));
-	if (/TRELLIS:|pi-trellis:ignore:/.test(Buffer.concat([prefix, suffix]).toString("utf8"))) throw new Error("Unknown managed block marker outside owned block");
+	if ([prefix, suffix].some(part => /TRELLIS:|pi-trellis:ignore:/.test(part.toString("utf8")))) throw new Error("Unknown managed block marker outside owned block");
 	return Buffer.concat([prefix, Buffer.from(block.toString("utf8").trimEnd()), suffix]);
 }
 export function projectRevision(root: string): string | null {

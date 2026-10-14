@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/extension/index.md", "reason": "Layer entry for lib/initialization changes and its pre-development checklist"}
+{"file": ".trellis/spec/extension/architecture.md", "reason": "Initialization ownership, path/containment contracts and failure boundaries for adoption"}
+{"file": ".trellis/spec/extension/quality-guidelines.md", "reason": "Required test commands, fixture rules and verification-limit reporting"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Manifest/provenance and preview-vs-publication boundary review questions"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Reuse boundaries for shared engine/resources primitives newly exported for adoption"}
+{"file": "docs/initialization.md", "reason": "Public initialization/adoption contract that this task modified"}

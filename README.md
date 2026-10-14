@@ -37,6 +37,15 @@ hooks, model turn, Git action or dependency installation. Supported clones missi
 identity can reuse historical usernames/journals and create/reuse `00-join-<slug>`;
 existing different identity is a conflict, not a silent switch. No frontend/backend rules,
 project-type detection, multiple-package setup, remote templates or arbitrary upstream migration.
+
+An existing `.trellis/` project without a managed manifest offers **Adopt existing project**:
+one confirmation lists Install/Replace/Create/Preserve/Current resources plus legacy paths
+left in place. Adoption installs the fixed runtime and roles, replacing older copies and the
+`AGENTS.md`/`.gitignore` managed blocks without backups, while leaving existing workflow,
+config, spec, tasks, journals and identity byte-identical; the eight template targets that
+already exist are recorded as `preserved-project` provenance instead of being written.
+Nothing is deleted, no onboarding task is created, and identity setup stays a separate step.
+This is the only supported adoption path; there is still no general upstream migration.
 Existing managed projects can review resource updates or restore missing resources
 through `/trellis-init`. Status shows per-file health and installed/available versions.
 Healthy existing projects also offer **Apply template**: choose Workflow, Spec, or both,

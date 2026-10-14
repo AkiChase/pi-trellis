@@ -3,7 +3,9 @@
 ## Commands and ownership
 
 `/trellis-init [--user <name>] [--check | --help]` is registered even without a
-`.trellis` directory. Only native UI confirmation authorizes publication; no-UI
+`.trellis` directory. Adoption of an existing manifest-less project is an explicit
+menu action, not an automatic migration; see "Adopting an existing project".
+Only native UI confirmation authorizes publication; no-UI
 invocation returns a custom status message without a model turn or writes.
 Unknown/repeated/missing parameters fail first. No force, arbitrary upstream
 migration or non-interactive write protocol is provided.
@@ -30,6 +32,45 @@ last. It is per-file atomic, not a multi-file transaction: interrupted writes ar
 retry accepts exact new package bytes as already applied, not arbitrary changes. Old
 completed init records are retained as audit history outside live initialization recovery.
 Successful changes refresh host state and reload resources. `--check` is read-only.
+
+## Adopting an existing project
+
+`lib/initialization/adoption.ts` owns the only supported path from an existing
+`.trellis/` project without a managed manifest (`unsupported`) to a managed one.
+`adoptPlan()` is read-only and requires that state: a published manifest, an
+initialization operation record, an existing lock, a managed worktree binding, HOME,
+an unsupported Python, or any symlinked/nonregular managed path refuses before writes.
+
+One native confirmation lists every row: `Install`/`Replace` for the 35 runtime and role
+paths, `Create` for missing bundled templates, `Preserve` for existing template targets,
+`Current` for already-identical bytes and mode, `Replace block`/`Append block`/`Create`/
+`Append journal attribute` for root files, and `Legacy — left in place` for `.trellis/.version`,
+`.trellis/.template-hashes.json`, `.pi/.pi-trellis-hashes.json`, `.trellis/agents` and
+non-inventory `.trellis/scripts` entries. The legacy inventory is bounded (recursion depth and
+total entry caps, symlinks listed rather than followed) and omitted counts are reported.
+
+Adoption **replaces** older runtime/role copies and the `AGENTS.md`/`.gitignore` managed
+blocks **without backups**, by explicit user decision. When a marker is present,
+`replaceBlock()` requires exactly one well-formed pair, rewrites only the marked region and
+preserves the surrounding bytes; a root file with no marker is appended through the existing
+strict `appendBlock()` rule, and repeated, incomplete, malformed or unknown markers are
+rejected. Adoption keeps the original file mode and never deletes anything. Existing template
+targets are not written: their provenance becomes
+`preserved-project` with the actual fingerprint and the project Git revision (or `null`).
+Identity, tasks, journals, project spec files and config remain byte-identical, and no
+bootstrap/onboarding task is created; a project without identity becomes `supported` and
+reuses the existing identity flow. The planned manifest must satisfy the authoritative
+manifest validator while the plan is still read-only, before any file is written.
+
+`applyAdoptPlan()` rebuilds and compares the plan signature, takes the shared
+`init.lock`, rechecks every guard before each write, publishes the manifest last, and then
+requires `verifyRuntime()` plus a `ready`/`supported` inspection. No operation record is
+written: because the manifest publishes last, an interrupted adoption leaves the project
+unsupported with already-written resources retained, and the next preview reports them as
+`Current` so an explicit reconfirmation completes the work. Failure messages state that
+partial files are preserved with no backups or rollback. `--check` and `View project status`
+report the adoption preview read-only, and degrade to the plain inspection summary when the
+project cannot be adopted.
 
 ## Explicit template adoption
 
@@ -112,7 +153,8 @@ historical deployment or permission to overwrite user edits; current template
 bytes need not match it, and an initially absent target may remain absent.
 Managed template paths/ancestors still reject symlinks/nonregular targets.
 Public init cannot request preserved provenance or initialize a manifest-less
-legacy project. Supported clone identity setup preserves the entire existing
+legacy project; that project uses the separate explicit adoption action, which is
+the only producer of `preserved-project` provenance. Supported clone identity setup preserves the entire existing
 manifest and project templates. Unknown/custom role definitions collide during
 fresh init and are preserved.
 

@@ -92,7 +92,12 @@ export function registerInitCommand(pi: ExtensionAPI, refresh: (ctx: ExtensionCo
 				const parsed = parseInitArguments(args);
 				if (parsed.help) { notify(INIT_HELP); return; }
 				const state = inspect(ctx.cwd);
-				const health = () => state.state === "unsupported" ? adoptionSummary(adoptPlan(state.root)) : resourceStatus(state.root);
+				// Status stays read-only and never throws: an unadoptable project still reports its state.
+				const health = () => {
+					if (state.state !== "unsupported") return resourceStatus(state.root);
+					try { return adoptionSummary(adoptPlan(state.root)); }
+					catch (error) { return `${statusSummary(state)}\nAdoption is not available: ${String(error)}\nNo files changed.`; }
+				};
 				if (parsed.check || !ctx.hasUI) { notify(health() + (!ctx.hasUI ? "\nUse /trellis-init in interactive or RPC UI to review and confirm writes." : "")); return; }
 				if (state.developer && parsed.user && parsed.user !== state.developer) throw new Error(`Developer conflict: actual ${state.developer}; requested ${parsed.user}. Existing identity preserved.`);
 				if (state.state === "unsupported") {
