@@ -26,7 +26,7 @@
 - [x] 不越过验收、用户 no-commit、配置 false、并行范围、push 边界；未完成任务不归档。
 - [x] focused workflow/skills/初始化/runtime 检查及 full suite 通过；记录实际限制。
 - [x] 包来源 hash 校验、diff whitespace 通过；本任务未修改已部署资源或并行工作。
-- [ ] 修正提交与 Session 7、8 日志提交分离，检查各提交准确范围。
+- [x] 修正提交与 Session 7、8 日志提交分离，检查各提交准确范围。
 
 ## 单阶段与验证
 
@@ -53,3 +53,5 @@ git diff --check
 - `task.py validate` 报 implement/check 两个有意为空的 manifest 错误，与 direct/self-review 路径相符，不称完整 validate 成功。
 - Spec 评估：现有 installation-and-patching 归属/验证规范仍适用，本次完整操作策略在 skill/workflow，有对应 regression，无需复制策略到 spec。
 - 并行 apply-project-template 在验证中继续修改 README/docs/init/tests 等；本任务未动这些文件或部署资源，不将它们纳入提交。
+- Checkpoint：`8e5aa2d` 仅包策略、两份 hash、回归测试和本任务材料；`8bc285a` 仅用户追加授权的 workspace 两文件 Session 7、8 残留（68 insertions/2 deletions）。最终两文件相对 HEAD 干净，其他并行修改仍保留。
+- 实施与提交验收项均完成；未运行本任务 archive/deactivate/add_session，未 install/sync/reload/push。任务保持 in_progress 等待收尾。
