@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 6
+- **Total Sessions**: 8
 - **Last Active**: 2026-10-14
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~157 | Active |
+| `journal-1.md` | ~221 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,8 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 8 | 2026-10-14 | 澄清 Trellis 解绑与收尾命名 | `74670d7` | `main` |
+| 7 | 2026-10-14 | Trellis task browser delivery | `b3880c4` | `main` |
 | 6 | 2026-10-14 | Trellis workflow 轻量执行与阶段提交 | `0eafefb` | `main` |
 | 5 | 2026-10-14 | 完成 Pi 专用 Trellis 独立发行 | `d738148`, `2e8e73c`, `c9bacda`, `158991a`, `3114a23` | `main` |
 | 4 | 2026-10-13 | Worktree 材料同步与渐进式协议 | `f965687` | `main` |

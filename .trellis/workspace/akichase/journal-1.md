@@ -155,3 +155,67 @@ Kept widget/footer visible without an active task, added themed unfinished proje
 ### Status
 
 [OK] **Completed**
+
+
+## Session 7: Trellis task browser delivery
+<!-- trellis-session: v=2 fp=f2449a403a68320e -->
+
+**Date**: 2026-10-14
+**Task**: Trellis task browser delivery
+**Branch**: `main`
+
+### Summary
+
+完成只读 /trellis-task 列表与 Markdown 详情，独立检查修复四类问题；整仓 336/336 通过，用户确认真实终端验收通过，任务已归档。
+
+### Main Changes
+
+- English UI with original-language task documents, keyboard navigation and refresh
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b3880c4` | feat: add read-only Trellis task browser |
+
+### Testing
+
+- [OK] 39 browser tests and final full suite 336/336 passed; user real-terminal acceptance passed
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- No pending work for task browser; no push/install/reload performed
+
+
+## Session 8: 澄清 Trellis 解绑与收尾命名
+<!-- trellis-session: v=2 fp=254cb2f778cb6458 -->
+
+**Date**: 2026-10-14
+**Task**: 澄清 Trellis 解绑与收尾命名
+**Branch**: `main`
+
+### Summary
+
+轻量任务完成：finish 无兼容改为 deactivate，hook 改为 after_deactivate，更新包 help/skills/workflow/test/hash；独立复查通过，最终全仓 337/337。74670d7 已提交，任务已归档；未同步项目部署资源，留给用户验证 init Update resources。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `74670d7` | refactor: rename task unbinding to deactivate |
+
+### Testing
+
+- [OK] Focused 93/93; final full 337/337; independent read-only review passed
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 用户自行验证 init Update resources；本轮未安装、同步、reload 或 push
