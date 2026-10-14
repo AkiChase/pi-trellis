@@ -9,6 +9,7 @@ import { manageWorktree } from './worktree-fixture.mjs';
 import { registerDispatchTool } from '../lib/subagent-rpc.ts';
 import { readExecution } from '../lib/executions.ts';
 import { apply, plan } from '../lib/initialization/engine.ts';
+import { readSourceExecution } from '../lib/source-executions.ts';
 import { readBinding } from '../lib/bindings.ts';
 
 function fixture(t) {
@@ -31,15 +32,15 @@ function fixture(t) {
  registerDispatchTool(pi,async()=>task);
  const replies=[];
  bus.on('subagents:rpc:ping',({requestId})=>bus.emit('subagents:rpc:ping:reply:'+requestId,{success:true,data:{version:2}}));
- let seq=0, spawnFailure;
- bus.on('subagents:rpc:spawn',params=>{replies.push(params);bus.emit('subagents:rpc:spawn:reply:'+params.requestId,spawnFailure ? {success:false,error:spawnFailure} : {success:true,data:{id:'agent-'+(++seq)}});});
+ let seq=0, spawnFailure, dropReply=false;
+ bus.on('subagents:rpc:spawn',params=>{replies.push(params);if(dropReply)return;bus.emit('subagents:rpc:spawn:reply:'+params.requestId,spawnFailure ? {success:false,error:spawnFailure} : {success:true,data:{id:'agent-'+(++seq)}});});
  const call=input=>tools.get('trellis_dispatch').execute('tool',input,undefined,undefined,{cwd:root});
  const dispatch=(agent='trellis-implement')=>call({agent,prompt:'work'});
- return {root,task,put,run,dispatch,call,bus,replies,handlers,git,failSpawn:error=>{spawnFailure=error;}};
+ return {root,task,put,run,dispatch,call,bus,replies,handlers,git,failSpawn:error=>{spawnFailure=error;},dropReply:()=>{dropReply=true;}};
 }
 
 test('dispatch requires ready, uses target cwd/off, returns real id and prevents same-dir overlap',async t=>{
- const f=fixture(t);await assert.rejects(f.dispatch(),/ready worktree/);const c=await f.run();
+ const f=fixture(t);const c=await f.run();
  await assert.rejects(f.dispatch(),/ready worktree/);await f.run({action:'prepare'});
  const first=await f.dispatch();assert.equal(first.details.agentId,'agent-1');
  assert.equal(f.replies[0].options.cwd,c.binding.worktreePath);assert.equal(f.replies[0].options.isolation,'off');
@@ -76,6 +77,7 @@ test('changed target pointer or incompatible customized agent rejected without R
  const f=fixture(t),c=await f.run();await f.run({action:'prepare'});
  f.put('.pi/agents/trellis-implement.md','---\nname: trellis-implement\nisolation: worktree\n---\n');
  await assert.rejects(f.dispatch(),/conflicts/);assert.equal(f.replies.length,0);
+ f.put('.pi/agents/trellis-implement.md','---\nname: trellis-implement\ntools: read, write, edit, bash, find, grep\nextensions: true\nisolation: off\n---\nRole\n');
  writeFileSync(join(c.binding.worktreePath,'.trellis/.runtime/sessions',c.binding.contextId+'.json'),'{"current_task":".trellis/tasks/other"}');
  await assert.rejects(f.dispatch(),/does not match|Trellis CLI failed/);assert.equal(f.replies.length,0);
 });
@@ -183,4 +185,105 @@ test('supported source/target release mismatch rejects before provider ping/spaw
 
 test('valid multiline dispatch prose retains exact lines on supported real runtime',async t=>{
  const f=fixture(t),c=await f.run();await f.run({action:'prepare'});await f.call({agent:'trellis-implement',prompt:'First line\n\tSecond line'});assert.match(f.replies[0].prompt,/First line\n\tSecond line/);assert.equal(readExecution(c.binding).agentId,'agent-1');
+});
+
+const sourceRecord=f=>readSourceExecution({sourceRoot:f.root,repositoryIdentity:f.git('rev-parse','--git-common-dir').startsWith('/')?f.git('rev-parse','--git-common-dir'):join(f.root,f.git('rev-parse','--git-common-dir')),taskDir:f.task});
+test('unbound source dispatch uses shared cwd, current materials, no binding and per-task overlap',async t=>{
+ const f=fixture(t);f.put(f.task+'/prd.md','UNCOMMITTED source material');
+ const first=await f.dispatch();assert.equal(first.details.mode,'source');assert.equal(first.details.cwd,f.root);
+ assert.equal(f.replies[0].options.cwd,f.root);assert.equal(f.replies[0].options.isolation,'off');
+ assert.match(f.replies[0].prompt,/UNCOMMITTED source material/);assert.match(f.replies[0].prompt,/Shared directory: Other agents/);
+ assert.doesNotMatch(f.replies[0].prompt,/Review base:|Trellis material revision:/);assert.equal(readBinding(f.root,f.task),undefined);
+ await assert.rejects(f.dispatch(),/running\/unknown/);await assert.rejects(f.run(),/source execution/);
+ const other='.trellis/tasks/other';f.put(other+'/task.json','{"status":"in_progress"}');f.put(other+'/prd.md','Other');f.put(other+'/implement.jsonl','{"file":".trellis/spec/spec.md"}');
+ const second=await f.call({task:other,agent:'trellis-implement',prompt:'other work'});assert.equal(second.details.agentId,'agent-2');
+ assert.equal(sourceRecord(f).state,'running');f.bus.emit('subagents:completed',{id:'agent-1'});assert.equal(sourceRecord(f).state,'completed');
+ await f.dispatch('trellis-check');assert.equal(sourceRecord(f).agentId,'agent-3');
+ f.bus.emit('subagents:completed',{id:'agent-1'});assert.equal(sourceRecord(f).state,'running');
+});
+test('source early terminal, stop and shutdown preserve lifecycle truth',async t=>{
+ const f=fixture(t);f.bus.on('subagents:rpc:spawn',()=>f.bus.emit('subagents:completed',{id:'agent-1'}));
+ await f.dispatch();assert.equal(sourceRecord(f).state,'completed');
+ await f.dispatch();f.bus.on('subagents:rpc:stop',({requestId})=>f.bus.emit('subagents:rpc:stop:reply:'+requestId,{success:true}));
+ await f.call({action:'stop'});assert.equal(sourceRecord(f).state,'running');
+ f.handlers.get('session_shutdown')();assert.equal(sourceRecord(f).state,'unknown');
+});
+test('source dispatch status and lock-time binding changes reject before spawn',async t=>{
+ const f=fixture(t);f.put(f.task+'/task.json','{"status":"planning"}');await assert.rejects(f.dispatch(),/in_progress/);assert.equal(f.replies.length,0);
+ f.put(f.task+'/task.json','{"status":"in_progress"}');f.bus.on('subagents:rpc:ping',()=>f.put(f.task+'/task.json','{"status":"planning"}'));
+ await assert.rejects(f.dispatch(),/in_progress/);assert.equal(sourceRecord(f),undefined);
+});
+test('source ambiguous startup and shutdown during reply retain unknown',async t=>{
+ const f=fixture(t);f.failSpawn('ambiguous source spawn');await assert.rejects(f.dispatch(),/ambiguous/);assert.equal(sourceRecord(f).state,'unknown');await assert.rejects(f.dispatch(),/running\/unknown/);
+});
+test('source shutdown inside spawn retains returned real id without reviving lease',async t=>{
+ const f=fixture(t);f.bus.on('subagents:rpc:spawn',()=>f.handlers.get('session_shutdown')());await assert.rejects(f.dispatch(),/shut down during spawn/);
+ assert.equal(sourceRecord(f).state,'unknown');assert.equal(sourceRecord(f).agentId,'agent-1');
+});
+
+test('new host can request source stop and reconcile terminal evidence from disk',async t=>{
+ const f=fixture(t);await f.dispatch();f.handlers.get('session_shutdown')();assert.equal(sourceRecord(f).state,'unknown');
+ const tools=new Map();registerDispatchTool({events:f.bus,on:()=>{},registerTool:tool=>tools.set(tool.name,tool)},async()=>f.task);
+ f.bus.on('subagents:rpc:stop',({requestId,agentId})=>{assert.equal(agentId,'agent-1');f.bus.emit('subagents:rpc:stop:reply:'+requestId,{success:true});});
+ await tools.get('trellis_dispatch').execute('new',{action:'stop'},undefined,undefined,{cwd:f.root});assert.equal(sourceRecord(f).state,'unknown');
+ f.bus.emit('subagents:completed',{id:'agent-1'});assert.equal(sourceRecord(f).state,'completed');
+});
+test('source record reader interoperates with Python create preview and rejects malformed leases',async t=>{
+ const f=fixture(t);await f.dispatch();const record=sourceRecord(f);
+ const script=new URL('../runtime/query-worktree.py',import.meta.url).pathname;
+ assert.equal(JSON.parse(execFileSync('python3',['-B',script,'--cwd',f.root,'--task',f.task],{encoding:'utf8'})).ok,true);
+ await assert.rejects(f.run({confirm:false}),/source execution/);
+ f.bus.emit('subagents:completed',{id:'agent-1'});const preview=await f.run({confirm:false});assert.equal(preview.preview,true);
+});
+
+test('provider ping introducing a binding never switches an unbound dispatch silently',async t=>{
+ const f=fixture(t);f.bus.on('subagents:rpc:ping',()=>execFileSync('python3',['-B',join(f.root,'.trellis/scripts/worktree.py'),'create','--task',f.task,'--confirm'],{cwd:f.root,stdio:'pipe'}));
+ await assert.rejects(f.dispatch(),/became bound/);assert.equal(f.replies.length,0);assert.equal(sourceRecord(f),undefined);
+});
+
+test('lost source spawn reply retains unknown lease and refuses automatic retry',async t=>{
+ const f=fixture(t);f.dropReply();await assert.rejects(f.dispatch(),/timed out/);assert.equal(f.replies.length,1);assert.equal(sourceRecord(f).state,'unknown');assert.equal(sourceRecord(f).agentId,undefined);await assert.rejects(f.dispatch(),/running\/unknown/);assert.equal(f.replies.length,1);
+});
+
+test('invalid source execution blocks Python create before mutation and preserves record',async t=>{
+ const f=fixture(t);await f.dispatch();const r=sourceRecord(f);f.bus.emit('subagents:completed',{id:'agent-1'});
+ const name=new URL('../lib/source-executions.ts',import.meta.url);const {sourceExecutionFile}=await import(name.href);const file=sourceExecutionFile(r);
+ for(const raw of ['null',JSON.stringify({...r,ownerPid:0}),JSON.stringify({...r,version:true}),JSON.stringify({...r,taskDir:'.trellis/tasks/wrong'})]) {
+  writeFileSync(file,raw);await assert.rejects(f.run({confirm:false}));assert.equal(readFileSync(file,'utf8'),raw);assert.equal(readBinding(f.root,f.task),undefined);
+ }
+});
+
+test('terminal before new host first call reconciles cached evidence despite corrupt neighbor',async t=>{
+ const f=fixture(t);await f.dispatch();f.handlers.get('session_shutdown')();
+ const tools=new Map();registerDispatchTool({events:f.bus,on:()=>{},registerTool:tool=>tools.set(tool.name,tool)},async()=>f.task);
+ f.put('.trellis/.runtime/pi-trellis/source-executions/'+ '0'.repeat(64)+'.json','null');
+ f.bus.emit('subagents:completed',{id:'agent-1'});
+ await assert.rejects(tools.get('trellis_dispatch').execute('stop',{action:'stop'},undefined,undefined,{cwd:f.root}),/No known agent id/);
+ assert.equal(sourceRecord(f).state,'completed');
+ const result=await tools.get('trellis_dispatch').execute('next',{agent:'trellis-check',prompt:'check'},undefined,undefined,{cwd:f.root});assert.equal(result.details.agentId,'agent-2');
+});
+test('source terminal queues under reservation lock and cannot overwrite a newer request',async t=>{
+ const f=fixture(t);await f.dispatch();const record=sourceRecord(f);
+ const {acquireBindingLock}=await import('../lib/bindings.ts');const {writeSourceExecution}=await import('../lib/source-executions.ts');
+ const release=acquireBindingLock(f.root);
+ f.bus.emit('subagents:completed',{id:'agent-1'});assert.equal(sourceRecord(f).state,'running');
+ // Another lock owner publishes completion, then legally reserves a new request.
+ writeSourceExecution({...record,state:'completed'});writeSourceExecution({...record,requestId:'new-request',agentId:'new-agent',state:'running'});release();
+ await new Promise(resolve=>setTimeout(resolve,60));assert.equal(sourceRecord(f).requestId,'new-request');assert.equal(sourceRecord(f).state,'running');
+});
+test('source shutdown queues under reservation lock without overwriting a newer request',async t=>{
+ const f=fixture(t);await f.dispatch();const record=sourceRecord(f);
+ const {acquireBindingLock}=await import('../lib/bindings.ts');const {writeSourceExecution}=await import('../lib/source-executions.ts');const release=acquireBindingLock(f.root);
+ f.handlers.get('session_shutdown')();writeSourceExecution({...record,state:'completed'});writeSourceExecution({...record,requestId:'new-request',agentId:'new-agent',state:'running'});release();
+ await new Promise(resolve=>setTimeout(resolve,60));assert.equal(sourceRecord(f).requestId,'new-request');assert.equal(sourceRecord(f).state,'running');
+});
+test('Python source decoder matches UTF16 astral and escaped surrogate bounds',async t=>{
+ const f=fixture(t);await f.dispatch();const r=sourceRecord(f);f.bus.emit('subagents:completed',{id:'agent-1'});
+ const {sourceExecutionFile,readSourceExecution}=await import('../lib/source-executions.ts');const file=sourceExecutionFile(r);
+ for(const value of ['😀'.repeat(129),'\ud800'.repeat(257)]) {
+  writeFileSync(file,JSON.stringify({...r,state:'completed',requestId:value}));assert.throws(()=>readSourceExecution(r));await assert.rejects(f.run({confirm:false}),/identifier/);
+ }
+ for(const value of ['😀'.repeat(128),'\ud800'.repeat(256)]) {
+  writeFileSync(file,JSON.stringify({...r,state:'completed',requestId:value}));assert.equal(readSourceExecution(r).state,'completed');assert.equal((await f.run({confirm:false})).preview,true);
+ }
 });

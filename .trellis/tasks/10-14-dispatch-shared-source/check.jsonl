@@ -1,0 +1,7 @@
+{"file":".trellis/spec/extension/architecture.md","reason":"执行 owner、path/runtime 与失败边界"}
+{"file":".trellis/spec/extension/session-and-context.md","reason":"独立 child session、材料注入和普通 Agent 兼容"}
+{"file":".trellis/spec/extension/worktree-lifecycle.md","reason":"managed v1、source lock、ready、RPC unknown 与 stop 契约"}
+{"file":".trellis/spec/extension/quality-guidelines.md","reason":"独立 review、unpinned subprocess、provider 证据限制"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"复用 persistence/context 不混淆 source/managed 身份"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Python/TS 记录、create/adopt 竞态及资源哈希一致性"}
+{"file":".trellis/tasks/10-14-dispatch-shared-source/research/dispatch-boundaries.md","reason":"本轮 owner 调查、目标设计与独立审查重点"}

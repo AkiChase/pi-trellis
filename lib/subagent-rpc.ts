@@ -6,7 +6,8 @@ import { acquireBindingLock, sameIdentity } from "./bindings.ts";
 import { activeExecution, processToken, readExecution, writeExecution, worktreeSnapshot, type ExecutionRecord } from "./executions.ts";
 import { queryWorktree } from "./worktree-query.ts";
 import { canonicalPath, validateText } from "./config.ts";
-import { assembleDispatchPrompt, buildTaskContext, isTrellisRole } from "./task-context.ts";
+import { assembleDispatchPrompt, buildTaskContext, isTrellisRole, readTaskRecord } from "./task-context.ts";
+import { readSourceExecution, sourceActive, sourceExecutionFile, sourceExecutionForAgent, writeSourceExecution, type SourceExecution } from "./source-executions.ts";
 
 import { adapterConfigured } from "./adapter-resources.ts";
 import { verifyRuntime } from "./initialization/engine.ts";
@@ -23,13 +24,47 @@ export function rpc(pi: ExtensionAPI, method: string, payload: Record<string, un
 
 export function registerDispatchTool(pi: ExtensionAPI, activeTask: (ctx: ExtensionContext) => Promise<string | undefined>): void {
 	let shuttingDown = false;
+	let sourceIdentity: { sourceRoot: string; repositoryIdentity: string } | undefined;
+	const pending = new Map<string, { record: SourceExecution; state: "completed" | "failed" | "unknown"; error?: string }>();
+	let retry: ReturnType<typeof setTimeout> | undefined;
+	const publishPending = (lockHeld = false) => {
+		if (!sourceIdentity || !pending.size) return;
+		let release: (() => void) | undefined;
+		try {
+			if (!lockHeld) release = acquireBindingLock(sourceIdentity.sourceRoot);
+			for (const [key, update] of pending) {
+				const disk = readSourceExecution(update.record);
+				if (disk?.requestId === update.record.requestId && sourceActive(disk)) writeSourceExecution({ ...disk, state: update.state, error: update.error });
+				pending.delete(key);
+			}
+		} catch {
+			// Keep evidence queued while spawn/management holds the source lock.
+			if (!retry) { retry = setTimeout(() => { retry = undefined; publishPending(); }, 25); retry.unref(); }
+		} finally { release?.(); }
+	};
+	const queueSource = (record: SourceExecution, state: "completed" | "failed" | "unknown", error?: string) => {
+		const previous = pending.get(record.requestId);
+		if (!previous || previous.state === "unknown") pending.set(record.requestId, { record, state, error: error?.slice(0, 4096) });
+		publishPending();
+	};
+	const sourceOwned = new Map<string, SourceExecution>();
 	const owned = new Map<string, { binding: import("./bindings.ts").WorktreeBinding; record: ExecutionRecord }>();
 	const early = new Map<string, { state: "completed" | "failed"; error?: string }>();
+	let diagnosticCount = 0;
 	const off = ["subagents:completed", "subagents:failed"].map((event) => pi.events.on(event, (data: any) => {
 		if (typeof data?.id !== "string") return;
 		const state = event === "subagents:completed" ? "completed" : "failed";
 		const current = owned.get(data.id);
-		if (!current) { if (early.size >= 128) early.delete(early.keys().next().value!); early.set(data.id, { state, error: data.error }); return; }
+		if (!current) {
+			try {
+				const record = sourceOwned.get(data.id) ?? (sourceIdentity && sourceExecutionForAgent(sourceIdentity.sourceRoot, sourceIdentity.repositoryIdentity, data.id, (message) => { if (diagnosticCount++ < 8) console.warn(message); }));
+				if (record) {
+					queueSource(record, state, typeof data.error === "string" ? data.error : undefined);
+					sourceOwned.delete(data.id); return;
+				}
+			} catch { /* retain conservative lease if lookup/write fails */ }
+			if (early.size >= 128) early.delete(early.keys().next().value!); early.set(data.id, { state, error: data.error }); return;
+		}
 		try {
 			const disk = readExecution(current.binding);
 			if (disk?.requestId === current.record.requestId) {
@@ -45,11 +80,14 @@ export function registerDispatchTool(pi: ExtensionAPI, activeTask: (ctx: Extensi
 		for (const { binding, record } of owned.values()) {
 			try { writeExecution(binding, { ...record, state: "unknown", error: "Host session shut down; verify/stop the provider execution before reuse" }); } catch { /* runtime persists conservative prior lease */ }
 		}
-		early.clear(); owned.clear();
+		for (const record of sourceOwned.values()) {
+			queueSource(record, "unknown", "Host session shut down; verify provider execution before reuse");
+		}
+		sourceOwned.clear(); early.clear(); owned.clear();
 	});
 	pi.registerTool({
 		name: "trellis_dispatch", label: "Trellis Dispatch",
-		description: "Dispatch (default action) or request provider stop for an approved Trellis task role to its existing ready worktree using the subagent public cwd RPC. Never creates temporary isolation or falls back to source. Returns a real agent ID for get_subagent_result/steer_subagent. Stop uses task only and retains occupancy until terminal evidence. Manage via python3 .trellis/scripts/worktree.py; main agent chooses phases.",
+		description: "Dispatch an approved Trellis role in the shared source directory when unbound, or its prepared managed worktree when bound. Never creates worktrees or falls back from a binding. Returns a real agent ID. Stop requests provider cancellation and retains occupancy until terminal evidence. Main coordinates shared-directory edits and phases.",
 		parameters: { type: "object", properties: { action: { type: "string", enum: ["dispatch", "stop", ""] }, agent: { type: "string", enum: ["trellis-implement", "trellis-check", "trellis-research", ""] }, task: { type: "string" }, prompt: { type: "string" } }, anyOf: [{ properties: { action: { const: "stop" } }, required: ["action"] }, { properties: { action: { enum: ["dispatch", ""] } }, required: ["agent", "prompt"] }], additionalProperties: false } as unknown as Parameters<ExtensionAPI["registerTool"]>[0]["parameters"],
 		executionMode: "sequential",
 		async execute(_id, input, signal, _update, ctx) {
@@ -71,16 +109,28 @@ export function registerDispatchTool(pi: ExtensionAPI, activeTask: (ctx: Extensi
 			if (!await adapterConfigured(source.root)) throw new Error("Persist pi-trellis in source/user settings (not only a one-shot -e path), so child sessions can load the context adapter");
 			const task = args.task ?? local?.taskDir ?? await activeTask(ctx);
 			if (!task) throw new Error("No approved active task");
-			const { binding: initialBinding } = await queryWorktree(ctx.cwd, task, action === "dispatch", signal, true);
-			if (!initialBinding) throw new Error("No worktree binding; use python3 .trellis/scripts/worktree.py create/prepare first");
+			const { binding: initialBinding } = await queryWorktree(ctx.cwd, task, false, signal);
+			const identity = { sourceRoot: source.root, repositoryIdentity: source.commonDir, taskDir: task };
+			sourceIdentity = identity;
+			let sourceRecord = readSourceExecution(identity);
+			if (sourceRecord?.agentId) {
+				const observed = early.get(sourceRecord.agentId);
+				if (observed) { queueSource(sourceRecord, observed.state, typeof observed.error === "string" ? observed.error : undefined); early.delete(sourceRecord.agentId); }
+				// Remember validated task identity so corrupt neighbors cannot block its terminal.
+				if (sourceActive(sourceRecord)) sourceOwned.set(sourceRecord.agentId, sourceRecord);
+			}
+			sourceRecord = readSourceExecution(identity);
 			if (action === "stop") {
-				const execution = readExecution(initialBinding);
-				if (!execution?.agentId) throw new Error("No known agent id; inspect unknown startup before recovery");
+				const managed = initialBinding && readExecution(initialBinding);
+				if (sourceActive(sourceRecord) && managed && ["starting", "running", "unknown"].includes(managed.state)) throw new Error("Conflicting source and managed executions; inspect records");
+				const execution = sourceActive(sourceRecord) ? sourceRecord : managed;
+				if (!execution?.agentId) throw new Error(`No known agent id; inspect unknown startup before recovery${!initialBinding ? `: ${sourceExecutionFile(identity)}` : ""}`);
 				const reply = await rpc(pi, "stop", { agentId: execution.agentId });
 				if (!reply.success) throw new Error(reply.error || "Stop failed; lease retained");
 				return { content: [{ type: "text", text: "Stop requested through provider. Lease retained until terminal evidence; directory/code preserved." }], details: { agentId: execution.agentId } };
 			}
 			if (!isTrellisRole(args.agent)) throw new Error("Unknown Trellis role");
+			if (readTaskRecord(source.root, task).status !== "in_progress") throw new Error("Source task must be in_progress before dispatch");
 			// Preserve custom agents; reject config that would silently defeat cwd/context rather than overwrite it.
 			const definition = readFileSync(join(source.root, ".pi/agents", `${args.agent}.md`), "utf8");
 			const header = /^---\r?\n([\s\S]*?)\r?\n---/.exec(definition)?.[1];
@@ -94,6 +144,34 @@ export function registerDispatchTool(pi: ExtensionAPI, activeTask: (ctx: Extensi
 			const ping = await rpc(pi, "ping", {}, 3000); if (!ping.success) throw new Error(ping.error || "Subagent provider unavailable");
 			const release = acquireBindingLock(source.root);
 			try {
+				publishPending(true);
+				if (sourceActive(readSourceExecution(identity))) throw new Error(`Task has running/unknown source execution; inspect ${sourceExecutionFile(identity)} (no automatic recovery)`);
+				if (!initialBinding) {
+					const assertSource = async () => {
+						const latest = await queryWorktree(ctx.cwd, task, false, signal);
+						if (latest.binding) throw new Error("Task became bound before source dispatch; inspect and retry");
+						if (readTaskRecord(source.root, task).status !== "in_progress") throw new Error("Source task must be in_progress before dispatch");
+						if (sourceActive(readSourceExecution(identity))) throw new Error("Task already has running/unknown source execution");
+					};
+					await assertSource();
+					const context = buildTaskContext({ executionRoot: source.root, taskDir: task, role: args.agent });
+					const prompt = assembleDispatchPrompt({ prompt: `Execution directory: ${source.root}\nShared directory: Other agents may be working here. Stay within your assigned scope, preserve unrelated changes, and report overlapping edits to the main agent.\n\n${args.prompt}`, taskDir: task, contextId: `pi-source-${randomUUID()}`, role: args.agent, context });
+					await assertSource(); signal?.throwIfAborted();
+					if (shuttingDown) throw new Error("Host session shut down before spawn");
+					const record: SourceExecution = { ...identity, version: 1, mode: "source", requestId: randomUUID(), role: args.agent, state: "starting", ownerPid: process.pid, ownerToken: processToken, createdAt: new Date().toISOString() };
+					writeSourceExecution(record);
+					try {
+						const reply = await rpc(pi, "spawn", { requestId: record.requestId, type: args.agent, prompt, options: { cwd: source.root, isolation: "off" } });
+						if (!reply.success || typeof reply.data?.id !== "string" || !reply.data.id) throw new Error(reply.error || "Spawn returned no valid agent id");
+						record.agentId = reply.data.id;
+						if (shuttingDown) throw new Error("Host session shut down during spawn; execution may already exist");
+						const finished = early.get(record.agentId); early.delete(record.agentId);
+						record.state = finished?.state ?? "running"; record.error = typeof finished?.error === "string" ? finished.error.slice(0, 4096) : undefined;
+						writeSourceExecution(record);
+						if (!finished) sourceOwned.set(record.agentId, record);
+						return { content: [{ type: "text", text: `Agent ID: ${record.agentId}\nDirectory: ${source.root}\nShared source directory — no filesystem isolation. Coordinate overlapping edits.` }], details: { agentId: record.agentId, mode: "source", cwd: source.root } };
+					} catch (error) { record.state = "unknown"; record.error = String(error).slice(0, 4096); writeSourceExecution(record); throw error; }
+				}
 				const latest = await queryWorktree(ctx.cwd, task, true, signal, true);
 				if (!latest.binding || !sameIdentity(latest.binding, initialBinding)) throw new Error("Binding changed before dispatch");
 				const executionBinding = latest.binding;
@@ -120,7 +198,7 @@ export function registerDispatchTool(pi: ExtensionAPI, activeTask: (ctx: Extensi
 					if (finished) { try { record.finalSnapshot = worktreeSnapshot(binding); } catch { /* unverified snapshot */ } }
 					writeExecution(binding, record);
 					if (!finished) owned.set(record.agentId!, { binding, record });
-					return { content: [{ type: "text", text: `Agent ID: ${record.agentId}\nWorktree: ${binding.worktreePath}\nBinding: ${binding.bindingId}\nUse the existing result/steering tools. No automatic next phase or cleanup.` }], details: { agentId: record.agentId, bindingId: binding.bindingId, cwd: binding.worktreePath } };
+					return { content: [{ type: "text", text: `Agent ID: ${record.agentId}\nWorktree: ${binding.worktreePath}\nBinding: ${binding.bindingId}\nUse the existing result/steering tools. No automatic next phase or cleanup.` }], details: { agentId: record.agentId, bindingId: binding.bindingId, mode: "managed", cwd: binding.worktreePath } };
 				} catch (error) { record.state = "unknown"; record.error = String(error); writeExecution(binding, record); throw error; }
 			} finally { release(); }
 		},

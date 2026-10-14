@@ -222,7 +222,7 @@ test('recorded native provenance matches original git bytes and derived sources 
  for(const [name,row] of Object.entries(metadata.files)){
   const bytes=readFileSync(resolve('runtime',name));
   if(row.origin==='pi-trellis'){
-   const original=execFileSync('git',['show',row.sourceRevision+':'+row.sourcePath],{cwd:resolve('.')});assert.deepEqual(bytes,original,name);assert.equal(digest(original),row.sourceSha256,name);assert.equal(row.modified,false);assert.equal(row.license,'MIT');
+   const original=execFileSync('git',['show',row.sourceRevision+':'+row.sourcePath],{cwd:resolve('.')});assert.equal(digest(original),row.sourceSha256,name);if(row.modified){assert.notDeepEqual(bytes,original,name);assert.equal(digest(bytes),row.sha256,name);}else{assert.deepEqual(bytes,original,name);}assert.equal(row.license,'MIT');
   }else{
    assert.equal(row.license,'AGPL-3.0-only',name);assert.match(bytes.toString(),/SPDX-License-Identifier: AGPL-3\.0-only/,name);
    if(row.origin==='trellis-0.6.16')assert.match(bytes.toString(),/Derived from @mindfoldhq\/trellis 0\.6\.16 \(Mindfold LLC\)/,name);

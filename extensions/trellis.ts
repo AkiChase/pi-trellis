@@ -630,7 +630,7 @@ function renderOverview(root: string, key: string, context: TrellisContext | und
 			"Read missing full materials before working; do not manage worktrees, dispatch other task roles, or run source lifecycle/Git integration.",
 		] : [
 			existsSync(scriptPath(root, "worktree.py")) ? "Worktree management: python3 .trellis/scripts/worktree.py <command> --task <task>; use --help, preview then approved --confirm." : "Worktree CLI not deployed (python3 .trellis/scripts/worktree.py): explicit install/update required; no automatic repair.",
-			"Dispatch/stop: trellis_dispatch; main session chooses phases and stays at the source project root.",
+			"Dispatch/stop: trellis_dispatch; unbound tasks use the shared source directory, bound tasks require their prepared managed worktree. Main coordinates overlapping edits and phases.",
 			"Never use temporary worktree isolation or silently fall back to source for managed execution.",
 			existsSync(protocolPath) ? `Before the first managed operation, read protocol: ${protocolPath}` : `Worktree protocol missing: ${protocolPath}; explicitly repair package installation before management.`,
 		]),
