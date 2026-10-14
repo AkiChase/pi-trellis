@@ -77,6 +77,67 @@ A-->B
 \`\`\`
 `;
 
+test("viewer shows English identity, original title, explicit metadata and descending order hint", t => {
+  const f = fixture(t, 0);
+  const dir = "10-14-english-slug";
+  f.put(`.trellis/tasks/${dir}/task.json`, JSON.stringify({ name: "english-slug", title: "中文标题", status: "in_progress" }));
+  f.press("r");
+  f.setCurrent(f.browser.snapshot.tasks[0].identity); f.press("r");
+  const list = f.render(100).join("\n");
+  assert.match(list, /\* \[in_progress\] 10-14-english-slug · 中文标题/);
+  assert.match(list, /Directory descending/);
+  assert.match(f.render(39).join("\n"), /\* \[in_progress\] 10-14-english-slug/);
+  for (const width of [1, 8, 20, 39, 80]) f.render(width);
+  f.tui.terminal.rows = 30;
+  const detail = f.press("enter", 100).join("\n");
+  for (const text of ["Name: english-slug", "Title: 中文标题", `Path: .trellis/tasks/${dir}`]) assert.ok(detail.includes(text), text);
+});
+
+test("current task promotes its complete ancestor tree and refresh preserves selection identity", t => {
+  const f = fixture(t, 0);
+  const record = (name, extra = {}) => f.put(`.trellis/tasks/${name}/task.json`, JSON.stringify({ title: name, status: "planning", ...extra }));
+  record("10-15-new"); record("10-14-parent");
+  record("10-13-sibling", { parent: "10-14-parent" });
+  record("10-12-nested", { parent: "10-14-parent" });
+  record("10-11-current", { parent: "10-12-nested" }); record("10-10-old");
+  f.press("r");
+  const dirs = () => f.browser.snapshot.rows.map(row => row.task.dir.split("/").at(-1));
+  const initial = dirs();
+  assert.deepEqual(initial, ["10-15-new", "10-14-parent", "10-13-sibling", "10-12-nested", "10-11-current", "10-10-old"]);
+  f.press("down"); f.press("down");
+  const selected = f.browser.snapshot.rows[f.browser.selected].task.identity;
+  const identity = name => f.browser.snapshot.tasks.find(task => task.dir.endsWith(`/${name}`)).identity;
+  f.setCurrent(identity("10-11-current")); f.press("r");
+  assert.deepEqual(dirs(), ["10-14-parent", "10-13-sibling", "10-12-nested", "10-11-current", "10-15-new", "10-10-old"]);
+  assert.equal(f.browser.snapshot.rows[f.browser.selected].task.identity, selected);
+  assert.deepEqual(f.browser.snapshot.rows.slice(0, 4).map(row => row.prefix), ["", "├─ ", "└─ ", "   └─ "]);
+  f.setCurrent(identity("10-10-old")); f.press("r");
+  assert.deepEqual(dirs(), ["10-10-old", ...initial.slice(0, -1)]);
+  assert.equal(f.browser.snapshot.rows[f.browser.selected].task.identity, selected);
+  f.setCurrent("missing-identity"); f.press("r"); assert.deepEqual(dirs(), initial);
+  f.setCurrent(undefined); f.press("r"); assert.deepEqual(dirs(), initial);
+});
+
+test("long directory identifiers precede titles and remain fully scrollable in detail", t => {
+  const f = fixture(t, 0);
+  const dir = `10-14-${"english-".repeat(20)}END`;
+  f.put(`.trellis/tasks/${dir}/task.json`, JSON.stringify({ title: "中文标题", status: "planning" }));
+  f.press("r");
+  assert.doesNotMatch(f.render(40).join("\n"), /中文标题/);
+  f.press("enter", 20);
+  const seen = [];
+  let previousOffset = -1;
+  for (let i = 0; i < 100; i++) {
+    const body = f.render(20).slice(3, -1);
+    const offset = f.browser.offsets[0];
+    if (offset === previousOffset) { seen.push(...body.slice(1)); break; }
+    seen.push(body[0]); previousOffset = offset;
+    f.press("down", 20);
+  }
+  assert.ok(seen.join("").includes(dir));
+  assert.ok(seen.join("").includes("中文标题"));
+});
+
 test("real host Markdown renders required syntax and readable rich-content fallbacks", t => {
   const f = fixture(t);
   f.put(".trellis/tasks/00/prd.md", markdown);
@@ -193,7 +254,7 @@ test("long list navigation, Escape return and close preserve selection and viewp
   assert.equal(selected, 23);
   assert.ok(offset > 0);
   const detail = f.press("enter");
-  assert.match(detail.join("\n"), /任务 23/);
+  assert.match(detail.join("\n"), /任务 16/);
   assert.equal(f.browser.mode, "detail");
   assert.deepEqual(f.press("escape"), before);
   assert.equal(f.browser.selected, selected);
@@ -237,18 +298,18 @@ test("refresh rereads title, current identity and documents; removal does not ju
   const f = fixture(t, 12);
   f.render(); for (let i = 0; i < 8; i++) f.press("down");
   const identity = f.browser.snapshot.rows[8].task.identity;
-  f.setCurrent(identity); f.record(8, { title: "Fresh 中文 title" }); f.press("r");
+  f.setCurrent(identity); f.record(3, { title: "Fresh 中文 title" }); f.press("r");
   assert.equal(f.browser.snapshot.rows[f.browser.selected].task.identity, identity);
-  assert.match(f.render().join("\n"), /\* \[planning\] Fresh 中文 title/);
+  assert.match(f.render().join("\n"), /\* \[planning\] 03 · Fresh 中文 title/);
   f.press("enter"); f.press("right");
   assert.match(f.render().join("\n"), /Document not created/);
-  f.put(".trellis/tasks/08/prd.md", "# New document");
+  f.put(".trellis/tasks/03/prd.md", "# New document");
   f.press("r"); assert.match(f.render().join("\n"), /New document/);
-  f.put(".trellis/tasks/08/prd.md", ""); f.press("r"); assert.match(f.render().join("\n"), /Document is empty/);
-  f.put(".trellis/tasks/08/prd.md", "# same-size edit"); f.press("r"); assert.match(f.render().join("\n"), /same-size edit/);
-  rmSync(join(f.root, ".trellis/tasks/08/prd.md")); f.press("r"); assert.match(f.render().join("\n"), /Document not created/);
-  f.put(".trellis/tasks/08/prd.md", Buffer.from([0xff])); f.press("r"); assert.match(f.render().join("\n"), /Unable to read document/);
-  rmSync(join(f.root, ".trellis/tasks/08"), { recursive: true }); f.press("r");
+  f.put(".trellis/tasks/03/prd.md", ""); f.press("r"); assert.match(f.render().join("\n"), /Document is empty/);
+  f.put(".trellis/tasks/03/prd.md", "# same-size edit"); f.press("r"); assert.match(f.render().join("\n"), /same-size edit/);
+  rmSync(join(f.root, ".trellis/tasks/03/prd.md")); f.press("r"); assert.match(f.render().join("\n"), /Document not created/);
+  f.put(".trellis/tasks/03/prd.md", Buffer.from([0xff])); f.press("r"); assert.match(f.render().join("\n"), /Unable to read document/);
+  rmSync(join(f.root, ".trellis/tasks/03"), { recursive: true }); f.press("r");
   assert.match(f.render().join("\n"), /Task no longer available/);
   f.press("escape");
   assert.equal(f.browser.snapshot.tasks.length, 11);
@@ -259,12 +320,12 @@ test("refresh preserves canonical identity through alias changes and clamps afte
   const f = fixture(t, 15);
   f.render(); for (let i = 0; i < 14; i++) f.press("down");
   const identity = f.browser.snapshot.rows[14].task.identity;
-  symlinkSync("14", join(f.root, ".trellis/tasks/00-alias"));
+  symlinkSync("00", join(f.root, ".trellis/tasks/zz-alias"));
   f.press("r");
   assert.equal(f.browser.snapshot.rows[f.browser.selected].task.identity, identity);
   assert.equal(f.browser.snapshot.tasks.length, 15);
-  rmSync(join(f.root, ".trellis/tasks/00-alias"));
-  rmSync(join(f.root, ".trellis/tasks/14"), { recursive: true });
+  rmSync(join(f.root, ".trellis/tasks/zz-alias"));
+  rmSync(join(f.root, ".trellis/tasks/00"), { recursive: true });
   f.press("r");
   assert.ok(f.browser.selected < 14);
   assert.ok(f.browser.listOffset <= f.browser.selected);
@@ -292,6 +353,7 @@ test("narrow Unicode/control widths, resize clamping and actual host theme inval
   f.put(".trellis/tasks/00/prd.md", `# Styled heading\n\n${markdown}\n${"超长".repeat(100)}`);
   f.press("r");
   for (const width of [1, 2, 4, 8, 20, 34, 80]) f.render(width);
+  for (let i = 0; i < 19; i++) f.press("down");
   f.press("enter"); f.press("right");
   for (const height of [1, 2, 3, 4, 8, 30]) {
     f.tui.terminal.rows = height;
@@ -332,14 +394,15 @@ function commandFixture(f) {
 
 test("registered command uses command-time root and disk-only own session without a runtime deployment", async t => {
   const f = fixture(t, 2), g = fixture(t, 1), harness = commandFixture(f);
-  const command = harness.commands.get("trellis-task"); assert.ok(command);
+  assert.equal(harness.commands.has("trellis-task"), false);
+  const command = harness.commands.get("trellis-task-viewer"); assert.ok(command);
   const key = __internals.contextKey(f.root, harness.ctx);
   f.put(`.trellis/.runtime/sessions/${key}.json`, JSON.stringify({ current_task: ".trellis/tasks/01" }));
   f.put(".trellis/.runtime/sessions/foreign.json", JSON.stringify({ current_task: ".trellis/tasks/00" }));
   await command.handler("", harness.ctx);
   const lines = harness.component().render(80).map(plain);
-  assert.match(lines.join("\n"), /\* \[planning\] 任务 1/);
-  assert.doesNotMatch(lines.join("\n"), /\* \[planning\] 任务 0/);
+  assert.match(lines.join("\n"), /\* \[planning\] 01 · 任务 1/);
+  assert.doesNotMatch(lines.join("\n"), /\* \[planning\] 00 · 任务 0/);
   harness.component().handleInput(keys.escape); assert.equal(harness.completed(), 1);
   harness.ctx.cwd = g.root;
   await command.handler("", harness.ctx);
@@ -350,7 +413,7 @@ test("registered command uses command-time root and disk-only own session withou
 });
 
 test("missing, malformed, escaping or unreadable current pointer never blocks general browsing", async t => {
-  const f = fixture(t), harness = commandFixture(f), command = harness.commands.get("trellis-task");
+  const f = fixture(t), harness = commandFixture(f), command = harness.commands.get("trellis-task-viewer");
   const key = __internals.contextKey(f.root, harness.ctx), path = `.trellis/.runtime/sessions/${key}.json`;
   for (const value of [undefined, "not JSON", '{"current_task":"../escape"}', '{"current_task":null}']) {
     if (value === undefined) rmSync(join(f.root, path), { force: true }); else f.put(path, value);
@@ -371,7 +434,7 @@ test("missing, malformed, escaping or unreadable current pointer never blocks ge
 });
 
 test("current task FIFO record cannot block command open or refresh", async t => {
-  const f = fixture(t, 2), harness = commandFixture(f), command = harness.commands.get("trellis-task");
+  const f = fixture(t, 2), harness = commandFixture(f), command = harness.commands.get("trellis-task-viewer");
   const key = __internals.contextKey(f.root, harness.ctx);
   f.put(`.trellis/.runtime/sessions/${key}.json`, '{"current_task":".trellis/tasks/00"}');
   rmSync(join(f.root, ".trellis/tasks/00/task.json"));
@@ -398,7 +461,7 @@ test("actual host custom overlay lifecycle restores focus and invalidates active
     harness.ctx.ui.custom = (factory, options) => interactive.InteractiveMode.prototype.showExtensionCustom.call({ editor, ui: tui }, factory, options);
     hostTheme.onThemeChange(() => { tui.invalidate(); tui.requestRender(); });
     try {
-      const pending = harness.commands.get("trellis-task").handler("", harness.ctx);
+      const pending = harness.commands.get("trellis-task-viewer").handler("", harness.ctx);
       await new Promise(resolve => setImmediate(resolve));
       const browser = tui.focusedComponent;
       assert.ok(browser instanceof TaskBrowser);
@@ -426,7 +489,7 @@ test("actual host custom overlay lifecycle restores focus and invalidates active
 });
 
 test("non-TUI guards, missing project and usage return English explanations without custom UI", async t => {
-  const f = fixture(t), harness = commandFixture(f), command = harness.commands.get("trellis-task");
+  const f = fixture(t), harness = commandFixture(f), command = harness.commands.get("trellis-task-viewer");
   for (const mode of ["rpc", "print", "json"]) {
     harness.ctx.mode = mode; harness.ctx.hasUI = mode === "rpc";
     await command.handler("", harness.ctx);
@@ -456,9 +519,9 @@ test("browser navigation/refresh/close preserve all files, session pointers, Git
   git(["add", "."]);
   f.put("untracked.txt", "Unrelated user content");
   const before = capture(f.root), status = git(["status", "--porcelain=v1"]);
-  await harness.commands.get("trellis-task").handler("", harness.ctx);
+  await harness.commands.get("trellis-task-viewer").handler("", harness.ctx);
   const browser = harness.component();
-  browser.render(60); browser.handleInput(keys.enter); browser.handleInput(keys.right); browser.render(60);
+  browser.render(60); browser.handleInput(keys.down); browser.handleInput(keys.down); browser.handleInput(keys.enter); browser.handleInput(keys.right); browser.render(60);
   for (let i = 0; i < 20; i++) { browser.handleInput(keys.pageDown); browser.render(30); }
   browser.handleInput("r"); browser.render(80); browser.handleInput(keys.escape); browser.handleInput(keys.down); browser.handleInput(keys.enter); browser.render(40); browser.handleInput(keys.escape); browser.handleInput(keys.escape);
   assert.deepEqual(capture(f.root), before);

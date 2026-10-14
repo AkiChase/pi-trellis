@@ -53,13 +53,6 @@ Cosmetic/discovery failures in the entrypoint degrade: no project/scripts means 
 
 Use `execFile()` / Python `subprocess` argument arrays for subprocesses. `records.py:git_environment()` copies the environment, removes inherited `GIT_*` overrides and sets `GIT_OPTIONAL_LOCKS=0`; both Git operations and target `task.py`/hooks use it so parent index/repository overrides cannot redirect an operation. It does not modify the parent environment. Binding JSON uses exclusive temporary files and rename; the source lock uses `wx` and never guesses that an existing lock is stale.
 
-## Task Display Contract
-
-- `readUnfinishedTaskCount(root): number | undefined` rereads immediate project task directories on existing display refresh events. Exclude completed records and canonical archive descendants, deduplicate canonical aliases, and retain task-store containment validation. Unreadable/invalid enumeration yields unknown, not a partial or verified zero.
-- Widget mode renders `▸ trellis(N)` without a session task and adds existing task details when active. Positive counts use `accent`, zero `dim`, unknown `(?)` `muted`. Footer follows the same count semantics; `off` and unsupported projects clear the display.
-- Footer clipping uses host `visibleWidth()` / `truncateToWidth()` before theming, with a 34-terminal-column budget. Sanitize control input, preserve the count and fitting name/status, and cap long content. Byte length is not terminal width: `trellis(3): current ▸ in_progress` fits at 33 columns and must not become `cur…`.
-- `tests/task-display.test.mjs` asserts count filtering/alias behavior, persistence/refresh transitions, theme/error degradation and Unicode/control width bounds. Production resolves TUI through the Pi loader; direct-TS tests use the real peer via the test-only preload documented in [Quality Guidelines](quality-guidelines.md).
-
 ## Review Pitfalls
 
 - Looking up a root once and reusing it after session cwd changes leaks project context; `findRoot()` is consulted per event.

@@ -4,7 +4,7 @@ import { chmodSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, w
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { readTasks, readDocument, readCurrentTaskIdentity, safeText } from "../lib/task-browser/reader.ts";
+import { readTasks, readDocument, readCurrentTaskIdentity, safeText, taskLabel } from "../lib/task-browser/reader.ts";
 
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), "pi-trellis-browser-"));
@@ -118,8 +118,26 @@ test("nested tree ordering is deterministic and source records are never changed
   f.record("c"); f.record("d");
   const before = readFileSync(join(f.root, ".trellis/tasks/a/task.json"));
   const value = f.read();
-  assert.deepEqual(value.rows.map(row => [row.task.dir.split("/").at(-1), row.prefix]), [["a", ""], ["b", "├─ "], ["d", "│  └─ "], ["c", "└─ "]]);
+  assert.deepEqual(value.rows.map(row => [row.task.dir.split("/").at(-1), row.prefix]), [["a", ""], ["c", "├─ "], ["b", "└─ "], ["d", "   └─ "]]);
   assert.deepEqual(readFileSync(join(f.root, ".trellis/tasks/a/task.json")), before);
+});
+
+test("dated directories descend at every tree level with deterministic same-day ties", t => {
+  const f = fixture(t);
+  f.record("10-13-parent", { title: "父任务", status: "planning", children: ["10-14-a", "10-14-z", "10-12-child"] });
+  for (const name of ["10-14-a", "10-14-z", "10-12-child", "10-15-new", "10-11-old"]) f.record(name);
+  assert.deepEqual(f.read().rows.map(row => [row.task.dir.split("/").at(-1), row.prefix]), [
+    ["10-15-new", ""], ["10-13-parent", ""], ["10-14-z", "├─ "], ["10-14-a", "├─ "], ["10-12-child", "└─ "], ["10-11-old", ""],
+  ]);
+});
+
+test("labels include directory identity plus original title and avoid identical fallback duplication", t => {
+  const f = fixture(t);
+  f.record("10-14-english", { name: "english", title: "中文标题", status: "planning" });
+  f.record("fallback", { status: "planning" });
+  f.record("same", { title: "same", status: "planning" });
+  const labels = f.read().tasks.map(taskLabel);
+  assert.deepEqual(labels, ["same", "fallback", "10-14-english · 中文标题"]);
 });
 
 test("documents distinguish missing, empty, ready, removed and invalid data on fresh reads", t => {
@@ -143,7 +161,7 @@ test("documents distinguish missing, empty, ready, removed and invalid data on f
 test("artifact escaping/dangling symlinks and special files are rejected; safe local symlink is read", t => {
   const f = fixture(t); f.record("a"); f.record("b");
   f.put(".trellis/tasks/b/prd.md", "Secret outside a");
-  const task = f.read().tasks[0], file = join(f.root, ".trellis/tasks/a/prd.md");
+  const task = f.read().tasks.find(task => task.dir.endsWith("/a")), file = join(f.root, ".trellis/tasks/a/prd.md");
   symlinkSync("../b/prd.md", file);
   assert.match(readDocument(f.root, task, "prd").diagnostic, /escapes/);
   rmSync(file); symlinkSync("missing", file);
@@ -170,7 +188,7 @@ test("unreadable records/documents are errors, not empty data", t => {
 test("document reads never follow a replaced task alias into a different identity", t => {
   const f = fixture(t); f.record("a"); f.record("b");
   f.put(".trellis/tasks/b/prd.md", "Different task");
-  const task = f.read().tasks[0];
+  const task = f.read().tasks.find(task => task.dir.endsWith("/a"));
   rmSync(join(f.root, task.dir), { recursive: true });
   symlinkSync("b", join(f.root, task.dir));
   assert.equal(readDocument(f.root, task, "prd").state, "removed");

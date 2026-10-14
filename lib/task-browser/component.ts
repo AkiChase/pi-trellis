@@ -114,16 +114,26 @@ export class TaskBrowser {
 	private get theme(): Theme { return typeof this.themeSource === "function" ? this.themeSource() : this.themeSource; }
 	private refreshCurrent(): void {
 		try { this.current = this.readCurrent(); } catch { this.current = undefined; }
+		// Move the complete top-level tree, never detach a child from its ancestors.
+		const rows = this.snapshot.rows;
+		const index = rows.findIndex(row => row.task.identity === this.current);
+		if (index < 0) return;
+		let start = index;
+		while (start > 0 && rows[start].prefix) start--;
+		let end = index + 1;
+		while (end < rows.length && rows[end].prefix) end++;
+		if (start > 0) this.snapshot.rows = rows.slice(start, end).concat(rows.slice(0, start), rows.slice(end));
 	}
 	invalidate(): void { this.cachedBody = undefined; }
 	private refresh(): void {
 		const identity = this.snapshot.rows[this.selected]?.task.identity;
 		const next = readTasks(this.root);
 		this.snapshot = next;
+		this.refreshCurrent();
 		const index = next.rows.findIndex(row => row.task.identity === identity);
 		this.selected = index >= 0 ? index : Math.min(this.selected, Math.max(0, next.rows.length - 1));
 		if (this.detailTask) this.detailTask = next.tasks.find(task => task.identity === this.detailTask!.identity) ?? this.detailTask;
-		this.documents.clear(); this.refreshCurrent(); this.invalidate();
+		this.documents.clear(); this.invalidate();
 	}
 	handleInput(data: string): void {
 		if (this.closed) return;
@@ -170,7 +180,7 @@ export class TaskBrowser {
 			lines = lines.concat(new Text("Task no longer available. Press Esc to return to the list.", 0, 0).render(width));
 		} else if (this.section === 0) {
 			const fields: string[] = [];
-			for (const [field, label] of [["id", "ID"], ["description", "Description"], ["priority", "Priority"], ["assignee", "Assignee"], ["createdAt", "Created"], ["completedAt", "Completed"], ["branch", "Branch"], ["parent", "Parent"]]) {
+			for (const [field, label] of [["id", "ID"], ["name", "Name"], ["title", "Title"], ["description", "Description"], ["priority", "Priority"], ["assignee", "Assignee"], ["createdAt", "Created"], ["completedAt", "Completed"], ["branch", "Branch"], ["parent", "Parent"]]) {
 				const value = task.record[field];
 				if (typeof value === "string" && value) fields.push(`${label}: ${safeText(value, true)}`);
 			}
@@ -219,7 +229,7 @@ export class TaskBrowser {
 		if (width < 1) return [];
 		const rows = Math.max(1, Math.floor(this.tui.terminal.rows || 24));
 		const header = [this.theme.bold(this.theme.fg("accent", "Trellis Tasks"))];
-		if (this.mode === "list") header.push(this.theme.fg("muted", `${this.snapshot.tasks.length} tasks${this.snapshot.complete ? "" : " · Incomplete data"} · * Current task`));
+		if (this.mode === "list") header.push(this.theme.fg("muted", `${this.snapshot.tasks.length} tasks${this.snapshot.complete ? "" : " · Incomplete data"} · Directory descending · Current tree first · * Current task`));
 		else if (width < 38) header.push(this.theme.fg("accent", `${SECTIONS[this.section]} (${this.section + 1}/${SECTIONS.length}) · ←/→`));
 		else header.push(SECTIONS.map((label, index) => index === this.section ? this.theme.bold(this.theme.fg("accent", label)) : this.theme.fg("muted", label)).join(" | "));
 		header.push(this.theme.fg("dim", "─".repeat(width)));

@@ -103,7 +103,7 @@ export function readTasks(root: string): TaskSnapshot {
 			catch (probe) { if ((probe as NodeJS.ErrnoException).code !== "ENOENT") throw probe; }
 		}
 		const identities = new Map<string, BrowserTask>();
-		for (const name of readdirSync(store).sort()) {
+		for (const name of readdirSync(store).sort().reverse()) {
 			if (name === "archive") continue;
 			const dir = join(".trellis", "tasks", name);
 			try {
@@ -217,4 +217,8 @@ export function readDocument(root: string, task: BrowserTask, section: DocumentS
 	} catch (error) { return { state: "error", diagnostic: diagnosticText(error) }; }
 }
 
-export function taskLabel(task: BrowserTask): string { return safeText(task.title || basename(task.dir)); }
+export function taskLabel(task: BrowserTask): string {
+	const name = safeText(basename(task.dir));
+	const title = safeText(task.title || name);
+	return title === name ? name : `${name} · ${title}`;
+}

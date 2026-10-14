@@ -174,6 +174,8 @@ Pass this to `trellis_dispatch`; use its returned ID with existing result and st
 
 ## Where the task display goes
 
+Feature details: [Persistent Task Display](docs/task-display.md).
+
 In a supported Trellis project, the display stays visible even when this
 session has no active task: `▸ trellis(3)`. The tightly appended count includes
 all unfinished task records immediately under `.trellis/tasks/`, including
@@ -207,11 +209,23 @@ is unaffected either way — the display is just a display.
 
 ## Browse task documents
 
-Run `/trellis-task` in Pi's interactive terminal to open a read-only task list,
+Feature details: [Task Viewer](docs/task-viewer.md); other feature documents are
+listed in [docs/index.md](docs/index.md).
+
+Run `/trellis-task-viewer` in Pi's interactive terminal to open a read-only task list,
 with or without a current session task. It reads project task files directly;
 no deployed scripts, model request, task start/switch, or file writes are needed.
 Non-archived tasks (including completed records still in the active store) are
 shown with status colors, parent/child tree lines, and `*` for the current task.
+Rows show the directory identifier followed by the original title; identical
+values are not repeated. Top-level tasks and siblings use directory-name
+descending order (newer date prefixes first, same-day names descending), while
+children stay beneath their parent. The current session's task is the exception:
+its entire top-level tree is placed first, keeping ancestors ahead of children
+and sibling order unchanged. An independent current task becomes the first row.
+This is not exact creation-time ordering;
+`MM-DD` directory prefixes cannot distinguish years. Overview includes explicit
+Name, Title, and Path metadata. The old `/trellis-task` command is not retained.
 This browser is separate from the persistent unfinished-task count above.
 
 - **List:** Up/Down selects, Enter opens details, Esc closes. PageUp/PageDown
