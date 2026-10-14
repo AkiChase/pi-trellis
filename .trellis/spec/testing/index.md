@@ -45,7 +45,13 @@ Inspect actual filenames/test coverage before selecting this matrix. Cross-langu
 
 ## Role Source Maintenance
 
-Role generation is development work requiring explicit dependency-fetch/regeneration authorization. Prefer already verified fixed-version source; do not upgrade global Trellis or copy generated platform/config/runtime trees into the package. Source is generated Claude roles from `@mindfoldhq/trellis@0.6.17`; fixed npm integrity is recorded in [role provenance](../../../docs/trellis-agent-sync.md). Verify artifact integrity independently before trusting stamped metadata. An authorized isolated generation may use:
+Role generation is development work requiring explicit dependency-fetch/regeneration authorization. Prefer already verified fixed-version source; do not upgrade global Trellis or copy generated platform/config/runtime trees into the package. Source is generated Claude roles from `@mindfoldhq/trellis@0.6.17`; fixed npm artifact integrity from the original source verification is:
+
+```text
+sha512-u65OJbzR3OBzFWybX/uzBXaZdzn+71Afaknodu0GUcFIrTyp3ZegK9rHNeTX0guHow35WXkqDVuyrhn8vVzSQg==
+```
+
+npm gitHead was unavailable; this is not a verified upstream commit claim. Version/platform/source/output hashes remain in `resources/agent-baseline.json`. Verify artifact integrity independently before trusting stamped metadata. An authorized isolated generation may use:
 
 ```bash
 SYNC_ROOT="$(mktemp -d /tmp/pi-trellis-doc-sync.XXXXXX)"

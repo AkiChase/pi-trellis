@@ -2,7 +2,7 @@
 
 A project-local [pi](https://pi.dev) extension for [Trellis](https://www.npmjs.com/package/@mindfoldhq/trellis) projects.
 
-It supplies an explicit Pi-native initializer plus a fixed project runtime in one package. The three bundled agents use Trellis 0.6.17's generated Claude Code roles as their baseline, with documented Pi tool, context, and correctness adaptations. See [agent provenance and synchronization](docs/trellis-agent-sync.md).
+It supplies an explicit Pi-native initializer plus a fixed project runtime in one package. The three bundled agents use Trellis 0.6.17's generated Claude Code roles as their baseline, with documented Pi tool, context, and correctness adaptations. See [role usage](docs/dispatch.md#角色与定制).
 
 ## What it does
 
@@ -262,8 +262,8 @@ Search, editing, lifecycle actions, and archive browsing are not included.
 closure derived from **Trellis 0.6.16**, plus the original native
 worktree implementation initially moved unchanged from `python/` and now maintained
 with explicit modified output hashes. The adapted agent documents have
-an independent **0.6.17** baseline. [Runtime provenance and contracts](docs/runtime-baseline.md)
-and `resources/runtime-baseline.json` record exact source/output hashes, licenses,
+an independent **0.6.17** baseline. `resources/runtime-baseline.json`
+and `resources/agent-baseline.json` record exact source/output hashes, licenses,
 Python syntax minimum and a content-derived release ID. No global `trellis`
 probe or installation-time textual patch is used by this fixed runtime.
 
@@ -283,6 +283,6 @@ These guides are not fresh test reports or permission to install or use personal
 
 ## License
 
-Original pi-trellis integration and native worktree code is licensed under [MIT](LICENSE); maintained derivatives of Trellis runtime code retain AGPL as described below. The bundled `agents/trellis-*.md` documents are adapted from `@mindfoldhq/trellis@0.6.17` Claude Code assets, whose package declares `AGPL-3.0-only`; they retain that upstream license, reproduced in [licenses/trellis-AGPL-3.0.txt](licenses/trellis-AGPL-3.0.txt). See [provenance](docs/trellis-agent-sync.md) for generation commands, adaptations and checksums.
+Original pi-trellis integration and native worktree code is licensed under [MIT](LICENSE); maintained derivatives of Trellis runtime code retain AGPL as described below. The bundled `agents/trellis-*.md` documents are adapted from `@mindfoldhq/trellis@0.6.17` Claude Code assets, whose package declares `AGPL-3.0-only`; they retain that upstream license, reproduced in [licenses/trellis-AGPL-3.0.txt](licenses/trellis-AGPL-3.0.txt). Source and adapted checksums are recorded in [agent-baseline.json](resources/agent-baseline.json).
 
 The fixed Trellis-derived runtime entries and `runtime/common/` retain **AGPL-3.0-only** attribution from the verified 0.6.16 baseline; the native worktree modules remain **MIT**. Source and adapted output hashes are in [runtime-baseline.json](resources/runtime-baseline.json). Existing project integration still uses the `task.py` / `get_context.py` CLIs, `TRELLIS_CONTEXT_ID`, and paths under `.trellis/`. Do not describe the complete package as containing no upstream Trellis material or as MIT-only.

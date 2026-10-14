@@ -32,3 +32,10 @@
 
 ## 检查记录
 阶段一 commit `0d31790`；阶段二 focused 16/16，packages development/testing，16 Markdown/71 本地链接/锚点与 source paths/空白通过。六个活动 JSONL 均空，无待迁移 file rows；validate 两空清单错误保留。完整套件 408/408 自然退出 0；详见 research/round2-verification.md 与 constraint-map.md。
+
+## 第三阶段：来源页删除与角色声明同步
+- [x] 用户批准删两来源页并合并职责/定制到 dispatch；进一步批准修改 bundled 角色与 adapted hash。
+- [x] README/docs/spec清引用；固定artifact核验方法留testing，来源数据留resources，License保真实文件。
+- [x] 三角色与generator仅注释目标变更，原source hash不变，adapted hash一致；来源测试加强真实声明/新引用/旧引用不存在断言。
+- [x] 14 Markdown/52 links/anchors/whitespace与角色仅注释差异检查PASS。
+- [x] 来源/初始化/manifest/协议focused 90/90、最终来源8/8与full408/408自然退出0；精确阶段提交，不动并行部署/runtime/config/workflow。

@@ -67,6 +67,13 @@ test("adaptation rejects unreviewed upstream drift", () => {
 test("upstream documents retain attribution and license", () => {
   assert.equal(JSON.parse(read("package.json")).license, "(MIT AND AGPL-3.0-only)");
   assert.match(read("licenses/trellis-AGPL-3.0.txt"), /GNU AFFERO GENERAL PUBLIC LICENSE/);
-  assert.match(read("docs/trellis-agent-sync.md"), /0\.6\.17/);
+  assert.equal(baseline.version, "0.6.17");
+  assert.equal(baseline.platform, "claude");
+  for (const role of ["implement", "check", "research"]) {
+    assert.match(agent(role).text, /Adapted by pi-trellis.*from Trellis 0\.6\.17 Claude Code agents/);
+    assert.match(agent(role).text, /AGPL-3\.0-only/);
+    assert.match(agent(role).text, /see README\.md#license and licenses\/trellis-AGPL-3\.0\.txt/);
+    assert.doesNotMatch(agent(role).text, /docs\/(?:trellis-agent-sync|runtime-baseline)\.md/);
+  }
   assert.doesNotMatch(read("README.md"), /This extension contains no Trellis source code/);
 });

@@ -33,7 +33,7 @@ The schema-2 project manifest separates exact executable resources from editable
 
 Role adaptation belongs in `scripts/sync-agents.mjs:adaptAgent()`, with exact unique anchors and visible drift rejection. `resources/agent-baseline.json` records full source/adapted hashes for generated Claude roles from Trellis **0.6.17**; stamping that version does not authenticate arbitrary input. Authorized generation reviews fixed artifact integrity and the complete output set; writes are sequential, not transactional. Deployed custom roles are not bundled source and must not be overwritten for compatibility.
 
-Keep original MIT integration/native code distinct from **AGPL-3.0-only** Trellis-derived runtime **0.6.16** and adapted roles **0.6.17**. Preserve attribution/modification notices, full original/output hashes and license metadata; the package is `(MIT AND AGPL-3.0-only)`, not wholly MIT/upstream-free. A source hash without the source is not independent integrity proof. See [user-facing provenance](../../../docs/runtime-baseline.md) and [role provenance](../../../docs/trellis-agent-sync.md).
+Keep original MIT integration/native code distinct from **AGPL-3.0-only** Trellis-derived runtime **0.6.16** and adapted roles **0.6.17**. Preserve attribution/modification notices, full original/output hashes and license metadata; the package is `(MIT AND AGPL-3.0-only)`, not wholly MIT/upstream-free. A source hash without the source is not independent integrity proof. See the [runtime baseline](../../../resources/runtime-baseline.json), [role baseline](../../../resources/agent-baseline.json) and [README license notice](../../../README.md#license).
 
 Evidence: `tests/initialization.test.mjs`, `tests/manifest-provenance.test.mjs`, `tests/adopt-project.test.mjs`, `tests/apply-template.test.mjs`, `tests/agent-documents.test.mjs`, `tests/trellis-patches.test.mjs`.
 
@@ -60,7 +60,7 @@ Developer names are safe nonempty single segments with source-defined limits; pr
 
 ## Documentation Maintenance and Review
 
-Specs are **English**, docs/ and task artifacts **Chinese**; README retains its language. Identifiers, commands, hashes and quoted upstream text are not translated. `docs/` is for users: feature behavior, commands, configuration, visible limitations and necessary provenance/license attribution. All development/testing methods belong in specs; historical designs/results belong in tasks. A small feature does not require a new spec file.
+Specs are **English**, docs/ and task artifacts **Chinese**; README retains its language. Identifiers, commands, hashes and quoted upstream text are not translated. `docs/` is for users: feature behavior, commands, configuration and visible limitations. Keep package provenance in resource manifests and necessary license notices in README/license/source files, not standalone user pages. All development/testing methods belong in specs; historical designs/results belong in tasks. A small feature does not require a new spec file.
 
 Classify before moving: retain effective reusable constraints, consolidate current user explanations and preserve archived evidence. Do not mechanically concatenate internal schemas/algorithms into a giant manual. Keep root navigation short; layer indexes contain real guidance; retain skill-required guides paths without repeated prose. Update current Markdown/JSONL paths and anchors, not archived assertions en masse. Never regenerate/install/deploy merely to repair a document link.
 

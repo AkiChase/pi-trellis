@@ -43,7 +43,7 @@
 
 ## 使用边界
 
-项目 `.trellis/.pi-trellis.json` 记录托管资源来源与版本，不应忽略或手工绕过。包基线与许可见[运行时来源](runtime-baseline.md)和[角色来源](trellis-agent-sync.md)。项目 workflow/config/spec/history 仍归用户所有；不要用上游 `trellis update` 替换固定脚本。
+项目 `.trellis/.pi-trellis.json` 记录托管资源来源与版本，不应忽略或手工绕过。项目 workflow/config/spec/history 仍归用户所有；不要用上游 `trellis update` 替换固定脚本。
 
 初始化必须在源项目而非 HOME 或托管 worktree 执行。危险 symlink、非普通文件、未知碰撞和定制托管标记会报错，不覆盖。文件级原子发布不等于全项目事务或 OS 沙箱。
 

@@ -7,7 +7,5 @@
 - [托管 worktree](worktree-execution.md)：创建、准备、材料同步、收集与安全清理。
 - [任务浏览器](task-viewer.md)：只读任务列表、层级、文档和键位。
 - [常驻任务显示](task-display.md)：任务数量、widget/footer 与刷新。
-- [角色与来源](trellis-agent-sync.md)：三个角色的职责、Pi 适配和许可。
-- [运行时来源](runtime-baseline.md)：固定运行时版本、更新方式和许可。
 
 安装与总体配置见 [README](../README.md)。

@@ -10,6 +10,18 @@
 
 role 可选 `trellis-implement`、`trellis-check`、`trellis-research`；省略 task 使用当前会话任务。派发要求任务为 `in_progress`，但状态本身不代表用户实施授权。工具返回真实 agent ID，可交给现有 result/steering 工具。
 
+## 角色与定制
+
+| 角色 | 职责 |
+| --- | --- |
+| `trellis-implement` | 读取任务材料，在已批准范围实施并验证 |
+| `trellis-check` | 审查指定变更，修复清晰的范围内问题并验证最终版本；争议交主会话 |
+| `trellis-research` | 只读研究，将实际证据写入任务 research，不改产品代码 |
+
+角色不自行提交或管理任务生命周期，主会话决定阶段推进和验收。材料缺失或截断时必须补读，不猜测需求；外部研究只使用实际配置的工具。
+
+可编辑项目 `.pi/agents/` 定制角色。启动不会部署或升级；安全资源更新保留定制并报告冲突，明确接管旧项目才按确认替换旧角色。见[初始化](initialization.md)。更新文件不会改写已运行子代理。工具名单和角色规则不是 shell 沙箱，仍须审查继承的 extensions/skills。
+
 ## 执行目录
 
 | 任务状态 | 执行行为 |

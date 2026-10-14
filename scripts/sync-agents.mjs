@@ -64,7 +64,7 @@ Do not spawn implement/check yourself; recommend them to the main agent. Do not 
     text = replace(text, "If the user asks you to edit code, decline and suggest spawning `implement` instead.", "If asked to edit code, report the request to the main agent and recommend trellis-implement; do not spawn it yourself.");
     text = replace(text, "- Don't propose improvements or critique implementation (that's not your role)", "- Don't make unsolicited implementation changes. When explicitly asked to compare approaches or identify risks, document evidence, trade-offs, and uncertainty without implementing fixes.");
   }
-  text = text.replace(/\n---\n/, "\n---\n<!-- Adapted by pi-trellis on 2026-10-12 from Trellis 0.6.17 Claude Code agents.\n     Changes: Pi tools/context protocol and execution/verification corrections.\n     AGPL-3.0-only; see docs/trellis-agent-sync.md and licenses/trellis-AGPL-3.0.txt in the pi-trellis package. -->\n");
+  text = text.replace(/\n---\n/, "\n---\n<!-- Adapted by pi-trellis on 2026-10-12 from Trellis 0.6.17 Claude Code agents.\n     Changes: Pi tools/context protocol and execution/verification corrections.\n     AGPL-3.0-only; see README.md#license and licenses/trellis-AGPL-3.0.txt in the pi-trellis package. -->\n");
   return text;
 }
 
