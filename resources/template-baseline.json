@@ -57,7 +57,7 @@
       "origin": "Pi-only adaptation of project Trellis workflow conventions and upstream init behavior; no exact upstream template revision asserted"
     },
     "workflow.md": {
-      "sha256": "1d2d9c7b0a2c5c29116e7887669fceefefa82ee19d98dffca1e5b120b829725c",
+      "sha256": "58079f85c2fb64c42996888ec523f9e9e5e5acc0e990f2bbf21b551f03cd0ad4",
       "license": "AGPL-3.0-only",
       "origin": "Pi-only adaptation of project Trellis workflow conventions and upstream init behavior; no exact upstream template revision asserted"
     },

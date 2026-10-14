@@ -31,7 +31,7 @@
       "adapted": true
     },
     "trellis-finish-work/SKILL.md": {
-      "sha256": "9f378118f510e66e7f382f967b44dd1f44321bf6a8d5202b4520fe32c899a0b2",
+      "sha256": "ec72ff6b3b28c37f8fda06bf78c87c87da78834608712f6bc047b37074c0f49f",
       "sourcePath": ".agents/skills/trellis-finish-work/SKILL.md",
       "sourceSha256": "161060fbcd44f787440d3a5c297a9f5223ea7774bb3021a50e376875a9ac5b2d",
       "license": "AGPL-3.0-only",

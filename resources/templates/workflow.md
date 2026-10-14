@@ -136,9 +136,15 @@ If the user requested no commits, leave changes uncommitted and report their sta
 #### 3.5 Archive and Journal [conditional]
 Use `/skill:trellis-finish-work` for approved lifecycle actions. Only main performs finish/archive/session recording.
 Unfinished tasks stay active; deactivation alone does not complete status. Archive only accepted completed work.
-Session end does not imply task completion or lifecycle approval. Honor already-granted finish/archive/journal
-authorization without asking again; archive only after acceptance. Journal records deliberate summaries,
-respecting configuration. Lifecycle commands must not implicitly commit product code or unrelated changes.
+Session end does not imply task completion or lifecycle approval. Authorization to run `trellis-finish-work`
+covers applicable archive, deactivation, journal recording and local commits of those wrap-up changes;
+do not ask for each action separately or repeat already-granted finish-work authorization. Respect explicit
+user restrictions; archive only after acceptance. Journal records deliberate summaries, respecting configuration.
+Lifecycle commands auto-commit according to `session_auto_commit` by default; never implicitly commit product
+code or unrelated changes. Use `--no-commit` for an explicit no-commit instruction or an unsafe mixed parallel
+scope; safely separate authorized wrap-up changes or report the blocker. Do not bypass disabled auto-commit
+configuration with manual commits. Inspect complete command commit scopes before execution and verify resulting
+commits/remaining changes afterwards; report configured skips and failures accurately. No implicit push or history rewriting.
 
 ## Breadcrumbs
 
@@ -159,5 +165,5 @@ Work within approved scope. Choose implementation and review executors separatel
 [/workflow-state:in_progress]
 
 [workflow-state:completed]
-Review acceptance and remaining scoped changes; honor no-commit instructions. Archive/journal need authorization, but do not ask again if already granted. Preserve unfinished work; no implicit push or history rewriting.
+Review acceptance and remaining scoped changes; honor no-commit instructions. Finish-work authorization covers applicable archive/deactivation/journal and their configured local commits; do not ask for each action separately or repeat granted authorization. Preserve unfinished work and parallel changes; verify commits or report pending paths. No implicit push or history rewriting.
 [/workflow-state:completed]

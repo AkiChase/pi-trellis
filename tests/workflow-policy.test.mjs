@@ -54,11 +54,47 @@ test('stage commits happen at implementation checkpoints, not only final wrap-up
  const breadcrumb = workflow.split('[workflow-state:in_progress]')[1].split('[/workflow-state:in_progress]')[0];
  assert.match(breadcrumb, /commit it immediately unless the user opted out/);
  const finish = readFileSync('skills/trellis-finish-work/SKILL.md', 'utf8');
- assert.match(finish, /Honor already-granted finish\/archive\/journal authorization without asking again/);
+ assert.match(finish, /Honor already-granted finish-work authorization without asking again/);
  assert.match(finish, /Code submission policy belongs to the project workflow/);
  assert.doesNotMatch(finish, /stage commits happen during Phase 2|task-level commit approval|Approved code commits belong to workflow step 3\.4/);
  const resume = readFileSync('skills/trellis-continue/SKILL.md', 'utf8');
  assert.match(resume, /return to \*\*2\.1\*\* for the next approved stage/);
+});
+
+test('finish-work authorization includes configured wrap-up commits without separate action approvals', () => {
+ const finish = readFileSync('skills/trellis-finish-work/SKILL.md', 'utf8');
+ const wrap = workflow.slice(workflow.indexOf('#### 3.5'), workflow.indexOf('## Breadcrumbs'));
+ for (const text of [finish, wrap]) {
+  assert.match(text, /Authorization to run `trellis-finish-work`/);
+  assert.match(text, /archive, deactivation, journal recording and\s+local commits/);
+  assert.match(text, /do not ask for each action separately/);
+  assert.match(text, /explicit\s+user restrictions/);
+  assert.match(text, /session_auto_commit/);
+  assert.match(text, /--no-commit/);
+  assert.match(text, /parallel/);
+  assert.match(text, /[Bb]efore (?:each command|execution)/);
+  assert.match(text, /remaining changes/);
+  assert.match(text, /failures?/);
+  assert.match(text, /push or history rewriting/);
+  assert.doesNotMatch(text, /With (?:archive|journal) authorization|finish\/archive\/journal authorization/);
+ }
+ const commands = finish.split('\n').filter(line => /^\d+\./.test(line) && line.includes('python3'));
+ assert.equal(commands.length, 3);
+ for (const command of commands) assert.doesNotMatch(command, /--no-commit/, 'ordinary commands retain configured auto-commit');
+ assert.match(finish, /Use `--no-commit` only when the user explicitly forbids commits or/);
+ assert.match(finish, /If `session_auto_commit: false`, do not bypass it with manual commits/);
+ assert.match(wrap, /Do not bypass disabled auto-commit\nconfiguration with manual commits/);
+ assert.match(finish, /current developer's journal files\/index and current bound task/);
+ assert.match(finish, /source\/destination and affected child task paths/);
+ assert.match(finish, /Scoped paths protect unrelated staged files, not parallel changes within those paths/);
+ assert.match(finish, /report the blocker if safe separation is uncertain/);
+ assert.match(finish, /An auto-commit failure is not successful submission/);
+ assert.match(finish, /Configured skips remain uncommitted and must be reported/);
+ assert.match(finish, /unfinished work must not be archived/);
+ assert.match(finish, /Never implicitly commit product code/);
+ const completed = workflow.split('[workflow-state:completed]')[1].split('[/workflow-state:completed]')[0];
+ assert.match(completed, /Finish-work authorization covers applicable/);
+ assert.doesNotMatch(completed, /Archive\/journal need authorization/);
 });
 
 test('real phase parser extracts every template step without neighboring bodies', t => {
