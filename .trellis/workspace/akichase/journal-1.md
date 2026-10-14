@@ -307,3 +307,29 @@ Added the explicit Adopt existing project action so a legacy .trellis project wi
 ### Status
 
 [OK] **Completed**
+
+
+## Session 12: 任务查看器展示、排序与文档归位
+<!-- trellis-session: v=2 fp=dfb2cb38960e2810 -->
+
+**Date**: 2026-10-14
+**Task**: 任务查看器展示、排序与文档归位
+**Branch**: `main`
+
+### Summary
+
+完成 trellis-task-viewer 改名、英文目录标识与原始标题展示、同层目录降序及当前任务整树置顶；小功能文档迁入 docs/，spec 仅保留通用规范。聚焦44/44、全量379/379，文档迁移后全量复跑379/379。本任务已归档，未push/install/sync/reload，保留并行 runtime-tool-names 规划。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `24d879e` | feat: improve task viewer labels and ordering |
+
+### Testing
+
+- [OK] Focused 44/44; final full 379/379; document links and diff whitespace PASS; no real PTY or static typecheck
+
+### Status
+
+[OK] **Completed**
