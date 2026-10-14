@@ -1,8 +1,9 @@
+import { adoptPlan, applyAdoptPlan, adoptionSummary } from "./adoption.ts";
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { applyResourcePlan, resourcePlan, resourceStatus, templatePlan, applyTemplatePlan, type TemplateScope } from "./resources.ts";
 import { inspect, plan, apply, validateUsername, type Inspection, type InitPlan } from "./engine.ts";
 
-export const INIT_HELP = "Usage: /trellis-init [--user <username>] [--check | --help]\nInitializes a new project or sets up identity on a supported clone.\nAll writes require native UI confirmation. Managed resources can be updated or repaired without resetting user data. Apply template explicitly replaces selected Workflow/Spec documents with backups. No force, active task selection, hooks, install or Git actions.";
+export const INIT_HELP = "Usage: /trellis-init [--user <username>] [--check | --help]\nInitializes a new project, adopts an existing manifest-less project, or sets up identity on a supported clone.\nAll writes require native UI confirmation. Managed resources can be updated or repaired without resetting user data. Apply template explicitly replaces selected Workflow/Spec documents with backups. No force, active task selection, hooks, install or Git actions.";
 export function parseInitArguments(args: string): { user?: string; check: boolean; help: boolean } {
 	if (args.length > 4096) throw new Error("Initialization arguments are too long");
 	const tokens: string[] = [];
@@ -91,9 +92,19 @@ export function registerInitCommand(pi: ExtensionAPI, refresh: (ctx: ExtensionCo
 				const parsed = parseInitArguments(args);
 				if (parsed.help) { notify(INIT_HELP); return; }
 				const state = inspect(ctx.cwd);
-				if (parsed.check || !ctx.hasUI) { notify(resourceStatus(state.root) + (!ctx.hasUI ? "\nUse /trellis-init in interactive or RPC UI to review and confirm writes." : "")); return; }
+				const health = () => state.state === "unsupported" ? adoptionSummary(adoptPlan(state.root)) : resourceStatus(state.root);
+				if (parsed.check || !ctx.hasUI) { notify(health() + (!ctx.hasUI ? "\nUse /trellis-init in interactive or RPC UI to review and confirm writes." : "")); return; }
 				if (state.developer && parsed.user && parsed.user !== state.developer) throw new Error(`Developer conflict: actual ${state.developer}; requested ${parsed.user}. Existing identity preserved.`);
-				if (state.state === "unsupported") { notify(resourceStatus(state.root), "error"); return; }
+				if (state.state === "unsupported") {
+					const choice = await ctx.ui.select(statusSummary(state), ["Adopt existing project", "View project status", "Cancel"]);
+					if (choice === "View project status") { notify(health()); return; }
+					if (choice !== "Adopt existing project") return;
+					const value = adoptPlan(state.root);
+					if (await ctx.ui.select(adoptionSummary(value), ["Cancel", "Adopt existing project"]) !== "Adopt existing project") return;
+					const result = applyAdoptPlan(value);
+					notify(statusSummary(result) + "\nProject adopted.\n" + value.legacy.slice(0, 256).map(p => `Legacy — left in place: ${p}`).join("\n") + (value.legacy.length > 256 ? `\n${value.legacy.length - 256} additional legacy paths omitted.` : "") + (result.state === "supported" ? "\nNext: /trellis-init to set up developer identity." : ""));
+					await refresh(ctx, result.root); await ctx.reload(); return;
+				}
 				if (state.state === "ready" && parsed.user) { notify(statusSummary(state) + "\nAlready ready; no files changed."); return; }
 				const menu = ["Update project resources", ...(state.state === "ready" ? ["Apply template"] : []), "View project status", "Cancel"];
 				if (state.state !== "fresh" && state.state !== "incomplete" && state.state !== "supported") {

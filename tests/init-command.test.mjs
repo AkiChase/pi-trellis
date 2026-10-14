@@ -51,7 +51,7 @@ test('unsafe history/symlinks are skipped; bounded candidate list labels Git sep
 });
 
 test('unknown runtime and interrupted divergence notify error without writes or claimed success',async t=>{
- const f=fixture(t);mkdirSync(join(f.root,'.trellis'));await f.run('--user Dev');assert.equal(f.notices.at(-1).type,'error');assert.match(f.notices.at(-1).text,/General migration is not available/);assert.equal(f.dialogs.length,0);
+ const f=fixture(t);mkdirSync(join(f.root,'.trellis'));f.selections.push('View project status');await f.run('--user Dev');assert.match(f.notices.at(-1).text,/Adopt existing project/);assert.ok(f.dialogs[0].options.includes('Adopt existing project'));assert.ok(!existsSync(join(f.root,'.trellis/.pi-trellis.json')));
  const g=fixture(t,{selections:['Retry interrupted initialization'],confirm:true});const p=plan(g.root,'Dev');assert.throws(()=>apply(p,{afterWrite:()=>{throw Error('forced');}}));writeFileSync(join(g.root,p.actions[0].path),'divergent');await g.run('--user Dev');assert.equal(g.notices.at(-1).type,'error');assert.match(g.notices.at(-1).text,/preserved/);assert.equal(g.reloads,0);assert.equal(existsSync(join(g.root,'.trellis/.developer')),false);
 });
 
@@ -85,3 +85,8 @@ test('update restores missing resources with confirmation and status contains pe
  f.selections.push('Update project resources');f.ctx.ui.confirm=async()=>true;await f.run('');assert.ok(existsSync(join(f.root,'.trellis/scripts/task.py')));assert.equal(f.notices.at(-1).text,'Project resources updated.');
  f.selections.push('Update project resources');await f.run('');assert.equal(f.notices.at(-1).text,'Project resources are up to date.');
 });
+
+ test('Adopt native menu confirms once, cancels read-only, then reloads with supported runtime',async t=>{
+ const f=fixture(t);mkdirSync(join(f.root,'.trellis'));f.selections.push('Adopt existing project','Cancel');await f.run('');assert.ok(!existsSync(join(f.root,'.trellis/.pi-trellis.json')));assert.deepEqual(f.dialogs.at(-1).options,['Cancel','Adopt existing project']);assert.match(f.dialogs.at(-1).title,/without backups/);
+ f.selections.push('Adopt existing project','Adopt existing project');await f.run('');assert.equal(inspect(f.root).state,'supported');assert.equal(f.reloads,1);assert.equal(f.refreshes,1);assert.match(f.notices.at(-1).text,/Project adopted/);
+ });
