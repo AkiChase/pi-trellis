@@ -13,7 +13,7 @@ Usage:
     python3 task.py list-context <dir>          # List jsonl entries
     python3 task.py start <dir>                 # Set active task, record current branch
     python3 task.py current [--source] [--json] # Show active task
-    python3 task.py finish                      # Clear active task
+    python3 task.py deactivate                  # Clear only this session's binding (not task completion)
     python3 task.py set-branch <dir> <branch>   # Set git branch
     python3 task.py set-base-branch <dir> <branch>  # Set PR target branch
     python3 task.py set-scope <dir> <scope>     # Set scope for PR title
@@ -82,7 +82,7 @@ from common.task_context import (
 
 
 # =============================================================================
-# Command: start / finish
+# Command: start / deactivate
 # =============================================================================
 
 def _record_start_state(
@@ -265,7 +265,8 @@ def cmd_start(args: argparse.Namespace) -> int:
         return 1
 
 
-def cmd_finish(args: argparse.Namespace) -> int:
+def cmd_deactivate(args: argparse.Namespace) -> int:
+    """Clear this session's binding without completing, archiving or journaling."""
     repo_root = get_repo_root()
     try:
         active = clear_active_task(repo_root)
@@ -280,7 +281,7 @@ def cmd_finish(args: argparse.Namespace) -> int:
         return 0
     print(f"Cleared current task (was: {active.task_path})")
     print(f"Source: {active.source}")
-    run_task_hooks("after_finish", repo_root / active.task_path / FILE_TASK_JSON, repo_root)
+    run_task_hooks("after_deactivate", repo_root / active.task_path / FILE_TASK_JSON, repo_root)
     return 0
 
 def cmd_current(args: argparse.Namespace) -> int:
@@ -497,7 +498,7 @@ Usage:
   python3 task.py list-context <dir>                 List jsonl entries
   python3 task.py start <dir>                        Set active task; records the checked-out branch when unset
   python3 task.py current [--source]                 Show active task
-  python3 task.py finish                             Clear active task
+  python3 task.py deactivate                        Clear only this session's binding (not task completion)
   python3 task.py set-branch <dir> <branch>          Set git branch
   python3 task.py set-base-branch <dir> <branch>     Set PR target branch
   python3 task.py set-scope <dir> <scope>            Set scope for PR title
@@ -539,7 +540,7 @@ Examples:
   python3 task.py set-branch <dir> task/add-login
   python3 task.py start .trellis/tasks/01-21-add-login
   python3 task.py current --source
-  python3 task.py finish
+  python3 task.py deactivate
   python3 task.py rename add-login add-sso --dry-run  # Preview the change set
   python3 task.py rename add-login add-sso
   python3 task.py archive add-login
@@ -658,8 +659,12 @@ def main() -> int:
     p_current.add_argument("--json", action="store_true",
                            help="Output machine-readable JSON")
 
-    # finish
-    subparsers.add_parser("finish", help="Clear active task")
+    # deactivate
+    subparsers.add_parser(
+        "deactivate",
+        help="Clear only this session's task binding (not task completion)",
+        description="Clear only this session's task binding. Does not complete or archive the task, or record a journal.",
+    )
 
     # set-branch
     p_branch = subparsers.add_parser("set-branch", help="Set git branch")
@@ -738,7 +743,7 @@ def main() -> int:
         "list-context": cmd_list_context,
         "start": cmd_start,
         "current": cmd_current,
-        "finish": cmd_finish,
+        "deactivate": cmd_deactivate,
         "set-branch": cmd_set_branch,
         "set-base-branch": cmd_set_base_branch,
         "set-scope": cmd_set_scope,

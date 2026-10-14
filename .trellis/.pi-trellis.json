@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "runtimeReleaseId": "pi-trellis-runtime-v1-56affc3695c933701b71c8f4ccfc0afa80ee526927759088c173c5c3ac7e608b",
+  "runtimeReleaseId": "pi-trellis-runtime-v1-e461666507e07f59b5edf6a719ce30dd620d2d26e2d6cddbec80d6e0197fc45e",
   "files": {
     ".trellis/scripts/add_session.py": {
       "sha256": "432c29b3adcd3510f86b63803f6ecefc3901f3ee623ffda3e0b693ad83ca730c",
@@ -141,7 +141,7 @@
       "source": "runtime/init_developer.py"
     },
     ".trellis/scripts/task.py": {
-      "sha256": "76df7f4256eb9097049a2bdcb830e12021cc43323e9065e12a5356c79c1e1185",
+      "sha256": "cf1a1f198070cac7de44904a0d9636b88a0ebfde69f99fd4b7f76809ea3d7962",
       "mode": 420,
       "kind": "runtime",
       "source": "runtime/task.py"
@@ -215,13 +215,10 @@
   },
   "templates": {
     ".trellis/workflow.md": {
-      "origin": "preserved-project",
-      "sha256": "7fbe4b3afed05bfa0dba11dcfbffcc4cee9ae8cac2e652c46cd82a409048d0d3",
+      "origin": "package-default",
+      "sha256": "58079f85c2fb64c42996888ec523f9e9e5e5acc0e990f2bbf21b551f03cd0ad4",
       "mode": 420,
-      "source": {
-        "kind": "project-snapshot",
-        "revision": "2e8e73cc18eaf937a41ec023a3fbd9f295642496"
-      }
+      "source": "resources/templates/workflow.md"
     },
     ".trellis/config.yaml": {
       "origin": "preserved-project",
@@ -251,21 +248,18 @@
       }
     },
     ".trellis/spec/index.md": {
-      "origin": "preserved-project",
-      "sha256": null,
-      "mode": null,
-      "source": {
-        "kind": "project-snapshot",
-        "revision": "2e8e73cc18eaf937a41ec023a3fbd9f295642496"
-      }
+      "origin": "package-default",
+      "sha256": "a37d28a4f1055a1f72487cb3c2fbd24e5d10726ad98aa8796be5b3435055f7c6",
+      "mode": 420,
+      "source": "resources/templates/spec/index.md"
     },
     ".trellis/spec/guides/index.md": {
       "origin": "preserved-project",
-      "sha256": "97a37b0516b5cca122643173055fc0b734e414a8905ca7a31e25b7be56e15a7c",
+      "sha256": "11971b43155f75547335f09bd07f1e9a13e0576023b2d26154c9cf0d4faf2c7d",
       "mode": 420,
       "source": {
         "kind": "project-snapshot",
-        "revision": "2e8e73cc18eaf937a41ec023a3fbd9f295642496"
+        "revision": null
       }
     },
     ".trellis/spec/guides/code-reuse-thinking-guide.md": {
