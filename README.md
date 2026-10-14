@@ -275,31 +275,11 @@ migration or automatic runtime upgrade is provided.
 
 ## Development checks
 
-Detailed offline provider procedures: [provider guide](docs/testing/provider.md).
-Authorized real terminal validation: [tmux guide](docs/testing/tmux.md).
-Neither guide is a fresh test report or permission to install/run against personal state.
-
-Pi supplies `@earendil-works/pi-tui` as a `*` peer dependency; it is not bundled
-or installed separately. Direct-TS tests use the real public TUI export via a
-test-only loader alias, analogous to the provider probe. If local peers are
-absent, point `PI_TRELLIS_TEST_HOST` at an existing Pi `node_modules` directory:
-
-```bash
-# Omit this variable when the host peer is already locally resolvable.
-export PI_TRELLIS_TEST_HOST=/path/to/installed/pi/node_modules
-env -u TRELLIS_CONTEXT_ID npm test
-# Focused direct-TS tests need the same preload:
-env -u TRELLIS_CONTEXT_ID node --import ./tests/host-tui.mjs --test tests/task-display.test.mjs tests/agent-context-integration.test.mjs
-# Full real runtime copies in disposable projects (same host preload):
-env -u TRELLIS_CONTEXT_ID node --import ./tests/host-tui.mjs --test tests/runtime-contracts.test.mjs
-# Native standard-library unit tests (also included in npm test):
-python3 -B -m unittest discover -s tests/python -p 'test_*.py'
-node scripts/sync-agents.mjs <fixed-version-generated-.claude/agents> --check
-# Optional: real Pi/provider execution, scripted offline model responses only
-node tests/provider-contracts.mjs --host <Pi-node_modules> --provider <provider-package-root>
-```
-
-Repeat `--provider` to test standalone pi-subagents and a vendored agent-tasks implementation separately. Do not install two conflicting providers in the same live Pi session.
+Development and testing methods live in [development guidelines](.trellis/spec/development/index.md)
+and [testing guidelines](.trellis/spec/testing/index.md), including the real host peer setup,
+subprocess identity isolation, role-source maintenance and optional offline provider probe.
+Authorized real-terminal procedures are in the [tmux guide](.trellis/spec/testing/tmux.md).
+These guides are not fresh test reports or permission to install or use personal state.
 
 ## License
 

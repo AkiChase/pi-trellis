@@ -22,12 +22,12 @@
 不改 runtime/模板/skills/角色、workflow/config、依赖或来源 hash，不新增功能/变更权限和安全算法，不改测试预期来迁就失败。不安装、个人 sync/reload、真实 tmux/provider/在线模型、push、amend/rebase 或归档/journal。历史 commit 保留，使用追加提交。
 
 ## 验收（本轮重新验证）
-- [ ] development/testing 两目录被 packages 正常发现；分类 index 有实质内容，根 index 简短且不重复。
-- [ ] scripts/extension/worktree 专题规范消除，guides 兼容入口有效且不重复规范正文；整体比首轮 13 份/719 行更精简，无通用安全约束遗漏。
-- [ ] docs 只有功能使用与必要来源/许可说明，无测试方法/内部实现手册；所有测试要求与 tmux/provider 方法在 spec。
-- [ ] plans 删除与基线迁移完成；基线数据字节不变，运行代码/同步脚本/测试统一读 resources 新路径，不残留当前缺失引用。
-- [ ] 相关本地 links/anchors、活动 JSONL、空白（含新文件）、packages 检查通过；聚焦角色来源/初始化/规范协议测试及按影响选取更广测试自然退出，未测如实报告。
-- [ ] 保归档证据、历史提交与并行修改，精确提交本轮范围。
+- [x] development/testing 两目录被 packages 正常发现；分类 index 有实质内容，根 index 简短且不重复。
+- [x] scripts/extension/worktree 专题规范消除，guides 兼容入口有效且不重复规范正文；整体比首轮 13 份/719 行更精简，无通用安全约束遗漏。
+- [x] docs 只有功能使用与必要来源/许可说明，无测试方法/内部实现手册；所有测试要求与 tmux/provider 方法在 spec。
+- [x] plans 删除与基线迁移完成；基线数据字节不变，运行代码/同步脚本/测试统一读 resources 新路径，不残留当前缺失引用。
+- [x] 相关本地 links/anchors、活动 JSONL、空白（含新文件）、packages 检查通过；聚焦角色来源/初始化/规范协议测试及按影响选取更广测试自然退出，未测如实报告。
+- [x] 保归档证据、历史提交与并行修改，精确提交本轮范围。
 
 ## 执行与授权
 用户已在本会话批准按现有第二轮方案实施及逐阶段本地提交，并要求全部在当前主会话直接完成。主实施与自检，不派发子代理；路径迁移仅改字面路径且基线字节不变，不改变跨模块校验契约，按低风险机械迁移处理。自检不是独立审查。不授权 push、安装、真实 tmux/provider、归档或 journal。

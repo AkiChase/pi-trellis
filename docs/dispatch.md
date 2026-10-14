@@ -36,7 +36,7 @@ role 可选 `trellis-implement`、`trellis-check`、`trellis-research`；省略 
 
 source 任务材料读取当前文件，包括未提交内容；截断/缺失材料不能获得完整注入标记，子 agent 必须补读。子会话独立绑定任务，不运行 start/hooks，不改变父任务指针。
 
-source 不生成 managed 材料版本或 check currentness，也不会把当前 HEAD 自动当作任务 review base。需要审查已提交阶段时，由主 agent 在 prompt 明确提供正确 `Review base: <commit>` 和 scoped 文件范围。
+共享源目录没有托管检查时效判断。需要审查已提交阶段时，由主 agent 明确提供正确 `Review base: <commit>` 和文件范围。
 
 同任务 source 活跃期间，create/adopt 的预览和确认都会拒绝；先等待终态再切换执行位置。
 
@@ -48,7 +48,7 @@ source 不生成 managed 材料版本或 check currentness，也不会把当前 
 
 stop 只接受 task，不需要 agent/prompt。成功回复仅表示请求 provider 停止，**终态事件才释放占用**。跨会话可以读取 source 记录尝试 stop；provider 不认识旧 ID 时明确失败，不猜测子进程已退出。
 
-RPC 超时、shutdown 和不确定启动保留 unknown 与已知 ID，不自动重试 spawn。source 记录位于 `.trellis/.runtime/pi-trellis/source-executions/<任务路径SHA-256>.json`，与 managed binding 记录分开。source 终态/shutdown 条件发布与预留共用源锁；竞争时延迟重试，退出前不保证 flush，原保守占用不会因为 PID 消失而自动解除。
+RPC 超时、shutdown 和不确定启动保留 unknown 与已知 ID，不自动重试 spawn。报错会给出记录位置供核查；退出前不保证已收到的终态成功落盘，也不会因为 PID 消失自动解除占用。
 
 MVP 没有 source recover 命令。无法取得终态证据时，依据报错记录路径核查真实 provider/进程，另行授权处理记录；不要用 `worktree.py recover` 或自动删文件解除 source unknown。managed 的恢复规则仍见其专用协议。
 

@@ -1,47 +1,52 @@
 # 托管 worktree 执行
 
-`trellis_dispatch` 同时支持未绑定任务在共享源目录执行，见[统一派发](dispatch.md)。以下只适用于选择托管执行时。任务有 active source execution 时，终态证据记录前不能 create/adopt；managed CLI 不恢复 source execution。
+未绑定任务可直接在共享源目录派发，见[任务派发](dispatch.md)。本页适用于主动选择托管 worktree 的任务；首次管理操作前阅读。所有命令从**源项目根目录**执行固定入口 `python3 .trellis/scripts/worktree.py`，精确选项见各命令 `--help`。
 
-首次管理操作前读本协议。命令从**源项目根目录**运行 `python3 .trellis/scripts/worktree.py`，本包文档不是 CLI 入口。精确 flags 读各命令 --help；缺 CLI/文档需明确 installation/update，不自动安装。
+## 创建与准备
 
-## 首次执行
+先按项目 workflow 批准并 start 源任务。预览不会写入；只有用户批准后才重复加 `--confirm`：
 
-1. 按项目 workflow 批准并 start 源任务；worktree 可选，不是所有任务必需。
-2. 预览 create --task .trellis/tasks/<slug>，或 adopt 已注册 branch-backed worktree。获批后 --confirm；结果是 pinned reported base 的 unprepared 目录，不复制源代码或启动 agent。预览不是 reservation，默认 HEAD 可变；需要固定时显式 --base 完整 commit。
-3. 预览/批准 prepare，只复制选中当前任务文档（可含未提交材料）。外部引用须与 target baseline 一致且 source 无未提交差异；target 已有 committed Trellis/native CLI scaffold，不自动补装。
-4. Confirm prepare 用独立 context 执行**target** task.py start 与配置 after_start hook。生成 hash-only source snapshot；hook 改动仍为 target divergence，不当批准源需求。
-5. `trellis_dispatch {agent, task, prompt}` 派发 approved role。主 Pi host 留 source root；provider 收既有 target cwd/isolation: off，返回真实 ID 给 result/steering。禁止临时 isolation 或 source fallback。
+```bash
+python3 .trellis/scripts/worktree.py create --task .trellis/tasks/<slug>
+python3 .trellis/scripts/worktree.py create --task .trellis/tasks/<slug> --confirm
+python3 .trellis/scripts/worktree.py prepare --task .trellis/tasks/<slug>
+python3 .trellis/scripts/worktree.py prepare --task .trellis/tasks/<slug> --confirm
+python3 .trellis/scripts/worktree.py status --task .trellis/tasks/<slug> --json
+```
 
-项目决定 phase，管理操作不自动 check/commit/merge/install/archive。Child 只在 supplied task/root/role 范围工作，补读省略完整材料，不管理 worktree 或源 lifecycle。
+- `create` 创建新分支目录；`adopt --path <已注册worktree>` 接纳同仓库、分支支持的已有目录。不接受随意目录或 detached worktree。
+- 默认从 HEAD 创建；预览不是预留，HEAD 可变。需固定时用 `--base <完整commit>`。创建不复制源代码、安装依赖、启动任务或子代理。
+- 默认目录为源根 `.worktree/`；可在 `.pi/pi-trellis.json` 配置 `{ "worktree": { "directory": ".worktree" } }`。相对路径从源根解析，新配置只影响新创建；既有绑定保原路径。
+- 源目录应忽略 worktree 目录和 `.trellis/.runtime/`，目标也需忽略 runtime；CLI 只检查，不自动改 `.gitignore`。
+- `prepare` 只复制选中的当前任务材料，不复制代码/spec/config。目标需已有兼容已提交运行时；基线引用差异或目标冲突会拒绝，不自动补装。
+- 准备确认会在目标用独立身份运行 task start，可能执行已配置的 after_start hook，预览应先审查。重复 prepare 只验证，不偷偷同步需求。
 
-## 检查与时效
+## 派发与状态
 
-Python 核 identity、独立 target context、完整 refs 与当前批准 source requirements。Dispatch 在锁内 query 最新事实、渲染 target materials、再次核 fingerprints 后才 reserve；动态 prompt/record 带 revision/sourceFingerprint/targetFingerprint。
+主 Pi 会话保持源根目录。准备完成后调用：
 
-status --task ... --json 给有界 drift/change/conflict 与 check freshness。Completed check **不是验收**，须读 report。Current 要求 final checkout snapshot 与 starting material revision 匹配，无 source drift/conflict。Snapshot 排除项和大文件 size/mtime fallback 不是穷尽变更检测。
+```json
+{ "agent": "trellis-implement", "task": ".trellis/tasks/<slug>", "prompt": "实施已批准范围" }
+```
 
-## 更新批准需求
+`trellis_dispatch` 返回真实 agent ID，可用于结果查询和 steering。provider 使用已存在的目标目录和 `isolation: off`；不临时创建 worktree，绑定损坏或未准备不会回退源目录。需要持久 adapter 配置，父进程一次性 `-e` 不足以保证子会话加载。
 
-在 source 编辑已批准材料，再预览 refresh --task ...；重复 prepare 只验证，不暗中 refresh。Drift 阻派发直到明确处理。审 paths/hashes 和实际 diff 后获批 --confirm；确认锁内重算，不是 token/reservation。Source-only 更新 target，target-only 保原 common ancestor，equal converge；不同双边改动在写前拒整 plan，无 text merge/force。
+状态报告材料变化、冲突和已完成检查是否仍有效。检查完成不等于验收；需求或目标变化可使旧结果过时，仍需主会话读报告与实际 diff。
 
-Deselected reference 在源文件仍在时保 target detached；物理 source deletion 只删 unchanged target copy，edited 留 orphan。缺 selected refs 报错。Baseline spec/code 永不复制，须明确协调。task.json 同步 whole requirements projection，保 target branch/worktree_path/status/completedAt/commit/pr_url；id/name 变动需身份处理，base_branch/meta/unknown fields 仍属 requirement。
+## 更新材料与收集输出
 
-Refresh 不 start/hooks/pointer/business code。批准 requirement/reference change 即使 target bytes 已等也 advance revision，使旧 check stale。Target-only change 没有新 role-policy matrix，role scope 仍必需。
+源需求变更获批后，预览 `refresh --task ...`，审查路径与 diff，再批准确认。重复 prepare 不代替 refresh。单边源修改可同步；目标修改会保留；双边冲突整次拒绝，不自动文本合并或 force。基线代码/spec 不复制，需另行协调。刷新不重新 start 或运行 hooks。
 
-## 集成/归档前收集
+`collect --task ...` 无文件参数仅列候选；确认收集需重复明确的 `--file <当前任务项目相对路径>`。只选当前任务文档和文本研究/证据，不收代码、runtime、其他任务、隐藏凭据、binary 或 task.json；不接受目录/glob/全部选择。新增材料依赖需一并明确选择，目标删除不传播为源删除。
 
-collect --task ... 无 --file 仅列有界 task-local candidates。重复显式 --file <project-relative-current-task-file> 逐个选，无 glob/directory/--all。先 preview/read diff/获批，再 confirm。
+收集不会提交、合并或归档，也不代表输出已接受。先由主会话审查，再按已批准 workflow 集成。源任务是唯一归档主体，不独立归档执行副本。
 
-Reverse hash-only three-way 保护 source，冲突/unknown ancestry 不授权 overwrite，缺 target 不删 source。task.json/runtime/other tasks/code/symlink/hidden credential/binary 不可收集。Manifest 的新 task-local dependency 须同时显式选或已与 source 匹配，不偷偷复制。
+## 停止、恢复与清理
 
-重复 collect 幂等。收执行 input 只更新 selected accepted inputs/ancestry，保其他 source drift、使旧 lineage stale；unreferenced report 可不 advance revision。Main 仍审，collect 不批准 scope 或 passing check。
+starting/running/unknown 阻止同步和清理。`trellis_dispatch { "action": "stop", "task": "..." }` 仅请求停止，终态证据才释放占用。超时、关闭或不确定启动保留 unknown，需查实际 provider/进程；工具不自动重试派发。
 
-Target task 是执行副本：先 source collect/review，再按已批准 workflow 做 Git integration 和**唯一 source archive**，不独立 archive child。Collect 不 commit/merge/archive/task metadata。
+托管 `recover` 需证明 owner 已死，重置准备状态后还需处理材料问题并准备；不能修复任意身份或缺失运行时。共享源执行不适用此 recover，见[派发说明](dispatch.md)。残留锁需人工检查，不猜 stale 删除。
 
-## 占用、恢复与清理
+`remove --task ... --integrated-into <保留提交的引用>` 先预览 ignored 文件风险，获批后确认；目标必须干净且提交已被该引用保留。普通 Git removal 不 force、不删分支、不删当前 cwd。任务材料常令目标 dirty，应先批准收集/集成保存，不强制清空。已手动移除的目标可明确解除绑定，分支仍留。
 
-Starting/running/unknown 阻 refresh/collect/remove。`trellis_dispatch {action: "stop", task}` 只请求 provider stop，终态证据才释放；stop success 不证明 child 已停。Shutdown/ambiguous spawn 留 unknown，dead-owner recovery 前查实际 ID/provider。
-
-确认重查 plan 与每次 write contained regular path/hash，保 mode；source lock 不锁 editor。多文件/source-target publication 非事务，后续失败保已写文件、旧 snapshot、error binding，无 rollback/reset/force cleanup。Recover 只释放已证明死亡 ownership/重置 preparation，不修材料冲突或缺 scaffold；须明确处理后复用。仅新 prepared snapshots，无 old-worktree migration/baseline reconstruction。
-
-Remove 另需 user-approved clean target 与保留提交的 --integrated-into ref；preview 披露 ignored files 风险。用普通 Git remove，不 force/删 branch/删实际 cwd；成功才清本 binding private snapshots。已手工移除 target 可显式 unbind，branch 留存。先 approved collect/integration 保存输出再清理。
+多文件操作中断保留已写内容与错误状态，不承诺整次回滚。worktree 与角色规则不是 OS 沙箱；工具不自动推进阶段、安装、提交、合并或归档。
