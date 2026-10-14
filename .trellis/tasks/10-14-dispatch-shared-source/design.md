@@ -91,7 +91,7 @@ managed 结果可加 `mode: managed` 作为增量 details，保留 bindingId/cwd
 - `docs/dispatch.md`、`docs/index.md`、README、`docs/worktree-execution.md`：统一入口、两路径及 unknown 限制。
 - `skills/trellis-meta/references/platform-files/agents.md` 和必要的 before-dev/start 边界句：与入口一致。
 - `resources/templates/workflow.md` 只调整包模板的派发路由说明，不触碰项目 `.trellis/workflow.md`。
-- `resources/runtime-baseline.json`：Python/template/skill 改动的实际受管 hashes 和 content-derived release，与同阶段耦合维护。
+- `resources/runtime-baseline.json`：Python 改动的实际受管 hashes 和 content-derived release 与阶段 1 耦合维护。模板与 skill reference 分别维护 `resources/template-baseline.json` / `resources/skill-baseline.json` 实际输出 hashes；`defaultTemplates()` 消费验证过的模板生成项目 provenance。它们不属于 Python inventory，阶段 2 不人为修改无关 runtime release。
 
 当前 bundled agents 已支持真实 execution root、独立会话、无 Review base 时明确历史覆盖限制，不需要为提醒修改生成 role 文档或 `scripts/sync-agents.mjs`。短提醒动态注入，不引入 agent provenance 更新链。若实际检查发现有冲突，先说明新增范围再调整。
 

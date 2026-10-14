@@ -15,7 +15,9 @@ attribution and modification notices; the license is shipped in
 `licenses/trellis-AGPL-3.0.txt`. New shared `common/task_records.py` is maintained
 as part of that AGPL adaptation. Native `runtime/pi_trellis_worktree/`,
 `worktree.py` and private `query-worktree.py` remain original **MIT** pi-trellis
-code, moved byte-identically from `python/`. The adapted agent documents' **0.6.17**
+code, initially moved byte-identically from `python/`. Current native changes retain
+that original source hash/revision and record distinct output hashes with `modified: true`.
+The adapted agent documents' **0.6.17**
 source and `docs/agent-baseline.json` are independent; do not conflate versions.
 
 Each runtime file has `sourceSha256`, final `sha256`, source path, origin and
@@ -110,7 +112,7 @@ binding/deactivate/non-resurrection, preserved identity/index/history, source/ou
 hashes, import closure, syntax and `npm pack --dry-run` contents. It uses the real
 host preload (`tests/host-tui.mjs`, explicit `PI_TRELLIS_TEST_HOST` if needed).
 Fixture commits are not user-project commits. Native worktree/material/dispatch
-regressions verify the unchanged move separately.
+regressions verify current behavior and source/output provenance separately.
 
 Deferred: hierarchy cycles/rendering, rename pointer redesign, journal semantic
 retry changes, snapshot symlink/mode fixes, effective provider adapter detection,

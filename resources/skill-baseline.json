@@ -157,7 +157,7 @@
       "adapted": true
     },
     "trellis-meta/references/platform-files/agents.md": {
-      "sha256": "47dfd2c213ec267477c4afeb1ba1cbb9ee2e3a2d563215d0d825b503b5d6a1e6",
+      "sha256": "6b319d01abecf0c641dfcd8f36c82fbed7d5333a96878f12b837c9ec25d0db71",
       "sourcePath": ".agents/skills/trellis-meta/references/platform-files/agents.md",
       "sourceSha256": "b806b1f0de6dfc74720014aee15ede767a58925b2b3b964f2e557ed39a65bbc0",
       "license": "AGPL-3.0-only",

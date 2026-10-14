@@ -1,5 +1,7 @@
 # Managed worktree execution
 
+`trellis_dispatch` also supports unbound tasks in the shared source directory; see [unified dispatch](dispatch.md). The steps below apply only when choosing managed execution. A task with active source execution cannot create/adopt a worktree until terminal evidence is recorded. There is no source recovery through the managed CLI.
+
 Read this protocol before the first managed operation. Commands run from the **source project root** through `python3 .trellis/scripts/worktree.py`; this package document is not a CLI entry. Use each command's `--help` for exact flags. If the CLI or document is missing, request an explicit installation/update; never auto-install.
 
 ## First execution

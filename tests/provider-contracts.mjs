@@ -1,5 +1,6 @@
 // Optional real-host/real-provider probe. No model network or user configuration is used.
 // node tests/provider-contracts.mjs --host <Pi node_modules> --provider <package-root> [...]
+import { execFileSync } from "node:child_process";
 import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -35,6 +36,7 @@ try {
   for (const provider of providers) {
     const root = join(workspace, `project-${providers.indexOf(provider)}`), target = join(root, "target");
     mkdirSync(target, { recursive: true });
+    execFileSync("git", ["init", "-q", root]);
     const taskDir = ".trellis/tasks/test";
     for (const dir of [root, target]) {
       installRuntimeFixture(dir);
@@ -97,6 +99,8 @@ try {
     assert.deepEqual(loader.getExtensions().errors, []);
     const { session: main } = await sdk.createAgentSession({ cwd: root, agentDir, resourceLoader: loader, modelRuntime: runtime, model, sessionManager: sdk.SessionManager.inMemory(root), settingsManager: sdk.SettingsManager.inMemory({ compaction: { enabled: false }, retry: { enabled: false } }) });
     await main.bindExtensions({ onError: (error) => { throw new Error(error.message); } });
+    // Persist the adapter for child reload; additionalExtensionPaths alone is parent-only.
+    put(root, ".pi/settings.json", JSON.stringify({ extensions: [extensionPath], compaction: { enabled: false }, defaultTools: ["read", "write", "edit", "bash", "find", "grep"] }));
     const rpc = (method, payload, timeout = 10000) => new Promise((done, reject) => {
       const requestId = `probe-${Date.now()}-${Math.random()}`;
       const timer = setTimeout(() => { off(); reject(new Error(`RPC timeout: ${method}`)); }, timeout);
@@ -127,6 +131,24 @@ try {
     releaseResponse(fauxAssistantMessage("rpc done"));
     const retrieved = await getResult.execute("probe-result", { agent_id: started.data.id, wait: true }, undefined, undefined, parent);
     assert.ok(JSON.stringify(retrieved).includes("rpc done"));
+    const dispatch = tools.find((tool) => tool.name === "trellis_dispatch");
+    assert.ok(dispatch);
+    let sourceObserved;
+    faux.setResponses([(context) => { sourceObserved = context; return fauxAssistantMessage(fauxToolCall("write", { path: "shared-source.txt", content: "shared source execution" })); }, fauxAssistantMessage("source done")]);
+    const originalCwd = process.cwd();
+    process.chdir(root);
+    try {
+      const startedSource = await dispatch.execute("probe-source", { task: taskDir, agent: "trellis-implement", prompt: "Write the scoped source output" }, undefined, undefined, parent);
+      assert.equal(startedSource.details.mode, "source");
+      assert.equal(startedSource.details.cwd, root);
+      const sourceResult = await getResult.execute("source-result", { agent_id: startedSource.details.agentId, wait: true }, undefined, undefined, parent);
+      assert.ok(JSON.stringify(sourceResult).includes("source done"));
+      assert.equal(readFileSync(join(root, "shared-source.txt"), "utf8"), "shared source execution");
+      assert.ok(JSON.stringify(sourceObserved).includes("SOURCE material"));
+      assert.ok(JSON.stringify(sourceObserved).includes("Shared directory: Other agents may be working here."));
+      assert.ok(!JSON.stringify(sourceObserved).includes("TARGET material"));
+    } finally { process.chdir(originalCwd); }
+    console.log(`${provider}: unified trellis_dispatch shared source cwd + real child write/result + short warning PASS`);
     await main.extensionRunner.emit({ type: "session_shutdown", reason: "quit" });
     await assert.rejects(rpc("ping", {}, 100), /RPC timeout/);
     main.dispose();

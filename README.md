@@ -116,7 +116,7 @@ Whether they belong in git is your call:
 
 **External research is configuration-dependent.** Agent files inherit configured extensions/skills, not a particular web service. Without actual search/MCP tools, research reports that external search was unavailable. Built-in tool allowlists and role instructions are not a shell sandbox or a restriction on every extension tool.
 
-**Task-level worktree management.** `python3 .trellis/scripts/worktree.py` owns creation/adoption, preparation, explicit material refresh/collection, status, recovery and safe removal; only execution/stop remains in Pi. The old `trellis_worktree` tool is not registered. Material lineage applies to newly prepared worktrees; there is no old-worktree migration or snapshot reconstruction. `trellis_dispatch` sends a role to an existing ready directory. No temporary subagent isolation, automatic phase advancement, commits, merges or branch deletion. Read the package-local [execution protocol](docs/worktree-execution.md) before the first managed operation; the overview supplies its actual installed read path.
+**Task-level worktree management.** `python3 .trellis/scripts/worktree.py` owns creation/adoption, preparation, explicit material refresh/collection, status, recovery and safe removal; only execution/stop remains in Pi. The old `trellis_worktree` tool is not registered. Material lineage applies to newly prepared worktrees; there is no old-worktree migration or snapshot reconstruction. `trellis_dispatch` is the unified role entry: unbound tasks run in the shared source directory; bound tasks require their prepared managed worktree. Different unbound tasks can run concurrently; main coordinates overlapping edits. See [dispatch usage](docs/dispatch.md). No temporary subagent isolation, automatic phase advancement, commits, merges or branch deletion. Read the package-local [execution protocol](docs/worktree-execution.md) before the first managed operation; the overview supplies its actual installed read path.
 
 ### Worktree usage
 
@@ -157,7 +157,7 @@ Dispatch from a Pi host opened at the source project root:
 
 Pass this to `trellis_dispatch`; use its returned ID with existing result and steering tools. The main agent chooses when to dispatch check to the same directory. Ordinary Agent calls for a bound task are blocked before starting; `completed` means the agent ended, not acceptance. Source drift or conflicts block dispatch. Locked latest query, target rendering and a final Python fingerprint recheck precede spawn; dynamic prompt/execution records carry material revision and source/target fingerprints. Check currentness needs both final checkout snapshot and starting material revision, with no source drift/conflict—even a refresh with unchanged target bytes can invalidate it. Inspect its report; bounded snapshot exclusions/large-file mtime fallback are not exhaustive verification.
 
-`trellis_dispatch` with `{ "action": "stop", "task": ".trellis/tasks/<full-slug>" }` requests the provider to stop (no agent/prompt required); the lease remains until a terminal event. Timeout/restart ambiguity retains an `unknown` lease and code. Explicit `recover` resets preparation and releases an execution only after its owner process has exited; live owners must be stopped through the provider. Stale lock files need manual inspection, not automatic deletion.
+`trellis_dispatch` with `{ "action": "stop", "task": ".trellis/tasks/<full-slug>" }` requests the provider to stop (no agent/prompt required); the lease remains until a terminal event. Timeout/restart ambiguity retains an `unknown` lease and code. Source execution has no automatic recovery or `worktree.py recover` path; inspect the provider and the reported record path. While a task has active source execution, create/adopt rejects that task. For **managed executions only**, explicit `recover` resets preparation and releases an execution only after its owner process has exited; live owners must be stopped through the provider. Stale lock files need manual inspection, not automatic deletion.
 
 `remove` previews ignored-file risks and requires confirmation, a clean worktree and `--integrated-into <reference>` (the user-approved reference preserving its commits). It uses ordinary `git worktree remove`, never force-removes, deletes the branch, or removes the actual process cwd (even when `--cwd` points elsewhere). A manually removed target can be explicitly unbound. Task artifacts often keep a prepared tree dirty: preserve/commit/archive them through the normal approved workflow before cleanup.
 
@@ -259,8 +259,9 @@ Search, editing, lifecycle actions, and archive browsing are not included.
 ## Fixed runtime source (deployment not automatic)
 
 `runtime/` contains the supported task/context/journal/developer Python import
-closure derived from **Trellis 0.6.16**, plus the unchanged original native
-worktree implementation moved from `python/`. The adapted agent documents have
+closure derived from **Trellis 0.6.16**, plus the original native
+worktree implementation initially moved unchanged from `python/` and now maintained
+with explicit modified output hashes. The adapted agent documents have
 an independent **0.6.17** baseline. [Runtime provenance and contracts](docs/runtime-baseline.md)
 and `resources/runtime-baseline.json` record exact source/output hashes, licenses,
 Python syntax minimum and a content-derived release ID. No global `trellis`

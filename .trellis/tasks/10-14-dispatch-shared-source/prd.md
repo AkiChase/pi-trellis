@@ -63,14 +63,14 @@
 
 ## 验收标准
 
-- [ ] AC1：无 binding 的合法任务成功派发，RPC cwd 为主目录、isolation 为 off，返回真实 ID。
-- [ ] AC2：主目录未提交任务材料被正确注入；子会话独立绑定且不修改父指针。
-- [ ] AC3：已绑定且准备完成的 managed 派发保持原行为；未准备、损坏或冲突不回退。
-- [ ] AC4：不同任务可以在同一主目录并发派发；同任务重叠执行被拒绝，不引入目录级独占。
-- [ ] AC5：source/managed 两条路径的完成、失败、stop、早到事件、超时和 shutdown 有明确测试；跨会话 stop 不因成功回复释放占用，unknown 不自动恢复；同任务 create/adopt 与 source 预留互斥。
-- [ ] AC6：source 路径每次注入上述短提醒，结果显示主 agent 短提示；managed 路径不混用。
-- [ ] AC7：工具说明和包级文档一致；不自动 create/prepare、start、推进阶段、提交、安装或清理。
-- [ ] AC8：现有 managed 回归及完整项目测试通过；真实 provider 验证与模拟 RPC 证据分别记录。
+- [x] AC1：无 binding 的合法任务成功派发，RPC cwd 为主目录、isolation 为 off，返回真实 ID。
+- [x] AC2：主目录未提交任务材料被正确注入；子会话独立绑定且不修改父指针。
+- [x] AC3：已绑定且准备完成的 managed 派发保持原行为；未准备、损坏或冲突不回退。
+- [x] AC4：不同任务可以在同一主目录并发派发；同任务重叠执行被拒绝，不引入目录级独占。
+- [x] AC5：source/managed 两条路径的完成、失败、stop、早到事件、超时和 shutdown 有明确测试；跨会话 stop 不因成功回复释放占用，unknown 不自动恢复；同任务 create/adopt 与 source 预留互斥。
+- [x] AC6：source 路径每次注入上述短提醒，结果显示主 agent 短提示；managed 路径不混用。
+- [x] AC7：工具说明和包级文档一致；不自动 create/prepare、start、推进阶段、提交、安装或清理。
+- [x] AC8：现有 managed 回归及完整项目测试通过；真实 provider 验证与模拟 RPC 证据分别记录。
 
 ## 不在范围内
 
@@ -84,4 +84,4 @@
 
 `design.md` 已补齐 source 记录身份/独立存储、跨会话 stop、unknown 保守阻塞、绑定变化重查及 create/adopt 竞态处理。`implement.md` 拆分两阶段及独立审查/本地 checkpoint，`check.jsonl` 已准备 spec/research 引用，主 agent 直接实施的 `implement.jsonl` 有意为空。
 
-无阻塞产品问题。source unknown 不新增自动恢复接口，是 MVP 的明确限制；需要人工核查而不是猜测子进程终止。用户已批准实施并 start，当前执行阶段 1，独立审查与最终验证进行中；尚未提交。
+无阻塞产品问题。source unknown 不新增自动恢复接口，是 MVP 的明确限制；需要人工核查而不是猜测子进程终止。用户已批准实施并 start；阶段 1 已经独立复核并提交 `4cbeadc`，阶段 2 独立审查无阻塞、最终完整 408/408 通过，等待 scoped checkpoint。真实 provider probe 未运行（仅补齐 harness 并语法/静态验证），不伪称在线验收；任务留 in_progress 待用户接受收尾。

@@ -41,10 +41,10 @@ git diff --check
 
 ## 阶段 2：用户说明、包级路由与最终集成（第二 checkpoint）
 
-- [ ] 新建根目录 `docs/dispatch.md` 并链接 `docs/index.md`。
-- [ ] README/managed protocol 清楚区分可选目录、source unknown 手动核查限制、不支持 source recover 和无 filesystem isolation。
-- [ ] 更新包级 skill 说明和 workflow template；不改用户维护的项目 workflow，不新增功能 spec。
-- [ ] 同阶段维护 skill/template resource hashes/release；不改 bundled role/provenance（现有 role 已兼容）。
+- [x] 新建根目录 `docs/dispatch.md` 并链接 `docs/index.md`。
+- [x] README/managed protocol 清楚区分可选目录、source unknown 手动核查限制、不支持 source recover 和无 filesystem isolation。
+- [x] 更新包级 skill 说明和 workflow template；不改用户维护的项目 workflow，不新增功能 spec。
+- [x] 维护 `resources/template-baseline.json` 和 `resources/skill-baseline.json` 的精确输出 hashes，保留 source 元数据；它们独立于 Python runtime inventory，本阶段不修改 runtime release，不改 bundled role/provenance。
 - [ ] 扩展 optional `tests/provider-contracts.mjs` 的统一 source 工具路径，使用临时 Git 项目、真实 loader/provider 和 offline faux；不把原有直接 RPC 检查当成统一 dispatch 集成。
 - [ ] 独立 review 说明/工具/schema/manifest 一致性，并核所有新增相对链接。
 
@@ -64,6 +64,10 @@ env -u TRELLIS_CONTEXT_ID node tests/provider-contracts.mjs --host <已存在的
 ```
 
 没运行则标 Not run，并单列真实 provider/在线模型行为未验证。main 核独立审查后 commit `docs: clarify shared-source dispatch workflow`，耦合模板/skill/资源/harness 保同阶段。
+
+## 阶段 checkpoint
+
+阶段 1 已接受并提交 `4cbeadc983950ce686d025ada84d9c895bb237a7`：独立初审 F1–F4 已修复，8ceddce7 独立复核批准；main 完整 407/407 和 Python18/18，source diagnostics4/4。阶段 2 当前实施中。
 
 ## 最终验收
 

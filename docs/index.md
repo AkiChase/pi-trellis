@@ -14,6 +14,7 @@ Task requirements and execution records remain in `.trellis/tasks/`.
 ## Runtime and Integration
 
 - [Runtime Baseline](runtime-baseline.md): fixed runtime ownership and provenance.
+- [Trellis Dispatch](dispatch.md): shared source execution, managed routing, concurrency warnings and stop semantics.
 - [Managed Worktree Execution](worktree-execution.md): execution and material synchronization protocol.
 - [Agent Synchronization](trellis-agent-sync.md): agent source adaptation and provenance.
 
