@@ -400,3 +400,27 @@ viewer 区分归档隐藏与真正缺失；归档父子不展示，合法引用�
 ### Next Steps
 
 - No task remaining for this session; online model and CLI/tmux validation not run
+
+
+## Session 15: 规范与用户文档精简收尾
+<!-- trellis-session: v=2 fp=f0a16abe1db1b613 -->
+
+**Date**: 2026-10-14
+**Task**: 规范与用户文档精简收尾
+**Branch**: `main`
+
+### Summary
+
+完成基线迁移、开发测试规范集中及用户功能文档精简，删除独立来源页，角色注释与adapted hash同步。最终focused90/90与来源8/8、full408/408通过，14Markdown/52links/anchors通过；主自检，无独立review/真实tmux/provider/install/reload/push。用户接受并归档，保并行改动。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0d31790` | refactor: move agent provenance baseline to resources |
+| `bc7980d` | docs: consolidate developer specs and user feature guides |
+| `bb6c73b` | docs: remove redundant provenance pages |
+
+### Status
+
+[OK] **Completed**
