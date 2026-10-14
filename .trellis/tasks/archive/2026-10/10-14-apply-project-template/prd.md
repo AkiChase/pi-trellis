@@ -62,4 +62,4 @@ Spec 仅以下四个基础文件，不生成项目类型或框架专用规范：
 
 ## 实施验收证据
 
-主 Agent 已完成；focused 56/56、full 350/350，独立只读复查通过。验收勾选代表 fixture/API 与 native-dialog 模拟证据，不代表真实终端验收。实现细节与完整验证命令见 verification.md。尚未自动应用模板到本项目、reload、归档或记录 journal。
+主 Agent 已完成，工作提交 `300f2cc`；focused 56/56、full 350/350，独立只读复查通过。验收勾选代表 fixture/API 与 native-dialog 模拟证据，不代表真实终端验收。用户随后明确授权收尾，接受任务完成并归档、记录 journal。实现细节与完整验证命令见 verification.md；未自动应用模板到本项目或 reload。

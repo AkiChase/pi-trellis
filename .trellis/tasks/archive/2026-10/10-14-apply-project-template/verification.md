@@ -25,7 +25,7 @@ role JSONL 按轻量 direct 路径保持空，start 使用 --allow-empty-context
 ## 验证与剩余步骤
 
 主会话已读完整 resources/command、engine 和相关 tests，实际 diff 已检查。预览与新确认流程使用已有 native select，支持 interactive/RPC，不新增 custom TUI。
-全仓测试与独立复查通过；提交单阶段 exact scope。当前不归档、不记录 journal，不运行本项目 Apply template；真实 UI 与用户实际采用验收留待后续。
+全仓测试与独立复查通过，工作提交 `300f2cc`。用户随后明确授权收尾，接受本任务完成并归档、记录 journal；该授权不补充真实 UI 验证证据。本次仅更新验收记录，产品输入未变化，沿用最终有效测试结果。仍未运行本项目 Apply template、安装、reload 或 push。
 
 ## 规范评估
 
