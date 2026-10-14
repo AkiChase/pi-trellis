@@ -56,13 +56,13 @@ manifest显式skills空数组，resources_discover只对有效runtime提供源�
 
 ## 验收
 
-- [ ] AC1/R1：用户级/项目级声明按Pi身份去重，项目覆盖和delta正确；installer默认user且--local可用，check/dry-run无写。
-- [ ] AC2/R2：真实SDK fresh registry本包只有init，tools无dispatch，skills/model提示无自动Trellis；启动无Python/项目写入。
-- [ ] AC3/R2：valid（含无身份）完整commands/tool/skills/prompt/UI存在；有效项目无当前任务仍显示计数；无Trellis/unhealthy/init中断在widget和status两种模式均无任何常驻标签、计数或详情，失效/reload清除旧显示。仅init且拒runtime执行，普通read/search不受影响。
-- [ ] AC4/R3：子目录、嵌套独立repo、.git文件、无Git、异常marker测试覆盖；init目标和确认摘要统一，取消/拒绝保持原字节。
-- [ ] AC5/R4：真实SDK init/repair→reload启用，reload失效后撤回注册和自动skills；恢复会话不重复订阅，错误cwd不新增其他root上下文，旧历史不篡改。
-- [ ] AC6/R5：真实resolver/SDK default、empty、plain白名单、+加法、delta empty/exclusion、trust、重复source、临时-e/noSkills和静态强制路径覆盖，不mock冒充宿主验收。
-- [ ] AC7/R6：最终focused/full、实际diff、独立check及文档link/版本证据完整；未运行的lint/typecheck/真实TUI/provider如实记录。
+- [x] AC1/R1：用户级/项目级声明按Pi身份去重，项目覆盖和delta正确；installer默认user且--local可用，check/dry-run无写。
+- [x] AC2/R2：真实SDK fresh registry本包只有init，tools无dispatch，skills/model提示无自动Trellis；启动无Python/项目写入。
+- [x] AC3/R2：valid（含无身份）完整commands/tool/skills/prompt/UI存在；有效项目无当前任务仍显示计数；无Trellis/unhealthy/init中断在widget和status两种模式均无任何常驻标签、计数或详情，失效/reload清除旧显示。仅init且拒runtime执行，普通read/search不受影响。
+- [x] AC4/R3：子目录、嵌套独立repo、.git文件、无Git、异常marker测试覆盖；init目标和确认摘要统一，取消/拒绝保持原字节。
+- [x] AC5/R4：真实SDK init/repair→reload启用，reload失效后撤回注册和自动skills；恢复会话不重复订阅，错误cwd不新增其他root上下文，旧历史不篡改。
+- [x] AC6/R5：真实resolver/SDK default、empty、plain白名单、+加法、delta empty/exclusion、trust、重复source、临时-e/noSkills和静态强制路径覆盖，不mock冒充宿主验收。
+- [x] AC7/R6：最终focused/full、实际diff、独立check及文档link/版本证据完整；未运行的lint/typecheck/真实TUI/provider如实记录。
 
 ## 排除
 
@@ -75,3 +75,7 @@ implement.md：三阶段（发现注册→条件skills/SDK→安装与文档）�
 research/host-resource-lifecycle.md：宿主事实、7项resolver实验与第一次实验预期错误记录。
 
 产品决策与实施方案已获用户批准；执行限当前工作区和本任务范围，material scope变化重新审批。
+
+## 验收证据及限制
+
+Stage1独立130/130+display12/12；Stage2独立full442/442及真实SDKcmd parser init/repair reload、source/filter/trust、无身份/无效runtime覆盖；Stage3独立26/26及34links，主最终full443/443 exit0。报告见research各stage-independent-check。AC5的会话恢复/foreigncwd由mock生命周期覆盖，真实SDK仅bind/reload；持久session resume/switch端到端未跑。没有真实PTY/provider或个人环境install/reload，未测旧Pi，lint/typecheck unavailable。任务实现交付待用户接受，未归档。

@@ -39,6 +39,7 @@ Assert observables **and absence of forbidden side effects**: parent pointer rem
 | Persistent count, theme/error degradation, terminal-column bounds | `tests/task-display.test.mjs` |
 | Role hashes/attribution, protocols and source drift | `tests/agent-documents.test.mjs` |
 | Workflow phase/policy and resource ownership | `tests/workflow-policy.test.mjs`, `tests/skill-resources.test.mjs` |
+| Project activation, command/tool registration, skill filters and real SDK reload | `tests/project-activation.test.mjs`, `tests/project-activation-host.test.mjs`; use isolated agent/project dirs and public SDK without network/install. Test command parser init/repair, disabled sources, trust, explicit resources, and no runtime state/UI in ordinary projects. |
 | Historical patch/installer read-only behavior and mode preservation | `tests/trellis-patches.test.mjs` |
 
 Inspect actual filenames/test coverage before selecting this matrix. Cross-language tests must share record/lock/material semantics; no mocked single-layer check establishes full interoperability. Viewer tests must verify files/pointers/Git preservation and no lifecycle/model calls, long-document end reachability and complete source fallback. Component tests cannot prove physical terminal behavior.

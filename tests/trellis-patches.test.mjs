@@ -142,7 +142,7 @@ test('unknown/ambiguous code and external script symlinks fail without modifying
 });
 
 test('installer only installs Pi package; read-only modes and obsolete flags do not mutate project scripts', t => {
-  for (const args of [[], ['--check'], ['--dry-run'], ['--neutral-skills'], ['--no-patch']]) {
+  for (const args of [[], ['--local'], ['--check'], ['--dry-run'], ['--local','--dry-run'], ['--neutral-skills'], ['--no-patch']]) {
     const f = fixture(t), original = readFileSync(f.file);
     const bin = join(f.root, 'bin'); mkdirSync(bin);
     const path = join(bin, 'pi'); writeFileSync(path, '#!/bin/sh\nprintf "%s\\n" "$*" >> "' + join(f.root,'pi-calls') + '"\n'); chmodSync(path, 0o755);
@@ -152,10 +152,21 @@ test('installer only installs Pi package; read-only modes and obsolete flags do 
     const obsolete=args.includes('--neutral-skills') || args.includes('--no-patch');
     assert.equal(result.status, obsolete ? 1 : 0, result.stderr);
     assert.deepEqual(readFileSync(f.file), original);
-    assert.equal(existsSync(join(f.root,'pi-calls')), args.length===0);
-    if (!args.length) assert.match(readFileSync(join(f.root,'pi-calls'),'utf8'), /install -l --approve git:github.com\/AkiChase\/pi-trellis/);
+    assert.equal(existsSync(join(f.root,'pi-calls')), !args.length || (args.length===1 && args[0]==='--local'));
+    if (!args.length) assert.match(readFileSync(join(f.root,'pi-calls'),'utf8'), /install --approve git:github.com\/AkiChase\/pi-trellis/);
+    if (args.length===1 && args[0]==='--local') assert.match(readFileSync(join(f.root,'pi-calls'),'utf8'), /install -l --approve/);
+    if (args.includes('--dry-run')) assert.match(result.stdout,args.includes('--local') ? /pi install -l --approve/ : /pi install --approve/);
     assert.ok(!existsSync(join(f.root,'.trellis/scripts/worktree.py')));
     assert.ok(!existsSync(join(f.root,'.codex')));
     assert.match(result.stdout+result.stderr,/trellis-init/);
   }
+});
+
+
+test('installer rejects duplicate options before any Pi installation',t=>{
+ for(const args of [['--check','--check'],['--dry-run','--dry-run'],['--local','--local'],['--source','git:one','--source=git:two'],['--source=git:one','--source','git:two']]){
+  const f=fixture(t),bin=join(f.root,'bin');mkdirSync(bin);const pi=join(bin,'pi');writeFileSync(pi,'#!/bin/sh\ntouch "'+join(f.root,'called')+'"\n');chmodSync(pi,0o755);const before=readFileSync(f.file);
+  const result=spawnSync('bash',[resolve('scripts/install.sh'),...args],{cwd:f.root,env:{...process.env,PATH:`${bin}:${process.env.PATH}`},encoding:'utf8'});
+  assert.equal(result.status,1);assert.match(result.stderr,/Repeated/);assert.equal(existsSync(join(f.root,'called')),false);assert.deepEqual(readFileSync(f.file),before);
+ }
 });

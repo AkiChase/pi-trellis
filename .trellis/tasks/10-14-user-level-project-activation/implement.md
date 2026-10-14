@@ -40,11 +40,11 @@ env -u TRELLIS_CONTEXT_ID npm test
 
 ## Stage 3：安装入口与用户说明
 
-- [ ] installer默认不带-l（用户级）；--local明确项目级，帮助/dry-run/strict argument/cancel/write边界和fake Pi测试同步。
-- [ ] README保持英文；docs中文，说明commands/tools/skills分类、初始化目标、Git停止、运行时状态、reload边界、用户/项目配置过滤及显式强制资源限制。同步docs/task-display.md与README常驻显示：未初始化无任何trellis显示，有效无任务计数仍在，失效清理；相关docs/initialization.md指向一致激活规则。
-- [ ] 最低Pi版本1.2.0（本地实际核验版本），不声称1.1已验收；Python只init/有效runtime执行需要。
-- [ ] 在已有架构/session/installation spec维护通用安全/开发契约；不新增专用feature spec，不迁移并行文档任务。
-- [ ] 完整diff、focused/full、文档links/whitespace及独立check后阶段提交。
+- [x] installer默认不带-l（用户级）；--local明确项目级，帮助/dry-run/strict argument/cancel/write边界和fake Pi测试同步。
+- [x] README保持英文；docs中文，说明commands/tools/skills分类、初始化目标、Git停止、运行时状态、reload边界、用户/项目配置过滤及显式强制资源限制。同步docs/task-display.md与README常驻显示：未初始化无任何trellis显示，有效无任务计数仍在，失效清理；相关docs/initialization.md指向一致激活规则。
+- [x] 最低Pi版本1.2.0（本地实际核验版本），不声称1.1已验收；Python只init/有效runtime执行需要。
+- [x] 在已有架构/session/installation spec维护通用安全/开发契约；不新增专用feature spec，不迁移并行文档任务。
+- [x] 完整diff、focused/full、文档links/whitespace及独立check后阶段提交。
 
 ```bash
 env -u TRELLIS_CONTEXT_ID node --import ./tests/host-tui.mjs --test tests/trellis-patches.test.mjs tests/skill-resources.test.mjs tests/project-activation-host.test.mjs
@@ -57,9 +57,9 @@ Markdown相对links/anchors含untracked文件用本仓现有或临时只读检�
 
 ## 最终整合
 
-- [ ] PRD每项映射实际evidence；host注入/registry/reload与mock/真实终端/provider分开记录。
-- [ ] 检查commit scope、剩余dirty、parallel保留，最后变更后重跑受影响check。
-- [ ] reusable约束收录现有spec；结束报告，不隐式archive/journal/push/个人install。
+- [x] PRD每项映射实际evidence；host注入/registry/reload与mock/真实终端/provider分开记录。
+- [x] 检查commit scope、剩余dirty、parallel保留，最后变更后重跑受影响check。
+- [x] reusable约束收录现有spec；结束报告，不隐式archive/journal/push/个人install。
 
 每阶段检查员只修本任务问题，不递归dispatch、不commit/install/finish；主会话验证实际修复再提交。若改变命令名/dispatch协议/资源目录/初始化写入契约，属于material scope，重新审批。
 
@@ -70,3 +70,7 @@ Markdown相对links/anchors含untracked文件用本仓现有或临时只读检�
 ## Stage 2 验证与检查点
 
 独立最终full442/442自然exit0（bj0baztlt），focused95/95，主核自修scope+async revalidation及实际SDK断言后接受。Stage1hash568634f；Stage2提交后记录hash。未PTY/provider/持久会话switch/resume端到端，保留mock会话生命周期和真实SDKreload证据边界。
+
+## 最终验证
+
+Stage1 568634f、Stage2 740824c。Stage3独立最终无剩余问题、26/26focused；主最终全量443/443自然exit0，log /tmp/pi-bg/bcsj9dn2q.log；shell语法、diffcheck、8Markdown34links/anchors、spec layers/5checkrefs通过。产品之外仅PRD/evidence更新，无需重跑运行时。未lint/typecheck（无script）、真实PTY/provider/旧Pi矩阵/持久resume-switch端到端，保留隔离SDKreload与mock生命周期边界。

@@ -9,7 +9,19 @@
 /trellis-init --help
 ```
 
-安装包后即可使用，项目不需要已有 `.trellis/` 或全局 Trellis CLI。需要 Python 3.10+。菜单、帮助和通知为英文；`--user` 跳过名字选择，不跳过最终确认。只有原生 UI 确认才写入；无 UI 时只返回状态与指引。`--check` 只读，不安装或执行模型回合。
+安装包后即可使用，推荐用户级安装一次：`pi install --approve git:github.com/AkiChase/pi-trellis`；显式项目级安装加 `-l`，安装脚本使用 `--local`。项目不需要已有 `.trellis/` 或全局 Trellis CLI。普通项目启动无需 Python，真正初始化和运行时执行需要 Python 3.10+。菜单、帮助和通知为英文；`--user` 跳过名字选择，不跳过最终确认。只有原生 UI 确认才写入；无 UI 时只返回状态与指引。`--check` 只读，不安装或执行模型回合。
+
+## 项目激活与目标目录
+
+未初始化或运行时旧版、损坏、中断时，本包只注册 `/trellis-init`；不注册 viewer 指令和 dispatch tool，不自动加载 Trellis skills、注入 workflow/task-state，也不显示任何[常驻任务栏](task-display.md)。运行时有效的 clone 即使缺本地身份仍启用完整能力。安装不是初始化，启动不会自动写项目资源或修复运行时。
+
+从当前 `ctx.cwd` 向上逐级先检查 `.trellis`，再遇最近 `.git` 文件或目录停止；嵌套独立仓库不会继承外层项目。无 Git 时可继续找到文件系统根目录；异常标记不能被跳过后继承祖先。
+
+`/trellis-init` 操作发现的 Trellis 根；不存在时使用最近 Git 根；两者都没有则使用当前目录。确认摘要显示绝对目标，取消不写入。因此从 `src` 启动不会把已有仓库再次初始化进子目录。
+
+初始化、接管及资源修复成功后 reload 启用完整能力。运行中失效立即阻止相关执行并在后续事件清显示，完整撤回指令/tool/skills需 `/reload` 或新宿主；不清历史消息或用户 AGENTS。不支持一个 runner 内任意跨项目热切换。
+
+Skills 动态来源仍在安装包，不复制到项目；用包 entry 的普通 `skills: []` 可关闭自动发现。`autoload:false` 的空数组是无操作 delta，`-path` 明确排除；`+path` 为加法，普通路径才是白名单。Pi `--no-skills` 仍允许扩展显式发现资源，用户显式静态路径也可能在普通项目出现；这些由宿主控制，不被插件撤回。动态资源显示来源与旧静态包列表不同。项目 trust/包覆盖规则保持 Pi 原语义。
 
 ## 新项目与已有 clone
 
@@ -27,7 +39,7 @@
 
 ## 接管无 manifest 的旧项目
 
-已有 `.trellis/` 但无支持的托管 manifest 时，可选择 `Adopt existing project`。确认前列出将安装、替换、创建、保留的路径；旧版非托管内容留在原处。
+已有 `.trellis/` 但无支持的托管 manifest 时，可选择 `Adopt existing project`。确认摘要显示安装、替换、创建、保留等分类数量与旧路径概况；完整逐文件列表先用 `/trellis-init --check` 查看。
 
 **接管会无备份替换旧运行时、角色，以及 AGENTS/gitignore 的托管区域。** 区域外内容、已有 workflow/config/spec、身份、任务和日志保留；不会创建 onboarding 或删旧文件。重复或不完整标记、危险路径、不支持的运行环境会拒绝接管。
 
@@ -37,7 +49,7 @@
 
 健康源项目提供 `Apply template`，可选 Workflow、Spec 或两者。一次确认展示 Replace/Create/Same 路径，取消不写入；无逐文件选择、diff viewer 或自动合并。
 
-这是**明确替换选中文档**，不是保留定制的安全更新：Workflow 选 `.trellis/workflow.md`，Spec 选包自带入口与三个 thinking-guide 文档。其他项目规范、配置、运行时、角色、身份和任务不变。
+这是**明确替换选中文档**，不是保留定制的安全更新：Workflow 选 `.trellis/workflow.md`，Spec 选包自带两个索引与两个 thinking-guide 文档。其他项目规范、配置、运行时、角色、身份和任务不变。
 
 替换前会备份原文档和 manifest 到 `.trellis/.runtime/template-backups/<uuid>/` 并报告位置。失败保留备份和已写文件，不自动恢复。成功只刷新上下文，不部署运行时、启动任务、运行 hooks 或自动 reload。不支持远程模板。
 
@@ -47,4 +59,4 @@
 
 初始化必须在源项目而非 HOME 或托管 worktree 执行。危险 symlink、非普通文件、未知碰撞和定制托管标记会报错，不覆盖。文件级原子发布不等于全项目事务或 OS 沙箱。
 
-运行时缺失、畸形、不完整或版本不匹配时，任务执行报 task_error，请用 `/trellis-init --check` 查看。普通只读浏览不受任务门禁阻断；不能把错误当作 No active task 继续执行。宿主识别常见 Trellis 命令并非完整 shell 沙箱，外部独立进程仍需调用者负责。
+运行时缺失、畸形、不完整或版本不匹配时不启用完整能力，相关执行被阻止，请用 `/trellis-init --check` 查看。已有效激活项目中的坏任务指针仍报 task_error；不能把错误当作 No active task。普通读取/搜索不受影响，但 viewer 指令本身需要有效项目。宿主识别常见 Trellis 命令并非完整 shell 沙箱，外部独立进程仍需调用者负责。

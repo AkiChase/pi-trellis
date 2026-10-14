@@ -1,6 +1,8 @@
 # Trellis 任务派发
 
-`trellis_dispatch` 是 Trellis role 的统一派发入口。主会话保持在源项目根目录，工具按任务绑定选择子 agent 的执行目录，不要求所有任务都创建 worktree。
+`trellis_dispatch` 是模型 tool，不是 slash 指令。仅在已初始化且运行时有效的项目中注册；未初始化或运行时无效时不注册，只保留 `/trellis-init`。运行中失效会阻止执行并清除旧常驻显示，`/reload` 后完全撤回注册。
+
+它是 Trellis role 的统一派发入口。主会话保持在源项目根目录，工具按任务绑定选择子 agent 的执行目录，不要求所有任务都创建 worktree。
 
 ## 调用
 

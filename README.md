@@ -1,6 +1,6 @@
 # pi-trellis
 
-A project-local [pi](https://pi.dev) extension for [Trellis](https://www.npmjs.com/package/@mindfoldhq/trellis) projects.
+A user-level [pi](https://pi.dev) extension that activates inside supported [Trellis](https://www.npmjs.com/package/@mindfoldhq/trellis) projects.
 
 It supplies an explicit Pi-native initializer plus a fixed project runtime in one package. The three bundled agents use Trellis 0.6.17's generated Claude Code roles as their baseline, with documented Pi tool, context, and correctness adaptations. See [role usage](docs/dispatch.md#角色与定制).
 
@@ -12,9 +12,9 @@ It supplies an explicit Pi-native initializer plus a fixed project runtime in on
 | **Task display** | A persistent themed line above the editor: `▸ trellis(3) · 00-bootstrap-guidelines · in_progress · prd ✓ design · impl ·`. Shows the project-wide unfinished task count even without an active session task, refreshed when a session starts, when a turn ends, and immediately after a `task.py` bash result. Switch it to the footer chip or turn it off with `TRELLIS_PI_STATUS`. |
 | **Session isolation** | Derives a separate `TRELLIS_CONTEXT_ID` per session/root and passes it explicitly to CLI/bash calls. Dispatched children bind the explicit task under their own key without lifecycle hooks; they never reuse the dispatcher's pointer. No shared-process environment mutation. |
 | **Subagent context** | Claude-based `trellis-implement`, `trellis-check`, and `trellis-research` agents adapted for Pi. Ordinary `Agent` dispatch loads role JSONL references and task artifacts with byte budgets and fallback diagnostics. |
-| **Package skills** | Ten curated Pi skills load through `pi.skills`; there is no project copy or extension skill bridge. |
+| **Package skills** | Ten curated Pi skills are discovered only in supported projects, using Pi's resource filters; there is no project copy. |
 
-What it deliberately does **not** do: implement subagents (that is [`@tintinweb/pi-subagents`](https://github.com/tintinweb/pi-subagents)' job), install anything globally, or install dependencies during project initialization.
+What it deliberately does **not** do: implement subagents (that is [`@tintinweb/pi-subagents`](https://github.com/tintinweb/pi-subagents)' job), install dependencies or initialize project files automatically.
 
 ## Initialize a new project
 
@@ -39,8 +39,8 @@ existing different identity is a conflict, not a silent switch. No frontend/back
 project-type detection, multiple-package setup, remote templates or arbitrary upstream migration.
 
 An existing `.trellis/` project without a managed manifest offers **Adopt existing project**:
-one confirmation lists Install/Replace/Create/Preserve/Current resources plus legacy paths
-left in place. Adoption installs the fixed runtime and roles, replacing older copies and the
+one confirmation summarizes Install/Replace/Create/Preserve/Current counts and legacy paths;
+run `/trellis-init --check` for the complete per-file list before confirming. Adoption installs the fixed runtime and roles, replacing older copies and the
 `AGENTS.md`/`.gitignore` managed blocks without backups, while leaving existing workflow,
 config, spec, tasks, journals and identity byte-identical; the eight template targets that
 already exist are recorded as `preserved-project` provenance instead of being written.
@@ -63,28 +63,32 @@ This is per-file atomic publication, not an all-files transaction. See [initiali
 ## Install
 
 ```bash
-pi install -l --approve git:github.com/AkiChase/pi-trellis
+pi install --approve git:github.com/AkiChase/pi-trellis
 pi
 # In Pi, grant project trust and run /trellis-init.
 ```
 
-Installing the package exposes the extension and bundled skills. It does not
-initialize project files. `/trellis-init` explicitly deploys the fixed Python
-runtime and role definitions after reviewing and confirming the plan.
+Install once for your user (`~/.pi/agent/settings.json`). Use `pi install -l --approve git:github.com/AkiChase/pi-trellis` for explicit project scope instead. Project entries and resource filters follow Pi's normal precedence.
 
-`scripts/install.sh` is an optional thin wrapper around the same local package
-installation. `--source <spec>` selects a source, `--check` checks Pi availability
+Without a supported runtime, the extension registers only `/trellis-init`: no viewer command, dispatch tool, automatic Trellis skills, prompt injection or persistent task display. A supported project registers `/trellis-task-viewer` (slash command) and `trellis_dispatch` (model tool), plus conditional skills and context/UI. Clones without local identity still activate when their runtime is valid. Initialization, adoption and resource repair reload the host after confirmation.
+
+Discovery checks `.trellis` at each directory from `ctx.cwd`, then stops at the nearest `.git` file/directory; nested independent repositories do not inherit an ancestor's Trellis. Without Git it walks to the filesystem root. An invalid marker is not skipped. Init targets an existing Trellis root, otherwise the nearest Git root, otherwise the current directory; its confirmation shows the target.
+
+Installing does not initialize project files. `/trellis-init` explicitly deploys the fixed Python runtime and roles.
+
+`scripts/install.sh` is an optional thin wrapper around user-level package
+installation; `--local` selects project scope. `--source <spec>` selects a source, `--check` checks Pi availability
 without writes, and `--dry-run` prints the installation command. Neither mode
 runs project scripts. Obsolete `--neutral-skills` and `--no-patch` are rejected.
 No global Trellis CLI or install-time patch is required.
 
-Remove the package with `pi remove -l git:github.com/AkiChase/pi-trellis`.
+Remove the user package with `pi remove git:github.com/AkiChase/pi-trellis` (add `-l` for a project install).
 Project runtime, configuration and history remain; removal never deletes them.
 
 ### Requirements
 
-- pi ≥ 1.1.0
-- Python ≥ 3.10 on `PATH` (override with `TRELLIS_PYTHON`)
+- pi ≥ 1.2.0
+- Python ≥ 3.10 on `PATH` for initialization and runtime execution (override with `TRELLIS_PYTHON`); ordinary project startup needs no Python
 - a subagent extension for the `trellis-*` agents — `pi install @tintinweb/pi-subagents`. Without one, everything else still works; you get one warning at startup.
 
 Existing host behavior has macOS/Linux evidence. The native management CLI is verified on macOS with Python 3.14.7; Python 3.10 is the syntax minimum, not a tested version matrix. Windows is untested and recovery conservatively refuses to prove owner death there.
@@ -106,7 +110,9 @@ Whether they belong in git is your call:
 
 ## Known limitations
 
-**Skills load from the package.** `pi.skills: ["skills"]` exposes ten curated skills with complete references. `/skill:trellis-start` and `/skill:trellis-continue` are real skill commands, not `/trellis:*` aliases. Pi's resource filters and trust rules determine what actually loads. A project `autoload:false` entry is a delta: empty arrays do nothing, explicit `-path` exclusions disable resources. Normal package entries with `extensions: []` disable that resource type. The adapter readiness guard uses Pi's actual resolver without installing missing sources.
+**Skills are project-conditional.** The manifest uses `pi.skills: []`; the extension discovers the ten bundled skills only after validating the current runtime. `/skill:trellis-start` and `/skill:trellis-continue` remain real skill commands. Pi's public resolver preserves package skill filters, project precedence and trust: normal `skills: []` disables automatic skills, while `autoload:false` empty arrays are no-op deltas. Use plain paths for a whitelist; `+path` is additive and may retain other skills. Explicit `-path` exclusions work in deltas. Dynamic resources appear as extension-provided resources, not the old static package listing. Pi's `--no-skills` permits explicit extension discovery; use the package filter to suppress these skills. User-forced static skill paths or other sources stay host-owned and can still appear outside Trellis projects. The adapter readiness guard does not install missing sources or count parent-only `-e` as persistent configuration.
+
+**Registration refresh uses reload.** Runtime invalidation blocks execution and clears persistent UI immediately on subsequent events; `/reload` or a new host withdraws registered commands/tools and discovered skills completely. Pi has no general command-unregister API. This does not erase historical messages or user-owned AGENTS content, and arbitrary cross-project hot switching in one runner is not supported.
 
 **The workflow section is an excerpt.** Only the stable head of `.trellis/workflow.md` is injected (about 10 KB), with platform blocks that do not name Pi removed. Per-phase detail is loaded on demand via `get_context.py --mode phase --step <N.N>`; the model is told so.
 
@@ -204,8 +210,8 @@ own — but width is finite, and `trellis` sorts late enough to be among the
 first to get cut. The widget has no such competition: widgets are keyed and
 stacked, up to ten lines across all extensions.
 
-`TRELLIS_PI_STATUS=off` and unsupported projects draw nothing. Context injection
-is unaffected either way — the display is just a display.
+`TRELLIS_PI_STATUS=off` and uninitialized/unsupported projects draw nothing, including no zero/unknown-count label. If a runtime becomes invalid, subsequent refresh/execution events clear both widget and footer. Context injection
+is unaffected by the display setting — the display is just a display.
 
 ## Browse task documents
 
@@ -213,8 +219,8 @@ Feature details: [Task Viewer](docs/task-viewer.md); other feature documents are
 listed in [docs/index.md](docs/index.md).
 
 Run `/trellis-task-viewer` in Pi's interactive terminal to open a read-only task list,
-with or without a current session task. It reads project task files directly;
-no deployed scripts, model request, task start/switch, or file writes are needed.
+with or without a current session task, in a supported initialized project. The command is not registered in an uninitialized or unsupported project. It reads project task files directly;
+no Python execution, model request, task start/switch, or file writes are needed.
 Non-archived tasks (including completed records still in the active store) are
 shown with status colors, parent/child tree lines, and `*` for the current task.
 Rows show the directory identifier followed by the original title; identical
