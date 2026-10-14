@@ -1,0 +1,45 @@
+{
+  "runs": [
+    {
+      "pid": 84840,
+      "pidGone": true,
+      "workspace": "/private/var/folders/fx/bn7t1rq16xn7_66t233x_s1h0000gn/T/pi-trellis-live-acceptance-9x8Ldp",
+      "workspaceGone": true,
+      "status": "FAIL",
+      "liveProcessSnapshotBeforeCleanup": [
+        "84838 96446 bash -c export TRELLIS_CONTEXT_ID=pi-18d7b002f377\\012cd /Users/jyxc-dz-0101322/tools/pi-trellis && cp /tmp/pi-bg/b1cnl978w.log .trellis/tasks/10-14-dispatch-shared-source/research/live-validation/first-disposable-import-failure.log && env -u TRELLIS_CONTEXT_ID PI_TRELLIS_TEST_HOST=/Users/jyxc-dz-0101322/.pi/agent/install/releases/1.2.0/node_modules node .trellis/tasks/10-14-dispatch-shared-source/research/live-validation/driver.mjs --host /Users/jyxc-dz-0101322/.pi/agent/install/releases/1.2.0/node_modules --provider /Users/jyxc-dz-0101322/.pi/agent/git/github.com/AkiChase/my-pi-preset/extensions/agent-tasks",
+        "84840 84838 node .trellis/tasks/10-14-dispatch-shared-source/research/live-validation/driver.mjs --host /Users/jyxc-dz-0101322/.pi/agent/install/releases/1.2.0/node_modules --provider /Users/jyxc-dz-0101322/.pi/agent/git/github.com/AkiChase/my-pi-preset/extensions/agent-tasks"
+      ]
+    },
+    {
+      "pid": 86902,
+      "pidGone": true,
+      "workspace": "/private/var/folders/fx/bn7t1rq16xn7_66t233x_s1h0000gn/T/pi-trellis-live-acceptance-MMYaa2",
+      "workspaceGone": true,
+      "status": "FAIL",
+      "liveProcessSnapshotBeforeCleanup": [
+        "86899 96446 bash -c export TRELLIS_CONTEXT_ID=pi-18d7b002f377\\012cd /Users/jyxc-dz-0101322/tools/pi-trellis && cp /tmp/pi-bg/bn1qdtk2r.log .trellis/tasks/10-14-dispatch-shared-source/research/live-validation/first-rejection-fixture-failure.log && cp .trellis/tasks/10-14-dispatch-shared-source/research/live-validation/final.json .trellis/tasks/10-14-dispatch-shared-source/research/live-validation/rejection-fixture-failure.json && env -u TRELLIS_CONTEXT_ID PI_TRELLIS_TEST_HOST=/Users/jyxc-dz-0101322/.pi/agent/install/releases/1.2.0/node_modules node .trellis/tasks/10-14-dispatch-shared-source/research/live-validation/driver.mjs --host /Users/jyxc-dz-0101322/.pi/agent/install/releases/1.2.0/node_modules --provider /Users/jyxc-dz-0101322/.pi/agent/git/github.com/AkiChase/my-pi-preset/extensions/agent-tasks",
+        "86902 86899 node .trellis/tasks/10-14-dispatch-shared-source/research/live-validation/driver.mjs --host /Users/jyxc-dz-0101322/.pi/agent/install/releases/1.2.0/node_modules --provider /Users/jyxc-dz-0101322/.pi/agent/git/github.com/AkiChase/my-pi-preset/extensions/agent-tasks"
+      ]
+    },
+    {
+      "pid": 91682,
+      "pidGone": true,
+      "workspace": "/private/var/folders/fx/bn7t1rq16xn7_66t233x_s1h0000gn/T/pi-trellis-live-acceptance-qt3Swt",
+      "workspaceGone": true,
+      "status": "PASS",
+      "liveProcessSnapshotBeforeCleanup": [
+        "91679 96446 bash -c export TRELLIS_CONTEXT_ID=pi-18d7b002f377\\012cd /Users/jyxc-dz-0101322/tools/pi-trellis && cp /tmp/pi-bg/b5g8cxcuk.log .trellis/tasks/10-14-dispatch-shared-source/research/live-validation/first-stop-timing-fixture-failure.log && cp .trellis/tasks/10-14-dispatch-shared-source/research/live-validation/final.json .trellis/tasks/10-14-dispatch-shared-source/research/live-validation/stop-timing-fixture-failure.json && env -u TRELLIS_CONTEXT_ID PI_TRELLIS_TEST_HOST=/Users/jyxc-dz-0101322/.pi/agent/install/releases/1.2.0/node_modules node .trellis/tasks/10-14-dispatch-shared-source/research/live-validation/driver.mjs --host /Users/jyxc-dz-0101322/.pi/agent/install/releases/1.2.0/node_modules --provider /Users/jyxc-dz-0101322/.pi/agent/git/github.com/AkiChase/my-pi-preset/extensions/agent-tasks",
+        "91682 91679 node .trellis/tasks/10-14-dispatch-shared-source/research/live-validation/driver.mjs --host /Users/jyxc-dz-0101322/.pi/agent/install/releases/1.2.0/node_modules --provider /Users/jyxc-dz-0101322/.pi/agent/git/github.com/AkiChase/my-pi-preset/extensions/agent-tasks"
+      ]
+    }
+  ],
+  "tmux": "NOTRUN: no tmux server/session created",
+  "cli": "NOTRUN: real SDK only",
+  "providerProcesses": "in-process SDK agent sessions; no persistent child provider processes created",
+  "firstFailedWorkspaceGone": true,
+  "externalHashChanges": [],
+  "personalSettingsChanges": [],
+  "matchingValidationProcesses": [],
+  "allVerifiedGone": true
+}

@@ -1,0 +1,13 @@
+/Users/jyxc-dz-0101322/.pi/agent/git/github.com/AkiChase/my-pi-preset/extensions/agent-tasks: real parser/runner + target cwd + injected material + write/edit + late external tool PASS
+Existing harness unified source dispatch PASS
+Different tasks concurrently running in same source cwd PASS
+Exact short child and parent warnings plus uncommitted task materials PASS
+Independent child session pointers preserve parent bytes PASS
+Same-task overlap rejected before provider spawn PASS
+Real IDs public steering results and terminal records PASS
+Stop reply alone retains occupancy PASS
+Real provider stop terminal releases task occupancy PASS
+Next dispatch succeeds after stop terminal; no worktree created PASS
+/Users/jyxc-dz-0101322/.pi/agent/git/github.com/AkiChase/my-pi-preset/extensions/agent-tasks: public RPC cwd/missing directory + real id/result/steering + unavailable-service timeout PASS
+Existing real provider parser runner loader public RPC regressions PASS
+Cleanup workspace gone=true, product hash changes=0, pid=91682

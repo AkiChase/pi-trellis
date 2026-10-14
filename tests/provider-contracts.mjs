@@ -2,7 +2,7 @@
 // node tests/provider-contracts.mjs --host <Pi node_modules> --provider <package-root> [...]
 import { execFileSync } from "node:child_process";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -21,7 +21,7 @@ const jiti = createJiti(import.meta.url, { alias: aliases, moduleCache: true });
 const sdk = await import(pathToFileURL(aliases["@earendil-works/pi-coding-agent"]));
 const { fauxProvider, fauxAssistantMessage, fauxToolCall } = await import(pathToFileURL(join(hostRoot, "@earendil-works/pi-ai/dist/providers/faux.js")));
 const { Type } = await jiti.import("typebox");
-const workspace = mkdtempSync(join(tmpdir(), "pi-trellis-real-probe-"));
+const workspace = realpathSync(mkdtempSync(join(tmpdir(), "pi-trellis-real-probe-")));
 const agentDir = join(workspace, "config");
 mkdirSync(agentDir);
 process.env.PI_CODING_AGENT_DIR = agentDir;

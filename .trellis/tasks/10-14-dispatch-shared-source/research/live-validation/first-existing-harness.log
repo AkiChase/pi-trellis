@@ -1,0 +1,22 @@
+/Users/jyxc-dz-0101322/.pi/agent/git/github.com/AkiChase/my-pi-preset/extensions/agent-tasks: real parser/runner + target cwd + injected material + write/edit + late external tool PASS
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
++ actual - expected
+
++ '/private/var/folders/fx/bn7t1rq16xn7_66t233x_s1h0000gn/T/pi-trellis-real-probe-Wea7wh/project-0'
+- '/var/folders/fx/bn7t1rq16xn7_66t233x_s1h0000gn/T/pi-trellis-real-probe-Wea7wh/project-0'
+
+    at file:///Users/jyxc-dz-0101322/tools/pi-trellis/tests/provider-contracts.mjs:143:14
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: '/private/var/folders/fx/bn7t1rq16xn7_66t233x_s1h0000gn/T/pi-trellis-real-probe-Wea7wh/project-0',
+  expected: '/var/folders/fx/bn7t1rq16xn7_66t233x_s1h0000gn/T/pi-trellis-real-probe-Wea7wh/project-0',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.14.1

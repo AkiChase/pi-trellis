@@ -1,0 +1,28 @@
+/Users/jyxc-dz-0101322/.pi/agent/git/github.com/AkiChase/my-pi-preset/extensions/agent-tasks: real parser/runner + target cwd + injected material + write/edit + late external tool PASS
+Existing harness unified source dispatch PASS
+Different tasks concurrently running in same source cwd PASS
+Exact short child and parent warnings plus uncommitted task materials PASS
+Independent child session pointers preserve parent bytes PASS
+Same-task overlap rejected before provider spawn PASS
+Real IDs public steering results and terminal records PASS
+Stop reply alone retains occupancy PASS
+Cleanup workspace gone=true, product hash changes=0, pid=86902
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+
+  assert.ok(terminalFor(stopId))
+
+    at file:///Users/jyxc-dz-0101322/tools/pi-trellis/.trellis/tasks/10-14-dispatch-shared-source/research/live-validation/driver.mjs:234:14
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: undefined,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v24.14.1

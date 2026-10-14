@@ -1,0 +1,16 @@
+/Users/jyxc-dz-0101322/.pi/agent/git/github.com/AkiChase/my-pi-preset/extensions/agent-tasks: real parser/runner + target cwd + injected material + write/edit + late external tool PASS
+Existing harness unified source dispatch PASS
+Different tasks concurrently running in same source cwd PASS
+Exact short child and parent warnings plus uncommitted task materials PASS
+Independent child session pointers preserve parent bytes PASS
+Cleanup workspace gone=true, product hash changes=0, pid=84840
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+Error: Task has running/unknown source execution; inspect /private/var/folders/fx/bn7t1rq16xn7_66t233x_s1h0000gn/T/pi-trellis-live-acceptance-9x8Ldp/project-0/.trellis/.runtime/pi-trellis/source-executions/a9f09651076904c88d12439038621f3a1550e9f4c9bf1e5bb2cdaf63b79ba50c.json (no automatic recovery)
+    at Object.execute (/Users/jyxc-dz-0101322/tools/pi-trellis/lib/subagent-rpc.ts:148:110)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async file:///Users/jyxc-dz-0101322/tools/pi-trellis/.trellis/tasks/10-14-dispatch-shared-source/research/live-validation/driver.mjs:208:22
+
+Node.js v24.14.1

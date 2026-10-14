@@ -84,4 +84,4 @@
 
 `design.md` 已补齐 source 记录身份/独立存储、跨会话 stop、unknown 保守阻塞、绑定变化重查及 create/adopt 竞态处理。`implement.md` 拆分两阶段及独立审查/本地 checkpoint，`check.jsonl` 已准备 spec/research 引用，主 agent 直接实施的 `implement.jsonl` 有意为空。
 
-无阻塞产品问题。source unknown 不新增自动恢复接口，是 MVP 的明确限制；需要人工核查而不是猜测子进程终止。用户已批准实施并 start；阶段 1 已经独立复核并提交 `4cbeadc`，阶段 2 独立审查无阻塞、最终完整 408/408 通过，等待 scoped checkpoint。真实 provider probe 未运行（仅补齐 harness 并语法/静态验证），不伪称在线验收；任务留 in_progress 待用户接受收尾。
+无阻塞产品问题。source unknown 不新增自动恢复接口，是 MVP 的明确限制；需要人工核查而不是猜测子进程终止。用户已批准实施并 start；阶段 1 已经独立复核并提交 `4cbeadc`，阶段 2 独立审查无阻塞、最终完整 408/408 通过并提交 `c909dcc`。补充真实 SDK/provider 离线验收10/10通过；main修正harness macOS canonical临时路径并重跑原脚本通过，CLI/tmux/在线模型未运行。用户授权验收后归档收尾，main已接受全部AC，进入归档。

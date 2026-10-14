@@ -1,0 +1,391 @@
+{
+  "pid": 86902,
+  "workspace": "/private/var/folders/fx/bn7t1rq16xn7_66t233x_s1h0000gn/T/pi-trellis-live-acceptance-MMYaa2",
+  "started": "2026-10-14T09:15:59.967Z",
+  "checks": [
+    {
+      "name": "Existing harness unified source dispatch",
+      "status": "PASS",
+      "details": {
+        "canonicalCwd": "/private/var/folders/fx/bn7t1rq16xn7_66t233x_s1h0000gn/T/pi-trellis-live-acceptance-MMYaa2/project-0",
+        "sourceWrite": "shared source execution"
+      }
+    },
+    {
+      "name": "Different tasks concurrently running in same source cwd",
+      "status": "PASS",
+      "details": {
+        "idA": "28fd2db7-9d51-4c7",
+        "idB": "0d05e3d3-5152-4a4",
+        "records": [
+          {
+            "sourceRoot": "/private/var/folders/fx/bn7t1rq16xn7_66t233x_s1h0000gn/T/pi-trellis-live-acceptance-MMYaa2/project-0",
+            "repositoryIdentity": "/private/var/folders/fx/bn7t1rq16xn7_66t233x_s1h0000gn/T/pi-trellis-live-acceptance-MMYaa2/project-0/.git",
+            "taskDir": ".trellis/tasks/concurrent-b",
+            "version": 1,
+            "mode": "source",
+            "requestId": "4db92f2e-b93d-4ce8-84d0-ad7255da525c",
+            "role": "trellis-check",
+            "state": "running",
+            "ownerPid": 86902,
+            "ownerToken": "d7e3ad3c-4308-4f20-9b2c-a0f56a76a5f7",
+            "createdAt": "2026-10-14T09:16:05.466Z",
+            "agentId": "0d05e3d3-5152-4a4"
+          },
+          {
+            "sourceRoot": "/private/var/folders/fx/bn7t1rq16xn7_66t233x_s1h0000gn/T/pi-trellis-live-acceptance-MMYaa2/project-0",
+            "repositoryIdentity": "/private/var/folders/fx/bn7t1rq16xn7_66t233x_s1h0000gn/T/pi-trellis-live-acceptance-MMYaa2/project-0/.git",
+            "taskDir": ".trellis/tasks/test",
+            "version": 1,
+            "mode": "source",
+            "requestId": "44905aca-8210-44df-9d9b-8a76ae8160a8",
+            "role": "trellis-implement",
+            "state": "running",
+            "ownerPid": 86902,
+            "ownerToken": "d7e3ad3c-4308-4f20-9b2c-a0f56a76a5f7",
+            "createdAt": "2026-10-14T09:16:04.662Z",
+            "agentId": "28fd2db7-9d51-4c7"
+          }
+        ],
+        "spawnRequests": [
+          {
+            "requestId": "44905aca-8210-44df-9d9b-8a76ae8160a8",
+            "type": "trellis-implement",
+            "prompt": "Active task: .trellis/tasks/test\nTrellis context id: pi-source-144e43e3-6f93-4e3b-9a35-ebb51059d279\nTrellis agent: trellis-implement\n\nExecution directory: /private/var/folders/fx/bn7t1rq16xn7_66t233x_s1h0000gn/T/pi-trellis-live-acceptance-MMYaa2/project-0\nShared directory: Other agents may be working here. Stay within your assigned scope, preserve unrelated changes, and report overlapping edits to the main agent.\n\nAcceptance A; no product edits\n\n<!-- pi-trellis:task-context:start -->\n<!-- trellis-hook-injected -->\n=== .trellis/tasks/test/prd.md ===\nSOURCE material\n<!-- pi-trellis:task-context:end -->",
+            "options": {
+              "cwd": "/private/var/folders/fx/bn7t1rq16xn7_66t233x_s1h0000gn/T/pi-trellis-live-acceptance-MMYaa2/project-0",
+              "isolation": "off"
+            }
+          },
+          {
+            "requestId": "4db92f2e-b93d-4ce8-84d0-ad7255da525c",
+            "type": "trellis-check",
+            "prompt": "Active task: .trellis/tasks/concurrent-b\nTrellis context id: pi-source-4431f90b-b86a-4e52-b556-89837cee4644\nTrellis agent: trellis-check\n\nExecution directory: /private/var/folders/fx/bn7t1rq16xn7_66t233x_s1h0000gn/T/pi-trellis-live-acceptance-MMYaa2/project-0\nShared directory: Other agents may be working here. Stay within your assigned scope, preserve unrelated changes, and report overlapping edits to the main agent.\n\nAcceptance B; no product edits\n\n<!-- pi-trellis:task-context:start -->\n<!-- trellis-hook-injected -->\n=== .trellis/tasks/concurrent-b/prd.md ===\nSECOND TASK current uncommitted material\n<!-- pi-trellis:task-context:end -->",
+            "options": {
+              "cwd": "/private/var/folders/fx/bn7t1rq16xn7_66t233x_s1h0000gn/T/pi-trellis-live-acceptance-MMYaa2/project-0",
+              "isolation": "off"
+            }
+          },
+          {
+            "requestId": "d3fb028c-f9be-4802-a6fe-1f05348562da",
+            "type": "trellis-implement",
+            "prompt": "Active task: .trellis/tasks/test\nTrellis context id: pi-source-1901b629-23f9-47f0-9be7-574d65b33eb6\nTrellis agent: trellis-implement\n\nExecution directory: /private/var/folders/fx/bn7t1rq16xn7_66t233x_s1h0000gn/T/pi-trellis-live-acceptance-MMYaa2/project-0\nShared directory: Other agents may be working here. Stay within your assigned scope, preserve unrelated changes, and report overlapping edits to the main agent.\n\nAcceptance stop target\n\n<!-- pi-trellis:task-context:start -->\n<!-- trellis-hook-injected -->\n=== .trellis/tasks/test/prd.md ===\nSOURCE material\n<!-- pi-trellis:task-context:end -->",
+            "options": {
+              "cwd": "/private/var/folders/fx/bn7t1rq16xn7_66t233x_s1h0000gn/T/pi-trellis-live-acceptance-MMYaa2/project-0",
+              "isolation": "off"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Exact short child and parent warnings plus uncommitted task materials",
+      "status": "PASS"
+    },
+    {
+      "name": "Independent child session pointers preserve parent bytes",
+      "status": "PASS",
+      "details": {
+        "parentKey": "pi-4c4049427465",
+        "pointers": [
+          {
+            "name": "pi-child-0122a92a64f2.json",
+            "platform": "session",
+            "last_seen_at": "2026-10-14T09:16:04Z",
+            "current_task": ".trellis/tasks/test",
+            "current_run": null
+          },
+          {
+            "name": "pi-child-c3f5941ae0d0.json",
+            "platform": "session",
+            "last_seen_at": "2026-10-14T09:16:04Z",
+            "current_task": ".trellis/tasks/test",
+            "current_run": null
+          },
+          {
+            "name": "pi-child-e2dee637e4c8.json",
+            "platform": "session",
+            "last_seen_at": "2026-10-14T09:16:05Z",
+            "current_task": ".trellis/tasks/concurrent-b",
+            "current_run": null
+          }
+        ],
+        "childModelSessionIds": [
+          "01a139b2-8ad2-7564-8209-fdde68ce1067",
+          "01a139b2-8df6-7564-8209-fde0ec5b07f9"
+        ]
+      }
+    },
+    {
+      "name": "Same-task overlap rejected before provider spawn",
+      "status": "PASS",
+      "details": {
+        "isError": true,
+        "error": "Error: Task has running/unknown source execution; inspect /private/var/folders/fx/bn7t1rq16xn7_66t233x_s1h0000gn/T/pi-trellis-live-acceptance-MMYaa2/project-0/.trellis/.runtime/pi-trellis/source-executions/a9f09651076904c88d12439038621f3a1550e9f4c9bf1e5bb2cdaf63b79ba50c.json (no automatic recovery)"
+      }
+    },
+    {
+      "name": "Real IDs public steering results and terminal records",
+      "status": "PASS",
+      "details": {
+        "steered": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Steering message sent to agent 28fd2db7-9d51-4c7. The agent will process it after its current tool execution.\nCurrent state: 0 tool uses · context 5% full"
+            }
+          ]
+        },
+        "resultA": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Agent: 28fd2db7-9d51-4c7\nType: trellis-implement | Status: completed | Tool uses: 0 | 12.9k token | Context: 5% | Duration: 1.4s\nDescription: undefined\n\nsteering accepted done"
+            }
+          ]
+        },
+        "resultB": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Agent: 0d05e3d3-5152-4a4\nType: trellis-check | Status: completed | Tool uses: 0 | 13.4k token | Context: 10% | Duration: 0.6s\nDescription: undefined\n\nconcurrent B done"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Stop reply alone retains occupancy",
+      "status": "PASS",
+      "details": {
+        "isError": true,
+        "error": "Error: Task has running/unknown source execution; inspect /private/var/folders/fx/bn7t1rq16xn7_66t233x_s1h0000gn/T/pi-trellis-live-acceptance-MMYaa2/project-0/.trellis/.runtime/pi-trellis/source-executions/a9f09651076904c88d12439038621f3a1550e9f4c9bf1e5bb2cdaf63b79ba50c.json (no automatic recovery)"
+      }
+    }
+  ],
+  "ids": [
+    "28fd2db7-9d51-4c7",
+    "0d05e3d3-5152-4a4",
+    "ef81ecf7-23c4-459"
+  ],
+  "terminals": [
+    {
+      "event": "completed",
+      "data": {
+        "id": "0d05e3d3-5152-4a4",
+        "type": "trellis-check",
+        "result": "concurrent B done",
+        "status": "completed",
+        "toolUses": 0,
+        "durationMs": 634,
+        "tokens": {
+          "input": 6674,
+          "output": 5,
+          "total": 13353
+        },
+        "usage": {
+          "input": 6674,
+          "output": 5,
+          "cacheRead": 0,
+          "cacheWrite": 6674,
+          "totalTokens": 13353,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        }
+      },
+      "time": 1791969366102
+    },
+    {
+      "event": "completed",
+      "data": {
+        "id": "28fd2db7-9d51-4c7",
+        "type": "trellis-implement",
+        "result": "steering accepted done",
+        "status": "completed",
+        "toolUses": 0,
+        "durationMs": 1440,
+        "tokens": {
+          "input": 6429,
+          "output": 11,
+          "total": 12869
+        },
+        "usage": {
+          "input": 6429,
+          "output": 11,
+          "cacheRead": 6412,
+          "cacheWrite": 6429,
+          "totalTokens": 19281,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        }
+      },
+      "time": 1791969366104
+    }
+  ],
+  "errors": [],
+  "processes": [
+    "86899 96446 bash -c export TRELLIS_CONTEXT_ID=pi-18d7b002f377\\012cd /Users/jyxc-dz-0101322/tools/pi-trellis && cp /tmp/pi-bg/bn1qdtk2r.log .trellis/tasks/10-14-dispatch-shared-source/research/live-validation/first-rejection-fixture-failure.log && cp .trellis/tasks/10-14-dispatch-shared-source/research/live-validation/final.json .trellis/tasks/10-14-dispatch-shared-source/research/live-validation/rejection-fixture-failure.json && env -u TRELLIS_CONTEXT_ID PI_TRELLIS_TEST_HOST=/Users/jyxc-dz-0101322/.pi/agent/install/releases/1.2.0/node_modules node .trellis/tasks/10-14-dispatch-shared-source/research/live-validation/driver.mjs --host /Users/jyxc-dz-0101322/.pi/agent/install/releases/1.2.0/node_modules --provider /Users/jyxc-dz-0101322/.pi/agent/git/github.com/AkiChase/my-pi-preset/extensions/agent-tasks",
+    "86902 86899 node .trellis/tasks/10-14-dispatch-shared-source/research/live-validation/driver.mjs --host /Users/jyxc-dz-0101322/.pi/agent/install/releases/1.2.0/node_modules --provider /Users/jyxc-dz-0101322/.pi/agent/git/github.com/AkiChase/my-pi-preset/extensions/agent-tasks"
+  ],
+  "execution": "real SDK/loader/agent-tasks with offline faux; no CLI/tmux/online model",
+  "productHashesBefore": {
+    "agents/trellis-check.md": "afe276bcb225cb3e718e9b498d7b201c3666f1c3868fffe8dd6fe1c77f5553a2",
+    "agents/trellis-implement.md": "4f7192a3118eccc92699efe1fed9cf8368e2d9b50028682ba30652e855b04d8a",
+    "agents/trellis-research.md": "fe9ba44ec6b216a7c697a13af054f8bc42beeb3821b4332e17ee34fd4acfcb18",
+    "docs/dispatch.md": "4262d3d14bb4155bbab6146768f815e11da1b3f8709532eafac66dbfe4724a2b",
+    "extensions/trellis.ts": "5b122fed2cb2a0a3676a136a77165ca6d53bb73d634387aac418a0716691644e",
+    "lib/adapter-resources.ts": "91e79eb8daf0e0826ecbd778aeb90abb3bf74ff05a00363a374070249f14e0d0",
+    "lib/bindings.ts": "070bdd5a22027ba60f4e0708c12e465aeef3f1b0343c6c922813b4f8c9887e17",
+    "lib/config.ts": "e8d34a66323a35f83b329fe5ebd10f5e9488378767000a953c9ba96cd1be7647",
+    "lib/executions.ts": "f5ee3aaff6d306ade5b2ce6f02a287ac1eb14bd6e6d1e51c4c7eb85930d7491d",
+    "lib/initialization/adoption.ts": "1e03de898b90c8e517041f3f3c3ff642a892397e593078caea21994eb4bda592",
+    "lib/initialization/command.ts": "c6d56d5e00f8011321a510c0c34e21cc6abcd9fc3d6f46ef21e6b6db7b9674bf",
+    "lib/initialization/engine.ts": "7d6e8e5e770357fe5862485d28f31a67fb016d6e6b4aef0df5f5ffa2f5a2a2ea",
+    "lib/initialization/resources.ts": "375ca3c6084636fc24e0f9ec1c5e0b48bfc3f8f0f5e1192a66a7a456d17ef84f",
+    "lib/source-executions.ts": "c082e4ab665eb218acde09c95e2d96047428b93d75ed5143425b5fd7fefb6e33",
+    "lib/subagent-rpc.ts": "9bdfaee99e5df83471a35792c159d341837482fd41d36b4022882c332e978cf3",
+    "lib/task-browser/command.ts": "5476679742fa2c891160e14254783cf720b92823858f3f7336a5e2a6a2d75f51",
+    "lib/task-browser/component.ts": "d9ec1db48588efb4921c9473eafdab2cea88036cdb27880be232d1862d06912f",
+    "lib/task-browser/reader.ts": "589d4feeb40c81854465c3a224f26a294be5afa4a183c939619c5b4c464930e8",
+    "lib/task-context.ts": "c9ab2f671a22e86ec3bdebad580ffd75aa4095559786015b84bde92a71fc657c",
+    "lib/worktree-query.ts": "b06875b8b12a272effbe5f23526a08ca4f0ca347cab48331bf5c218ade4dfcca",
+    "resources/runtime-baseline.json": "cf53dfdf2cf173d4734d1f0daa92f07b958f61cf7cd83a06546b972985f456ba",
+    "resources/skill-baseline.json": "42ffa59fedeb2de0b98e588050cf43e87b9dcc401317fec70be2d348dc563610",
+    "resources/template-baseline.json": "a37afa6f5a124999fb784017059513271bf25954b03c70ab1ca401e619d3eb7d",
+    "resources/templates/agents-block.md": "ed9c20870317cc1a66488eb2f241be01ad40520f556b3d5579037bf1a89cbcec",
+    "resources/templates/config.yaml": "47a81490107fb215e58cb97fa25cb427340b12a2eeacca58c7a5fe86a37a498d",
+    "resources/templates/journal.gitattributes": "fbf06fcfa02307006a6676e2279507adba5a24a3606eee74be5343df49446d1d",
+    "resources/templates/root.gitignore-block.txt": "d42989a9eb63c7aeb1affac4638f23d967aebfdee2220f0b174c757b40a07622",
+    "resources/templates/spec/guides/code-reuse-thinking-guide.md": "0a10e79c7fe87f7d4da29500372fd44fa3778c6f6ed0ac8dae8c10d1dc1b92d6",
+    "resources/templates/spec/guides/cross-layer-thinking-guide.md": "3aff94cf5d8c4d0015f64e7b83d3a007c9f623657a9721cfea616341423530d8",
+    "resources/templates/spec/guides/index.md": "61399c91a23c16817653719abd7777a258681aa862dbd2056111514127bf5a8f",
+    "resources/templates/spec/index.md": "a37d28a4f1055a1f72487cb3c2fbd24e5d10726ad98aa8796be5b3435055f7c6",
+    "resources/templates/tasks/bootstrap-prd.md": "17c609fafb86bb0639a6e46454cc755062b6ceaa0cd5c1fb2216f6a0f3d77e03",
+    "resources/templates/tasks/join-prd.md": "a9cb8d940417e46eed6373a226bd0d547d75ff1442b7b9a3f24c7b3ab98db415",
+    "resources/templates/trellis.gitignore": "039c5f993947a09975af17b7946fe5558f11221385078509fd066e69efe2cbf3",
+    "resources/templates/workflow.md": "a893fd998a8342f271423c045d0b7e5508110f21b4aee94c9dd2e3a62e3bbe48",
+    "resources/templates/workspace-index.md": "00b569c959ab54052d931b9a56c6573f6b57b7be4af0b07907902f8665ba2771",
+    "runtime/add_session.py": "432c29b3adcd3510f86b63803f6ecefc3901f3ee623ffda3e0b693ad83ca730c",
+    "runtime/common/__init__.py": "9f5fa711f818cbbfa9bf4c2419b28f64d44a8a6937a88f856afe04dcb870b6e4",
+    "runtime/common/active_task.py": "64fa2acc4ba18716f7e718f228a6b60a0bd3fa069582352a2a64934c1206bac5",
+    "runtime/common/config.py": "ae8a5004f8d51beb7a82a57def07eb2db49331be45a50d47d88304b1e9d27283",
+    "runtime/common/developer.py": "1f0b22891166da83b1e213dcc1ce91d51182b7d475751bf91bc4d487c30fc836",
+    "runtime/common/git.py": "6d93ac9085c6811ed75c92c75929741f92b1774365df508bfbc54dae9ce4f5d8",
+    "runtime/common/git_context.py": "4d171a2e77f0cbc5c9970ba37e1f159089ace90e21914cf1468e237cf96b33b4",
+    "runtime/common/io.py": "02cb0e5cd00711b9c66484bbde30cda11abe034fa7415140cd5c3006b481dde0",
+    "runtime/common/log.py": "9349ed14fc3cd61c7a6fdef2a8a26ed29c40d9967315af68a38fcfbdb1f469f7",
+    "runtime/common/packages_context.py": "cd5897bbf3f4cab6f1c1495ea876bb644de35b468fae8f10e0cd9e97d5601d6e",
+    "runtime/common/paths.py": "ac684efc1a1febfa60c0fa4b49d24d6b08218d25a18febd3a67255e75a9fcacc",
+    "runtime/common/safe_commit.py": "edf0d18627fe561e5b475706c84cebd8270e2ab6914438205adeac987a89fea3",
+    "runtime/common/session_context.py": "1095bbd8e3e9fce6e8eca56e50ecd24e511282d26ec696ff305d3d82f29ba752",
+    "runtime/common/task_context.py": "d7d2c096cd8a909d5f0c6b7c2c5a76e9bcf3b3f26afa5834ab1c0befa737e9bc",
+    "runtime/common/task_records.py": "036a46fd0b558a67f4e25f38d9741fab8a90cd7879e8419893ac65eb8a58c880",
+    "runtime/common/task_store.py": "121b0e27fd00cc5de87d918e1255c6be7eea32555d970f40e4aa526710e5b3a3",
+    "runtime/common/task_utils.py": "89f9aa4709848d5ea69b31f1f079ca0743c8425fb98bab15edba3c376e81462b",
+    "runtime/common/tasks.py": "88159cb42455e07af03aa716d1596ad76ed6647b82075dc01c492ec44809f87b",
+    "runtime/common/trellis_config.py": "750da9420105d3bbeaceb26c41f183556b1df7769f58768e9f1fbc704fef95f4",
+    "runtime/common/types.py": "17f464519a109881871d29d8e9b6ff4dafefd89cc711a63301313d43046064d4",
+    "runtime/common/workflow_phase.py": "2474a4da63eb26ecd82483b55519f2555b340de4d46de0b8a9940ef283a35175",
+    "runtime/get_context.py": "5f0de91be014e6d59b697fb17d9c840b80605a6cbc29a0609b5d4cb4464acf9a",
+    "runtime/get_developer.py": "db36b4a8d25d2cee5c9f1c0c08941cff1642db3fc99ab396cab8185f2ad46c6f",
+    "runtime/init_developer.py": "3e044c5788dbb583c86c0963847d756b8a66483d1440aee17473fd1577dee6ad",
+    "runtime/pi_trellis_worktree/__init__.py": "1d4d0902645668497861fb14b1021af44fe3af3140a24b45ee31fd64a749c1ab",
+    "runtime/pi_trellis_worktree/cli.py": "452d39cb0cac9974dc5fc6179001936932a4f0754f78ea2cb266b1e00e1e1aef",
+    "runtime/pi_trellis_worktree/manager.py": "85d13a265ac5763af181f9ac6942ad2772b813c2db0ae228d458f135052b4fd3",
+    "runtime/pi_trellis_worktree/materials.py": "1e51edfbed879dd5334c01f891bac1a7ffb61ad04df647f8afb2d2a1bc86f428",
+    "runtime/pi_trellis_worktree/records.py": "66f197f5f3a5227105843ba19b36ef96e8eaca7c1fc2eb41cf3309a79e812605",
+    "runtime/query-worktree.py": "d3e99b08f03a182f3f984c35141af300998c4e3fad82dd50ee6e9547bc974139",
+    "runtime/task.py": "cf1a1f198070cac7de44904a0d9636b88a0ebfde69f99fd4b7f76809ea3d7962",
+    "runtime/worktree.py": "ab50d841d912c717abb54becad9bfdb3f0a160823bd956d74ca77de8a5d8b0e0",
+    "tests/provider-contracts.mjs": "d9d9881de767a36ccd5dc54524787c858c70a69d0a192111cc4e9a0680b9f115"
+  },
+  "gitBefore": " M .trellis/spec/extension/quality-guidelines.md\n M .trellis/spec/extension/worktree-lifecycle.md\n M .trellis/spec/scripts/agent-sync-and-provenance.md\n M docs/index.md\n M docs/initialization.md\n M docs/runtime-baseline.md\n M docs/task-display.md\n M docs/task-viewer.md\n M docs/trellis-agent-sync.md\n M docs/worktree-execution.md\n?? .trellis/spec/documentation.md\n?? .trellis/tasks/10-14-dispatch-shared-source/research/live-validation/\n?? .trellis/tasks/10-14-runtime-tool-names/\n?? .trellis/tasks/10-14-spec-docs-reorganization/\n?? docs/testing/\n",
+  "head": "c909dccbcb6ec59790657d66858025560f07212f",
+  "status": "FAIL",
+  "failure": "AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:\n\n  assert.ok(terminalFor(stopId))\n\n    at file:///Users/jyxc-dz-0101322/tools/pi-trellis/.trellis/tasks/10-14-dispatch-shared-source/research/live-validation/driver.mjs:234:14\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+  "workspaceGone": true,
+  "finished": "2026-10-14T09:16:07.792Z",
+  "productHashesAfter": {
+    "agents/trellis-check.md": "afe276bcb225cb3e718e9b498d7b201c3666f1c3868fffe8dd6fe1c77f5553a2",
+    "agents/trellis-implement.md": "4f7192a3118eccc92699efe1fed9cf8368e2d9b50028682ba30652e855b04d8a",
+    "agents/trellis-research.md": "fe9ba44ec6b216a7c697a13af054f8bc42beeb3821b4332e17ee34fd4acfcb18",
+    "docs/dispatch.md": "4262d3d14bb4155bbab6146768f815e11da1b3f8709532eafac66dbfe4724a2b",
+    "extensions/trellis.ts": "5b122fed2cb2a0a3676a136a77165ca6d53bb73d634387aac418a0716691644e",
+    "lib/adapter-resources.ts": "91e79eb8daf0e0826ecbd778aeb90abb3bf74ff05a00363a374070249f14e0d0",
+    "lib/bindings.ts": "070bdd5a22027ba60f4e0708c12e465aeef3f1b0343c6c922813b4f8c9887e17",
+    "lib/config.ts": "e8d34a66323a35f83b329fe5ebd10f5e9488378767000a953c9ba96cd1be7647",
+    "lib/executions.ts": "f5ee3aaff6d306ade5b2ce6f02a287ac1eb14bd6e6d1e51c4c7eb85930d7491d",
+    "lib/initialization/adoption.ts": "1e03de898b90c8e517041f3f3c3ff642a892397e593078caea21994eb4bda592",
+    "lib/initialization/command.ts": "c6d56d5e00f8011321a510c0c34e21cc6abcd9fc3d6f46ef21e6b6db7b9674bf",
+    "lib/initialization/engine.ts": "7d6e8e5e770357fe5862485d28f31a67fb016d6e6b4aef0df5f5ffa2f5a2a2ea",
+    "lib/initialization/resources.ts": "375ca3c6084636fc24e0f9ec1c5e0b48bfc3f8f0f5e1192a66a7a456d17ef84f",
+    "lib/source-executions.ts": "c082e4ab665eb218acde09c95e2d96047428b93d75ed5143425b5fd7fefb6e33",
+    "lib/subagent-rpc.ts": "9bdfaee99e5df83471a35792c159d341837482fd41d36b4022882c332e978cf3",
+    "lib/task-browser/command.ts": "5476679742fa2c891160e14254783cf720b92823858f3f7336a5e2a6a2d75f51",
+    "lib/task-browser/component.ts": "d9ec1db48588efb4921c9473eafdab2cea88036cdb27880be232d1862d06912f",
+    "lib/task-browser/reader.ts": "589d4feeb40c81854465c3a224f26a294be5afa4a183c939619c5b4c464930e8",
+    "lib/task-context.ts": "c9ab2f671a22e86ec3bdebad580ffd75aa4095559786015b84bde92a71fc657c",
+    "lib/worktree-query.ts": "b06875b8b12a272effbe5f23526a08ca4f0ca347cab48331bf5c218ade4dfcca",
+    "resources/runtime-baseline.json": "cf53dfdf2cf173d4734d1f0daa92f07b958f61cf7cd83a06546b972985f456ba",
+    "resources/skill-baseline.json": "42ffa59fedeb2de0b98e588050cf43e87b9dcc401317fec70be2d348dc563610",
+    "resources/template-baseline.json": "a37afa6f5a124999fb784017059513271bf25954b03c70ab1ca401e619d3eb7d",
+    "resources/templates/agents-block.md": "ed9c20870317cc1a66488eb2f241be01ad40520f556b3d5579037bf1a89cbcec",
+    "resources/templates/config.yaml": "47a81490107fb215e58cb97fa25cb427340b12a2eeacca58c7a5fe86a37a498d",
+    "resources/templates/journal.gitattributes": "fbf06fcfa02307006a6676e2279507adba5a24a3606eee74be5343df49446d1d",
+    "resources/templates/root.gitignore-block.txt": "d42989a9eb63c7aeb1affac4638f23d967aebfdee2220f0b174c757b40a07622",
+    "resources/templates/spec/guides/code-reuse-thinking-guide.md": "0a10e79c7fe87f7d4da29500372fd44fa3778c6f6ed0ac8dae8c10d1dc1b92d6",
+    "resources/templates/spec/guides/cross-layer-thinking-guide.md": "3aff94cf5d8c4d0015f64e7b83d3a007c9f623657a9721cfea616341423530d8",
+    "resources/templates/spec/guides/index.md": "61399c91a23c16817653719abd7777a258681aa862dbd2056111514127bf5a8f",
+    "resources/templates/spec/index.md": "a37d28a4f1055a1f72487cb3c2fbd24e5d10726ad98aa8796be5b3435055f7c6",
+    "resources/templates/tasks/bootstrap-prd.md": "17c609fafb86bb0639a6e46454cc755062b6ceaa0cd5c1fb2216f6a0f3d77e03",
+    "resources/templates/tasks/join-prd.md": "a9cb8d940417e46eed6373a226bd0d547d75ff1442b7b9a3f24c7b3ab98db415",
+    "resources/templates/trellis.gitignore": "039c5f993947a09975af17b7946fe5558f11221385078509fd066e69efe2cbf3",
+    "resources/templates/workflow.md": "a893fd998a8342f271423c045d0b7e5508110f21b4aee94c9dd2e3a62e3bbe48",
+    "resources/templates/workspace-index.md": "00b569c959ab54052d931b9a56c6573f6b57b7be4af0b07907902f8665ba2771",
+    "runtime/add_session.py": "432c29b3adcd3510f86b63803f6ecefc3901f3ee623ffda3e0b693ad83ca730c",
+    "runtime/common/__init__.py": "9f5fa711f818cbbfa9bf4c2419b28f64d44a8a6937a88f856afe04dcb870b6e4",
+    "runtime/common/active_task.py": "64fa2acc4ba18716f7e718f228a6b60a0bd3fa069582352a2a64934c1206bac5",
+    "runtime/common/config.py": "ae8a5004f8d51beb7a82a57def07eb2db49331be45a50d47d88304b1e9d27283",
+    "runtime/common/developer.py": "1f0b22891166da83b1e213dcc1ce91d51182b7d475751bf91bc4d487c30fc836",
+    "runtime/common/git.py": "6d93ac9085c6811ed75c92c75929741f92b1774365df508bfbc54dae9ce4f5d8",
+    "runtime/common/git_context.py": "4d171a2e77f0cbc5c9970ba37e1f159089ace90e21914cf1468e237cf96b33b4",
+    "runtime/common/io.py": "02cb0e5cd00711b9c66484bbde30cda11abe034fa7415140cd5c3006b481dde0",
+    "runtime/common/log.py": "9349ed14fc3cd61c7a6fdef2a8a26ed29c40d9967315af68a38fcfbdb1f469f7",
+    "runtime/common/packages_context.py": "cd5897bbf3f4cab6f1c1495ea876bb644de35b468fae8f10e0cd9e97d5601d6e",
+    "runtime/common/paths.py": "ac684efc1a1febfa60c0fa4b49d24d6b08218d25a18febd3a67255e75a9fcacc",
+    "runtime/common/safe_commit.py": "edf0d18627fe561e5b475706c84cebd8270e2ab6914438205adeac987a89fea3",
+    "runtime/common/session_context.py": "1095bbd8e3e9fce6e8eca56e50ecd24e511282d26ec696ff305d3d82f29ba752",
+    "runtime/common/task_context.py": "d7d2c096cd8a909d5f0c6b7c2c5a76e9bcf3b3f26afa5834ab1c0befa737e9bc",
+    "runtime/common/task_records.py": "036a46fd0b558a67f4e25f38d9741fab8a90cd7879e8419893ac65eb8a58c880",
+    "runtime/common/task_store.py": "121b0e27fd00cc5de87d918e1255c6be7eea32555d970f40e4aa526710e5b3a3",
+    "runtime/common/task_utils.py": "89f9aa4709848d5ea69b31f1f079ca0743c8425fb98bab15edba3c376e81462b",
+    "runtime/common/tasks.py": "88159cb42455e07af03aa716d1596ad76ed6647b82075dc01c492ec44809f87b",
+    "runtime/common/trellis_config.py": "750da9420105d3bbeaceb26c41f183556b1df7769f58768e9f1fbc704fef95f4",
+    "runtime/common/types.py": "17f464519a109881871d29d8e9b6ff4dafefd89cc711a63301313d43046064d4",
+    "runtime/common/workflow_phase.py": "2474a4da63eb26ecd82483b55519f2555b340de4d46de0b8a9940ef283a35175",
+    "runtime/get_context.py": "5f0de91be014e6d59b697fb17d9c840b80605a6cbc29a0609b5d4cb4464acf9a",
+    "runtime/get_developer.py": "db36b4a8d25d2cee5c9f1c0c08941cff1642db3fc99ab396cab8185f2ad46c6f",
+    "runtime/init_developer.py": "3e044c5788dbb583c86c0963847d756b8a66483d1440aee17473fd1577dee6ad",
+    "runtime/pi_trellis_worktree/__init__.py": "1d4d0902645668497861fb14b1021af44fe3af3140a24b45ee31fd64a749c1ab",
+    "runtime/pi_trellis_worktree/cli.py": "452d39cb0cac9974dc5fc6179001936932a4f0754f78ea2cb266b1e00e1e1aef",
+    "runtime/pi_trellis_worktree/manager.py": "85d13a265ac5763af181f9ac6942ad2772b813c2db0ae228d458f135052b4fd3",
+    "runtime/pi_trellis_worktree/materials.py": "1e51edfbed879dd5334c01f891bac1a7ffb61ad04df647f8afb2d2a1bc86f428",
+    "runtime/pi_trellis_worktree/records.py": "66f197f5f3a5227105843ba19b36ef96e8eaca7c1fc2eb41cf3309a79e812605",
+    "runtime/query-worktree.py": "d3e99b08f03a182f3f984c35141af300998c4e3fad82dd50ee6e9547bc974139",
+    "runtime/task.py": "cf1a1f198070cac7de44904a0d9636b88a0ebfde69f99fd4b7f76809ea3d7962",
+    "runtime/worktree.py": "ab50d841d912c717abb54becad9bfdb3f0a160823bd956d74ca77de8a5d8b0e0",
+    "tests/provider-contracts.mjs": "d9d9881de767a36ccd5dc54524787c858c70a69d0a192111cc4e9a0680b9f115"
+  },
+  "changedProductFiles": [],
+  "gitAfter": " M .trellis/spec/extension/quality-guidelines.md\n M .trellis/spec/extension/worktree-lifecycle.md\n M .trellis/spec/scripts/agent-sync-and-provenance.md\n M docs/index.md\n M docs/initialization.md\n M docs/runtime-baseline.md\n M docs/task-display.md\n M docs/task-viewer.md\n M docs/trellis-agent-sync.md\n M docs/worktree-execution.md\n?? .trellis/spec/documentation.md\n?? .trellis/tasks/10-14-dispatch-shared-source/research/live-validation/\n?? .trellis/tasks/10-14-runtime-tool-names/\n?? .trellis/tasks/10-14-spec-docs-reorganization/\n?? docs/testing/\n"
+}
