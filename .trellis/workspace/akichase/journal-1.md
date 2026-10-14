@@ -219,3 +219,33 @@ Kept widget/footer visible without an active task, added themed unfinished proje
 ### Next Steps
 
 - 用户自行验证 init Update resources；本轮未安装、同步、reload 或 push
+
+
+## Session 9: 完成 Apply template 功能与收尾
+<!-- trellis-session: v=2 fp=f47c3cb472cd1a7a -->
+
+**Date**: 2026-10-14
+**Task**: 完成 Apply template 功能与收尾
+**Branch**: `main`
+
+### Summary
+
+主 Agent 轻量实现 Apply template：Workflow/Spec/两者范围、文件动作列表与一次确认、完整覆盖备份和真实来源记录；独立审查修复包发布期 drift/初始化记录校验，最终 focused 56/56、full 350/350。工作提交 300f2cc；用户接受并授权收尾，任务已归档。未实际 Apply 到本项目、安装、reload 或 push，保留用户 Update resources 的部署修改。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `300f2cc` | feat: apply bundled workflow and spec templates |
+
+### Testing
+
+- [OK] Focused 56/56; final full 350/350; independent review passed; real terminal Apply not exercised
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 如需验证实际 UI，可由用户自行 reload 后使用 Apply template；本任务已接受完成
