@@ -238,13 +238,13 @@ const templateTargets: Record<string, string> = {
 	"workflow.md": ".trellis/workflow.md", "config.yaml": ".trellis/config.yaml", "trellis.gitignore": ".trellis/.gitignore", "workspace-index.md": ".trellis/workspace/index.md",
 	"spec/index.md": ".trellis/spec/index.md", "spec/guides/index.md": ".trellis/spec/guides/index.md", "spec/guides/code-reuse-thinking-guide.md": ".trellis/spec/guides/code-reuse-thinking-guide.md", "spec/guides/cross-layer-thinking-guide.md": ".trellis/spec/guides/cross-layer-thinking-guide.md",
 };
-function template(path: string): Buffer {
+export function template(path: string): Buffer {
 	const value = readFileSync(checkedPath(packageRoot, `resources/templates/${path}`));
 	const baseline = JSON.parse(readFileSync(join(packageRoot, "resources/template-baseline.json"), "utf8"));
 	if (baseline.schemaVersion !== 1 || baseline.files[path]?.sha256 !== digest(value)) throw new Error(`Package template hash mismatch: ${path}`);
 	return value;
 }
-function appendBlock(original: Buffer | undefined, block: Buffer, start: string, end: string): Buffer {
+export function appendBlock(original: Buffer | undefined, block: Buffer, start: string, end: string): Buffer {
 	const text = original?.toString("utf8") ?? "", body = block.toString("utf8").trimEnd();
 	const starts = text.split(start).length - 1, ends = text.split(end).length - 1;
 	if (starts || ends) {
@@ -255,7 +255,22 @@ function appendBlock(original: Buffer | undefined, block: Buffer, start: string,
 	if (/TRELLIS:|pi-trellis:ignore:/.test(text)) throw new Error("Unknown managed block marker");
 	return Buffer.concat([original ?? Buffer.alloc(0), Buffer.from(text && !text.endsWith("\n") ? "\n" : ""), block]);
 }
-function journalAttributes(attributes: Buffer | undefined, rule: Buffer): Buffer {
+export function replaceBlock(original: Buffer | undefined, block: Buffer, start: string, end: string): Buffer {
+	const value = original ?? Buffer.alloc(0), first = value.indexOf(start), last = value.indexOf(end);
+	if (first === -1 && last === -1) return appendBlock(original, block, start, end);
+	if (first === -1 || last < first || value.indexOf(start, first + start.length) !== -1 || value.indexOf(end, last + end.length) !== -1) throw new Error("Existing managed block is repeated, incomplete or malformed");
+	const prefix = value.subarray(0, first), suffix = value.subarray(last + Buffer.byteLength(end));
+	if (/TRELLIS:|pi-trellis:ignore:/.test(Buffer.concat([prefix, suffix]).toString("utf8"))) throw new Error("Unknown managed block marker outside owned block");
+	return Buffer.concat([prefix, Buffer.from(block.toString("utf8").trimEnd()), suffix]);
+}
+export function projectRevision(root: string): string | null {
+	try {
+		const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
+		const value = execFileSync("git", ["rev-parse", "--verify", "HEAD"], { cwd: root, env: { ...env, GIT_OPTIONAL_LOCKS: "0" }, encoding: "utf8", timeout: 3000, stdio: ["ignore", "pipe", "ignore"] }).trim();
+		return /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(value) ? value : null;
+	} catch { return null; }
+}
+export function journalAttributes(attributes: Buffer | undefined, rule: Buffer): Buffer {
 	const lines = attributes?.toString("utf8").split(/\r?\n/).filter(line => line.trim() && !line.trim().startsWith("#")) ?? [];
 	const exact = lines.filter(line => line.trim().split(/\s+/)[0] === ".trellis/workspace/*/journal-*.md");
 	if (exact.length > 1 || exact.some(line => line.trim() !== rule.toString("utf8").trim()) || lines.some(line => /journal|\*/.test(line.split(/\s+/)[0]) && /(?:^|\s)[!-]?merge(?:=|\s|$)/.test(line) && !/\smerge=union\s*$/.test(line))) throw new Error("Conflicting journal merge attributes");
