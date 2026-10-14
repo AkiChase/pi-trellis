@@ -1,294 +1,133 @@
 # pi-trellis
 
-A user-level [pi](https://pi.dev) extension that activates inside supported [Trellis](https://www.npmjs.com/package/@mindfoldhq/trellis) projects.
+pi-trellis 是 [Pi](https://pi.dev) 的扩展，基于 [Trellis](https://www.npmjs.com/package/@mindfoldhq/trellis) 的任务、规范和工作记录体系，提供项目初始化、任务上下文、状态显示和角色派发。
 
-It supplies an explicit Pi-native initializer plus a fixed project runtime in one package. The three bundled agents use Trellis 0.6.17's generated Claude Code roles as their baseline, with documented Pi tool, context, and correctness adaptations. See [role usage](docs/dispatch.md#角色与定制).
+安装一次，再在需要使用的项目中运行 `/trellis-init`。项目规范、任务和工作记录保存在项目的 `.trellis/` 下，由你和团队维护。
 
-## What it does
+## 与原版 Trellis 的关系
 
-| | |
-|---|---|
-| **Task context injection** | Adds `session-overview` and `trellis-workflow` sections to the system prompt, plus a per-turn task-state message. The model knows the active task, its status, and the workflow breadcrumb without reading a single file. |
-| **Task display** | A persistent themed line above the editor: `▸ trellis(3) · 00-bootstrap-guidelines · in_progress · prd ✓ design · impl ·`. Shows the project-wide unfinished task count even without an active session task, refreshed when a session starts, when a turn ends, and immediately after a `task.py` bash result. Switch it to the footer chip or turn it off with `TRELLIS_PI_STATUS`. |
-| **Session isolation** | Derives a separate `TRELLIS_CONTEXT_ID` per session/root and passes it explicitly to CLI/bash calls. Dispatched children bind the explicit task under their own key without lifecycle hooks; they never reuse the dispatcher's pointer. No shared-process environment mutation. |
-| **Subagent context** | Claude-based `trellis-implement`, `trellis-check`, and `trellis-research` agents adapted for Pi. Ordinary `Agent` dispatch loads role JSONL references and task artifacts with byte budgets and fallback diagnostics. |
-| **Package skills** | Ten curated Pi skills are discovered only in supported projects, using Pi's resource filters; there is no project copy. |
+pi-trellis 针对 Pi 重新组织了默认工作流，并调整了角色、技能和配套脚本。它不是把原版配置直接搬到 Pi：从需求规划、任务执行到检查和收尾，都按当前的 Pi 使用方式进行了调整。
 
-What it deliberately does **not** do: implement subagents (that is [`@tintinweb/pi-subagents`](https://github.com/tintinweb/pi-subagents)' job), install dependencies or initialize project files automatically.
+使用时只需安装本扩展，再通过 `/trellis-init` 初始化项目，**无需另外安装上游 `trellis` CLI**。本包会部署所需的项目脚本；执行这些脚本仍需要本机安装 Python 3.10+。已有项目的接管和资源更新见 [项目初始化](docs/initialization.md)。
 
-## Initialize a new project
+当前默认配置主要面向 **Pi + [my-pi-preset](https://github.com/AkiChase/my-pi-preset)**，部分工具和交互能力依赖 preset 中的配套插件。单独安装 pi-trellis 不等于获得这套组合的完整体验。
 
-Install the package using Pi, grant project trust when applicable, then use the English native command:
+相应地，它也不再以原版 Trellis 的跨 Harness 使用方式为目标。初始化后的工作流和角色不保证直接适用于其他 Harness；混用或迁移需要自行调整。同时，本包只维护当前使用范围内的 Trellis 能力，不提供上游 CLI 的全部功能。
+
+## 功能概览
+
+- **任务上下文**：向模型提供项目工作流、当前任务和执行阶段，按需读取开发规范与任务材料。
+- **常驻任务显示**：在编辑器上方显示项目未完成任务数，以及当前会话的任务状态；也可移到页脚或关闭。
+- **任务浏览器**：通过 `/trellis-task-viewer` 查看任务列表、层级和 PRD、设计、实施文档，不切换任务或修改文件。
+- **角色派发**：提供 `trellis-implement`、`trellis-check`、`trellis-research` 三个角色，分别负责实现、检查和研究。
+- **托管 worktree**：需要隔离代码修改时，支持创建和准备任务工作目录、同步任务材料，并向该目录派发角色。
+
+Trellis 功能只在受支持的项目中启用；普通项目仍可使用 `/trellis-init`。
+
+## 安装与开始使用
+
+### 环境要求
+
+- Pi ≥ 1.2.0。
+- Python ≥ 3.10，用于初始化和执行项目运行时；普通启动不需要 Python。
+- 若要派发子代理，还需安装 [`@tintinweb/pi-subagents`](https://github.com/tintinweb/pi-subagents)。不安装也可使用其他功能。
+
+Windows 尚未验证，建议在 macOS 或 Linux 上使用。
+
+### 1. 安装扩展
+
+```bash
+pi install --approve git:github.com/AkiChase/pi-trellis
+
+# 可选：安装子代理扩展
+pi install @tintinweb/pi-subagents
+```
+
+默认安装到用户级配置，多个项目共用。需要仅在当前项目安装时，在 `pi install` 中加 `-l`。
+
+### 2. 打开项目并初始化
+
+在项目目录启动 Pi，按宿主提示授予项目信任，然后执行：
 
 ```text
 /trellis-init
-/trellis-init --user "Your Name"
+```
+
+按提示选择开发者身份并确认。初始化会创建项目运行时、角色定义、工作流与规范入口，以及初始任务；不会自动选择当前任务、安装依赖或提交 Git。
+
+已有 Trellis 项目也从这个命令进入，根据项目状态设置本地身份、接管旧项目或更新资源。**接管旧项目可能替换旧运行时和角色，请先查看计划再确认。**
+
+```text
 /trellis-init --check
 /trellis-init --help
 ```
 
-No global Trellis CLI is required. Python 3.10+ is required. `--user` skips name selection,
-not the final confirmation. Interactive and RPC native dialogs support initialization;
-headless invocation reports status and instructions without writing.
+完整操作与更新规则见 [项目初始化](docs/initialization.md)。无需安装全局 Trellis CLI。
 
-Fresh initialization creates a fixed runtime, Pi roles, editable workflow/config/spec entry,
-identity/workspace and `00-bootstrap-guidelines`. It selects no active task and runs no
-hooks, model turn, Git action or dependency installation. Supported clones missing local
-identity can reuse historical usernames/journals and create/reuse `00-join-<slug>`;
-existing different identity is a conflict, not a silent switch. No frontend/backend rules,
-project-type detection, multiple-package setup, remote templates or arbitrary upstream migration.
+## 基本使用
 
-An existing `.trellis/` project without a managed manifest offers **Adopt existing project**:
-one confirmation summarizes Install/Replace/Create/Preserve/Current counts and legacy paths;
-run `/trellis-init --check` for the complete per-file list before confirming. Adoption installs the fixed runtime and roles, replacing older copies and the
-`AGENTS.md`/`.gitignore` managed blocks without backups, while leaving existing workflow,
-config, spec, tasks, journals and identity byte-identical; the eight template targets that
-already exist are recorded as `preserved-project` provenance instead of being written.
-Nothing is deleted, no onboarding task is created, and identity setup stays a separate step.
-This is the only supported adoption path; there is still no general upstream migration.
-Existing managed projects can review resource updates or restore missing resources
-through `/trellis-init`. Status shows per-file health and installed/available versions.
-Healthy existing projects also offer **Apply template**: choose Workflow, Spec, or both,
-then confirm one Replace/Create/Same file list. This explicitly adopts the bundled
-workflow and four basic spec documents, with replaced files and original provenance
-backed up under `.trellis/.runtime/template-backups/`. Project-only spec files and
-runtime/config/identity/tasks/journals remain unchanged; no diff viewer or automatic merge.
+在已初始化的项目中，可以直接向 Pi 描述需求。工作流会引导模型先了解项目、明确范围，再实施和检查；只读探索不需要创建任务。
 
-`.trellis/.pi-trellis.json` records the installed runtime release, hashes/modes and resource
-provenance separately from the package baseline. Unknown collisions and customized root
-blocks are rejected before writes. Initialization uses a local lock and bounded operation
-record; interrupted publication preserves files and retries only identical recorded outputs.
-This is per-file atomic publication, not an all-files transaction. See [initialization contract](docs/initialization.md).
+也可以显式调用技能：
 
-## Install
-
-```bash
-pi install --approve git:github.com/AkiChase/pi-trellis
-pi
-# In Pi, grant project trust and run /trellis-init.
-```
-
-Install once for your user (`~/.pi/agent/settings.json`). Use `pi install -l --approve git:github.com/AkiChase/pi-trellis` for explicit project scope instead. Project entries and resource filters follow Pi's normal precedence.
-
-Without a supported runtime, the extension registers only `/trellis-init`: no viewer command, dispatch tool, automatic Trellis skills, prompt injection or persistent task display. A supported project registers `/trellis-task-viewer` (slash command) and `trellis_dispatch` (model tool), plus conditional skills and context/UI. Clones without local identity still activate when their runtime is valid. Initialization, adoption and resource repair reload the host after confirmation.
-
-Discovery checks `.trellis` at each directory from `ctx.cwd`, then stops at the nearest `.git` file/directory; nested independent repositories do not inherit an ancestor's Trellis. Without Git it walks to the filesystem root. An invalid marker is not skipped. Init targets an existing Trellis root, otherwise the nearest Git root, otherwise the current directory; its confirmation shows the target.
-
-Installing does not initialize project files. `/trellis-init` explicitly deploys the fixed Python runtime and roles.
-
-`scripts/install.sh` is an optional thin wrapper around user-level package
-installation; `--local` selects project scope. `--source <spec>` selects a source, `--check` checks Pi availability
-without writes, and `--dry-run` prints the installation command. Neither mode
-runs project scripts. Obsolete `--neutral-skills` and `--no-patch` are rejected.
-No global Trellis CLI or install-time patch is required.
-
-Remove the user package with `pi remove git:github.com/AkiChase/pi-trellis` (add `-l` for a project install).
-Project runtime, configuration and history remain; removal never deletes them.
-
-### Requirements
-
-- pi ≥ 1.2.0
-- Python ≥ 3.10 on `PATH` for initialization and runtime execution (override with `TRELLIS_PYTHON`); ordinary project startup needs no Python
-- a subagent extension for the `trellis-*` agents — `pi install @tintinweb/pi-subagents`. Without one, everything else still works; you get one warning at startup.
-
-Existing host behavior has macOS/Linux evidence. The native management CLI is verified on macOS with Python 3.14.7; Python 3.10 is the syntax minimum, not a tested version matrix. Windows is untested and recovery conservatively refuses to prove owner death there.
-
-## Agent definitions and `.gitignore`
-
-Explicit `/trellis-init` publishes the bundled `trellis-implement.md`, `trellis-check.md` and `trellis-research.md` into `.pi/agents/`, then records their full hashes/modes in `.trellis/.pi-trellis.json`. Session startup never deploys or upgrades roles. Their baseline is Trellis 0.6.17's Claude Code definitions, with explicit Pi adaptations:
-
-- **implement** reads task artifacts and `implement.jsonl`, implements and validates, and does not commit, push, or merge.
-- **check** reviews committed changes against an explicit review base, staged/unstaged changes and new files; fixes clear issues within scope and reruns validation on the final version. It is not a read-only audit agent.
-- **research** reads code and documentation and writes findings only under the active task's `research/` directory. Standalone read-only exploration can still happen in the main session without creating a task.
-
-**Edit those files freely.** A file whose content no longer matches the recorded hash is never overwritten — that is the supported way to customize an agent for your project. New package versions do not silently replace definitions; `/trellis-init` can review updates to recorded, unmodified resources. Existing customized files are preserved, so inspect them if they still contain the old read-only check/research rules.
-
-Whether they belong in git is your call:
-
-- **Commit them** to share agent definitions with your team. Keep these roles and the initialization manifest in the committed baseline.
-- **Do not ignore the runtime manifest**: a clone needs it to recognize the supported release. Initialization does not regenerate missing/custom roles on session startup.
-
-## Known limitations
-
-**Skills are project-conditional.** The manifest uses `pi.skills: []`; the extension discovers the ten bundled skills only after validating the current runtime. `/skill:trellis-start` and `/skill:trellis-continue` remain real skill commands. Pi's public resolver preserves package skill filters, project precedence and trust: normal `skills: []` disables automatic skills, while `autoload:false` empty arrays are no-op deltas. Use plain paths for a whitelist; `+path` is additive and may retain other skills. Explicit `-path` exclusions work in deltas. Dynamic resources appear as extension-provided resources, not the old static package listing. Pi's `--no-skills` permits explicit extension discovery; use the package filter to suppress these skills. User-forced static skill paths or other sources stay host-owned and can still appear outside Trellis projects. The adapter readiness guard does not install missing sources or count parent-only `-e` as persistent configuration.
-
-**Registration refresh uses reload.** Runtime invalidation blocks execution and clears persistent UI immediately on subsequent events; `/reload` or a new host withdraws registered commands/tools and discovered skills completely. Pi has no general command-unregister API. This does not erase historical messages or user-owned AGENTS content, and arbitrary cross-project hot switching in one runner is not supported.
-
-**The workflow section is an excerpt.** Only the stable head of `.trellis/workflow.md` is injected (about 10 KB), with platform blocks that do not name Pi removed. Per-phase detail is loaded on demand via `get_context.py --mode phase --step <N.N>`; the model is told so.
-
-**Headless sessions get less.** Subagent sessions and `pi -p` skip the workflow excerpt, since it is the largest block and the least useful to a single-purpose agent. Set `TRELLIS_PI_CONTEXT=full` to inject everything anyway, or `compact` to force the small payload in an interactive session.
-
-**Subagent materials are budgeted.** `.trellis/config.yaml` supports `context_injection.max_file_bytes` (32768), `max_artifact_bytes` (65536), and `max_total_bytes` (131072); `0` disables a limit. Partial/missing/binary material receives a diagnostic and does not get the complete-injection marker: the agent must read missing context before working. Paths stay inside the execution project or its explicit top-level Trellis task-store symlink. Direct RPC callers must assemble materials explicitly; ordinary `Agent` hooks cannot intercept third-party RPC/workflow dispatch.
-
-**External research is configuration-dependent.** Agent files inherit configured extensions/skills, not a particular web service. Without actual search/MCP tools, research reports that external search was unavailable. Built-in tool allowlists and role instructions are not a shell sandbox or a restriction on every extension tool.
-
-**Task-level worktree management.** `python3 .trellis/scripts/worktree.py` owns creation/adoption, preparation, explicit material refresh/collection, status, recovery and safe removal; only execution/stop remains in Pi. The old `trellis_worktree` tool is not registered. Material lineage applies to newly prepared worktrees; there is no old-worktree migration or snapshot reconstruction. `trellis_dispatch` is the unified role entry: unbound tasks run in the shared source directory; bound tasks require their prepared managed worktree. Different unbound tasks can run concurrently; main coordinates overlapping edits. See [dispatch usage](docs/dispatch.md). No temporary subagent isolation, automatic phase advancement, commits, merges or branch deletion. Read the package-local [execution protocol](docs/worktree-execution.md) before the first managed operation; the overview supplies its actual installed read path.
-
-### Worktree usage
-
-Source `.gitignore` must explicitly ignore `/.worktree/` (or your configured directory) and `/.trellis/.runtime/`. The target base must also ignore its runtime. The native CLI checks this; it never edits `.gitignore` silently. Optional `.pi/pi-trellis.json` (relative paths resolve from source root):
-
-```json
-{ "worktree": { "directory": ".worktree" } }
-```
-
-Run the fixed project entry from the source project (no package-path lookup):
-
-```bash
-python3 .trellis/scripts/worktree.py --help
-python3 .trellis/scripts/worktree.py create --task .trellis/tasks/<full-slug>
-# Repeat only after approval; optionally pin the preview's full commit with --base:
-python3 .trellis/scripts/worktree.py create --task .trellis/tasks/<full-slug> --confirm
-python3 .trellis/scripts/worktree.py prepare --task .trellis/tasks/<full-slug>
-# After approval of copies and target start/hooks:
-python3 .trellis/scripts/worktree.py prepare --task .trellis/tasks/<full-slug> --confirm
-python3 .trellis/scripts/worktree.py status --task .trellis/tasks/<full-slug> --json
-```
-
-`adopt --path <registered-worktree>` handles an existing branch-backed worktree. `create` accepts `--base`/`--branch`, not `--path`. Every command requires explicit `--task`; `--cwd` defaults to process cwd. `--json` outputs one object (failures nonzero; diagnostics/progress stderr). Unknown, abbreviated, repeated (except distinct `collect --file` selections), inapplicable, missing and empty/control-character options fail before mutation. `status` is read-only; all other commands preview by default. A preview is not a reservation: default HEAD can change before confirmation; supply its full commit to pin it.
-
-Creates never copy staged/unstaged/untracked source code, commit, install, or delete anything. New configuration affects new creates only; existing bindings keep their absolute path.
-
-After create/adopt, use `prepare` (preview, then `--confirm`). Source task must already be `in_progress`. Preparation copies only task artifacts and task-local referenced research; specs/code/scripts stay at the target baseline. The baseline must contain local task.py and deployed native CLI/modules; missing scaffolding requires committing it or an explicitly approved target update, not copying source scripts during prepare. Conflicts or source spec differences are reported, never silently overwritten. It runs **target** `task.py start`, including configured `after_start` hooks, with the independent target context ID and inherited Git redirection variables removed, then validates the target pointer and branch. Successful preparation marks `ready` and stores a bounded hash-only source snapshot, separating accepted source requirements from per-file common ancestry. Target hook changes remain target divergence. Repeated ready preparation validates; it does not synchronize.
-
-When approved source requirements change, preview `refresh --task ...`, review paths/hashes and actual diffs, then repeat with user-approved `--confirm`. Whole-file B/S/T detects single-sided changes, convergence and conflicts without text merging. Target-only changes keep their original ancestry; deselected files stay detached, edited source-deleted copies stay orphan outputs. Baseline references are never copied. `task.json` syncs requirements excluding `branch`, `worktree_path`, `status`, `completedAt`, `commit`, `pr_url`; identity changes conflict, unknown fields/meta/base_branch remain requirements.
-
-Before integration/archive, `collect --task ...` lists bounded candidates without writing. Use repeated explicit `--file <current-task-project-relative-file>` for task documents or textual research/evidence, preview and approve confirmation. No task.json, code, runtime, binary/hidden credential files, directory/glob/all selection, or target-deletion propagation. Manifest dependencies must be explicitly selected or already match source. Collection is idempotent, preserves unrelated source drift and never commits/merges/archives; the source task is the unique archive owner. Both directions refuse active/unknown execution and bilateral conflicts before writes. Confirmation recomputes under lock without a token/reservation; multi-file failure preserves files/old snapshot with an error binding, not automatic rollback.
-
-Dispatch from a Pi host opened at the source project root:
-
-```json
-{ "agent": "trellis-implement", "task": ".trellis/tasks/<full-slug>", "prompt": "Implement the approved task" }
-```
-
-Pass this to `trellis_dispatch`; use its returned ID with existing result and steering tools. The main agent chooses when to dispatch check to the same directory. Ordinary Agent calls for a bound task are blocked before starting; `completed` means the agent ended, not acceptance. Source drift or conflicts block dispatch. Locked latest query, target rendering and a final Python fingerprint recheck precede spawn; dynamic prompt/execution records carry material revision and source/target fingerprints. Check currentness needs both final checkout snapshot and starting material revision, with no source drift/conflict—even a refresh with unchanged target bytes can invalidate it. Inspect its report; bounded snapshot exclusions/large-file mtime fallback are not exhaustive verification.
-
-`trellis_dispatch` with `{ "action": "stop", "task": ".trellis/tasks/<full-slug>" }` requests the provider to stop (no agent/prompt required); the lease remains until a terminal event. Timeout/restart ambiguity retains an `unknown` lease and code. Source execution has no automatic recovery or `worktree.py recover` path; inspect the provider and the reported record path. While a task has active source execution, create/adopt rejects that task. For **managed executions only**, explicit `recover` resets preparation and releases an execution only after its owner process has exited; live owners must be stopped through the provider. Stale lock files need manual inspection, not automatic deletion.
-
-`remove` previews ignored-file risks and requires confirmation, a clean worktree and `--integrated-into <reference>` (the user-approved reference preserving its commits). It uses ordinary `git worktree remove`, never force-removes, deletes the branch, or removes the actual process cwd (even when `--cwd` points elsewhere). A manually removed target can be explicitly unbound. Task artifacts often keep a prepared tree dirty: preserve/commit/archive them through the normal approved workflow before cleanup.
-
-**Limits:** first version accepts branch-backed worktrees and strict bundled-style role config (`isolation: off`, `extensions: true`, required tools). Customized incompatible files are kept and rejected, not replaced. Managed dispatch requires the actual host/source cwd to match and pi-trellis persistently configured in source/user settings (not just a parent-only `-e`) so children can reload the adapter. Worktrees and role rules are not an OS sandbox; third-party RPC/workflow launches are outside this tool's occupancy gate.
-
-## Environment variables
-
-| Variable | Effect |
+| 入口 | 用途 |
 |---|---|
-| `TRELLIS_CONTEXT_ID` | Pins the Trellis session key. Set it yourself to intentionally share an active task; otherwise derive from root plus session file/id. Child dispatch receives an explicit key, and shell calls are scoped without mutating process.env. |
-| `TRELLIS_PYTHON` | Python interpreter. Defaults to `python3` (`python` on Windows). |
-| `TRELLIS_PI_CONTEXT` | `full` or `compact` to override the headless heuristic. |
-| `TRELLIS_PI_STATUS` | `widget` (default), `status`, or `off`. See below. |
+| `/skill:trellis-start` | 开始开发会话，了解项目、工作区和任务状态 |
+| `/skill:trellis-continue` | 继续当前任务，加载对应阶段的材料 |
+| `/skill:trellis-finish-work` | 在确认工作完成后，按授权归档任务并记录进度 |
+| `/trellis-task-viewer` | 只读浏览任务及规划文档 |
 
-## Where the task display goes
+默认会在编辑器上方显示任务信息，例如：
 
-Feature details: [Persistent Task Display](docs/task-display.md).
+```text
+▸ trellis(3) · 10-14-example · in_progress · prd ✓ design · impl ·
+```
 
-In a supported Trellis project, the display stays visible even when this
-session has no active task: `▸ trellis(3)`. The tightly appended count includes
-all unfinished task records immediately under `.trellis/tasks/`, including
-parent and child tasks once each, regardless of assignee or session. Completed
-records and `archive/` are excluded; the project's explicit top-level task-store
-symlink is supported. Positive counts use `accent`, zero uses `dim`. Unreadable
-or invalid count data shows muted `(?)`, not a verified zero. The count is read
-from disk on existing refresh events; there is no polling or file watching.
+没有当前会话任务时，仍显示项目未完成任务数。任务浏览器与状态显示只负责查看，不会自动开始或切换任务。
 
-The default is a **widget**: its own row above the editor, drawn with your
-theme's colors. With an active task, it adds the full task name, status,
-conditional subtask count and planning artifacts after `▸ trellis(N)`.
-Status colors carry meaning — `planning` is warning, `in_progress` is
-accent, `completed` is success, `task_error` is error.
+需要子代理时，可以让主会话使用 `trellis_dispatch` 派发实现、检查或研究角色。默认在共享源目录执行；绑定托管 worktree 的任务必须在准备好的对应目录执行。详细说明见 [任务派发](docs/dispatch.md)。
 
-`TRELLIS_PI_STATUS=status` moves it into the themed footer instead
-(`trellis(3): 00-boot… ▸ in_progress`, or just `trellis(3)` without an active
-task). The chip preserves the count within a compact 34-terminal-column budget,
-using Pi's host-provided `visibleWidth()` / `truncateToWidth()` helpers before
-theming. Fitting names/statuses stay intact, including CJK, combining characters
-and emoji; long names and custom statuses are shortened. It shares one
-line with every other extension that calls `setStatus()`: pi joins those
-statuses with a space, sorts them alphabetically by key, and truncates the
-whole line to the terminal width. Keys never collide — each extension owns its
-own — but width is finite, and `trellis` sorts late enough to be among the
-first to get cut. The widget has no such competition: widgets are keyed and
-stacked, up to ten lines across all extensions.
+## 使用文档
 
-`TRELLIS_PI_STATUS=off` and uninitialized/unsupported projects draw nothing, including no zero/unknown-count label. If a runtime becomes invalid, subsequent refresh/execution events clear both widget and footer. Context injection
-is unaffected by the display setting — the display is just a display.
+README 提供入门入口，各功能的操作、配置和限制放在 `docs/`：
 
-## Browse task documents
+| 文档 | 内容 |
+|---|---|
+| [项目初始化](docs/initialization.md) | 新建与接管项目、本地身份、资源更新和模板替换 |
+| [任务浏览器](docs/task-viewer.md) | 任务列表、层级、文档查看与键位 |
+| [常驻任务显示](docs/task-display.md) | 任务计数、显示位置与刷新行为 |
+| [任务派发](docs/dispatch.md) | 三个角色、定制、并发、停止和执行状态 |
+| [托管 worktree](docs/worktree-execution.md) | 创建、准备、材料同步、收集与安全清理 |
+| [文档索引](docs/index.md) | 全部使用文档入口 |
 
-Feature details: [Task Viewer](docs/task-viewer.md); other feature documents are
-listed in [docs/index.md](docs/index.md).
+## 配置
 
-Run `/trellis-task-viewer` in Pi's interactive terminal to open a read-only task list,
-with or without a current session task, in a supported initialized project. The command is not registered in an uninitialized or unsupported project. It reads project task files directly;
-no Python execution, model request, task start/switch, or file writes are needed.
-Non-archived tasks (including completed records still in the active store) are
-shown with status colors, parent/child tree lines, and `*` for the current task.
-Rows show the directory identifier followed by the original title; identical
-values are not repeated. Top-level tasks and siblings use directory-name
-descending order (newer date prefixes first, same-day names descending), while
-children stay beneath their parent. The current session's task is the exception:
-its entire top-level tree is placed first, keeping ancestors ahead of children
-and sibling order unchanged. An independent current task becomes the first row.
-This is not exact creation-time ordering;
-`MM-DD` directory prefixes cannot distinguish years. Overview includes explicit
-Name, Title, and Path metadata. The old `/trellis-task` command is not retained.
-This browser is separate from the persistent unfinished-task count above.
+通常无需额外配置。以下环境变量可按需设置：
 
-- **List:** Up/Down selects, Enter opens details, Esc closes. PageUp/PageDown
-  moves by a page. Returning from detail preserves list selection and position.
-- **Detail:** Left/Right switches Overview, PRD, Design, and Implement;
-  Up/Down and PageUp/PageDown scroll the bounded content area. Full titles and
-  paths wrap inside that area. Esc returns to the list.
-- **Refresh:** `r` rereads task records, current-session identity, and documents.
-  Missing, empty, removed, unreadable, and invalid data have distinct notices;
-  incomplete enumeration is not reported as an empty project.
+| 变量 | 用途 |
+|---|---|
+| `TRELLIS_PI_STATUS` | `widget`（默认，编辑器上方）、`status`（页脚）或 `off`（关闭） |
+| `TRELLIS_PYTHON` | 指定 Python 解释器，默认使用 `python3`（Windows 为 `python`） |
+| `TRELLIS_PI_CONTEXT` | `full` 或 `compact`，覆盖上下文注入的默认选择 |
 
-Application labels are English; task titles and document text retain their
-original language. Documents use Pi's active Markdown theme for headings,
-lists/checklists, emphasis, code, quotes, links, and wrapping tables. Images
-remain readable Markdown source (alt text and URL); HTML and diagrams remain
-text rather than executing or fetching resources. Files must be UTF-8 regular
-files inside the selected task directory (safe local symlinks are allowed);
-records are limited to 1 MiB and documents to 2 MiB, with diagnostics instead of
-truncated success. If host Markdown rendering fails, the complete document
-source remains scrollable with an English warning. RPC, print, and JSON modes
-explain that custom terminal browsing is unavailable.
-Search, editing, lifecycle actions, and archive browsing are not included.
+项目工作流、开发规范和运行配置位于 `.trellis/`。角色定义位于 `.pi/agents/`，可以按项目需要定制。worktree 目录配置和高级使用规则见对应功能文档。
 
-## Design notes
+## 注意事项
 
-- **Project data and runtime have different owners.** Workflow/config/spec/history remain project content; fixed scripts and their release manifest are managed by pi-trellis. Upstream `trellis update` is not a supported update path.
-- **Prompt sections are memoized for the process lifetime.** A system-prompt section that changes between turns invalidates the provider's prefix cache from byte zero. Volatile state travels as a custom message instead, and only when it actually changed.
-- **Subagent sessions may load this extension too.** The dispatch supplies the task/context identity and role materials; the child uses these facts instead of inheriting a mutable process-global pointer. Child-side fallback reads JSONL/artifacts when complete injection is unavailable. No task materials are added a second time to the system prompt.
-- **Optional discovery/UI degrades safely.** Missing `.trellis/` or unusable CLI context does not take the session down. Dispatch material errors are visible and keep fallback active; they are not presented as complete injection. Only ordinary Agent calls are patched, not hidden RPC dispatch.
+- **安装不等于初始化。** 启动不会自动部署或修复项目资源；运行时异常时先用 `/trellis-init --check` 查看。
+- **项目数据由你维护。** 不要忽略 `.trellis/.pi-trellis.json`，也不要用上游 `trellis update` 替换本包管理的固定运行时。
+- **自动协作不等于自动授权。** 派发不自动推进阶段、提交或合并代码；worktree 和角色指令也不是系统级沙箱。
+- **卸载保留项目文件。** 使用 `pi remove git:github.com/AkiChase/pi-trellis` 卸载用户级扩展；项目级卸载加 `-l`。运行时、配置与任务历史不会被删除。
 
-## Fixed runtime source (deployment not automatic)
+开发与测试方法见 [开发规范](.trellis/spec/development/index.md) 和 [测试规范](.trellis/spec/testing/index.md)。
 
-`runtime/` contains the supported task/context/journal/developer Python import
-closure derived from **Trellis 0.6.16**, plus the original native
-worktree implementation initially moved unchanged from `python/` and now maintained
-with explicit modified output hashes. The adapted agent documents have
-an independent **0.6.17** baseline. `resources/runtime-baseline.json`
-and `resources/agent-baseline.json` record exact source/output hashes, licenses,
-Python syntax minimum and a content-derived release ID. No global `trellis`
-probe or installation-time textual patch is used by this fixed runtime.
+<a id="license"></a>
 
-Installation alone does **not** deploy runtime. New projects use the confirmed
-`/trellis-init` flow; this repository was explicitly migrated while retaining its
-existing guidelines, configuration, tasks and history. Project commands execute
-`.trellis/scripts/`, not package-source `runtime/`. No general legacy project
-migration or automatic runtime upgrade is provided.
+## 许可证
 
-## Development checks
+本包包含不同许可的代码与资源，并非全部采用 MIT：
 
-Development and testing methods live in [development guidelines](.trellis/spec/development/index.md)
-and [testing guidelines](.trellis/spec/testing/index.md), including the real host peer setup,
-subprocess identity isolation, role-source maintenance and optional offline provider probe.
-Authorized real-terminal procedures are in the [tmux guide](.trellis/spec/testing/tmux.md).
-These guides are not fresh test reports or permission to install or use personal state.
+- 原创 Pi 集成和原生 worktree 代码采用 [MIT](LICENSE)。
+- 基于 Trellis 0.6.16 的运行时代码，以及基于 Trellis 0.6.17 的三个角色定义，保留上游 [AGPL-3.0-only](licenses/trellis-AGPL-3.0.txt) 许可。
 
-## License
-
-Original pi-trellis integration and native worktree code is licensed under [MIT](LICENSE); maintained derivatives of Trellis runtime code retain AGPL as described below. The bundled `agents/trellis-*.md` documents are adapted from `@mindfoldhq/trellis@0.6.17` Claude Code assets, whose package declares `AGPL-3.0-only`; they retain that upstream license, reproduced in [licenses/trellis-AGPL-3.0.txt](licenses/trellis-AGPL-3.0.txt). Source and adapted checksums are recorded in [agent-baseline.json](resources/agent-baseline.json).
-
-The fixed Trellis-derived runtime entries and `runtime/common/` retain **AGPL-3.0-only** attribution from the verified 0.6.16 baseline; the native worktree modules remain **MIT**. Source and adapted output hashes are in [runtime-baseline.json](resources/runtime-baseline.json). Existing project integration still uses the `task.py` / `get_context.py` CLIs, `TRELLIS_CONTEXT_ID`, and paths under `.trellis/`. Do not describe the complete package as containing no upstream Trellis material or as MIT-only.
+具体来源、改动与校验记录见 [运行时来源清单](resources/runtime-baseline.json) 和 [角色来源清单](resources/agent-baseline.json)。
