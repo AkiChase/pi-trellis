@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-2026-10-15 用户明确批准激活并在当前工作区执行。`task.py start ... --allow-empty-context` 成功，session `pi-29d97c9035ea`，任务 in_progress／branch main／unbound；未创建 worktree。本次运行时门禁已允许正常 start，无部署修复／reload。S1 已提交 `56e8b9c`；S2 已提交 `94e54cf`，均仅范围内文件。源码实施与计划内验证完成，任务保持 in_progress 待用户验收／收尾；未安装、同步、reload、push或归档。
+2026-10-15 用户明确批准激活并在当前工作区执行。`task.py start ... --allow-empty-context` 成功，session `pi-29d97c9035ea`，任务 in_progress／branch main／unbound；未创建 worktree。本次运行时门禁已允许正常 start，无部署修复／reload。S1 已提交 `56e8b9c`；S2 已提交 `94e54cf`，均仅范围内文件。用户已验收并授权收尾，按从未 PR-backed 的 main 直接实施任务归档（显式 `--skip-branch-validation`）。源码实施与计划内验证完成；未安装、同步、reload或push。
 
 ## 执行与审查
 
