@@ -76,9 +76,12 @@ Only the three bundled roles and `resources/agent-baseline.json` are synchroniza
 
 ```bash
 node tests/provider-contracts.mjs --host <Pi-node_modules> --provider <provider-package-root>
+node tests/provider-contracts.mjs --host <Pi-node_modules> --preset <preset-root>
 ```
 
-Repeat `--provider` to test independent pi-subagents and agent-tasks implementations separately. Do not install conflicting providers in one live session. Record actual package versions, not historical log labels. The probe loads provider source as an explicit test dependency, not permission for product runtime to import provider internals.
+The modes are mutually exclusive. `--preset` loads this package's Trellis adapter and the preset's `extensions/task-composition.ts`; both entries persist in disposable settings for real child reloads. Never load the standalone agent backend or a native provider alongside the composition. It checks real RPC IDs through the public management/message tools, exact-run retrieval/resume, consumption notification controls, cancellation vs execution, source dispatch and cooperative stop/drain. Monitor coverage is the invalid dual-source boundary only, not a successful command/WebSocket stream.
+
+Repeat `--provider` to test independent native implementations in separate subprocesses using their existing result/message tools; these are test-only native contracts, not product old-name aliases or new-preset evidence. Do not install conflicting providers in one live session. Record actual package versions, not historical log labels. The probe loads provider source as an explicit test dependency, not permission for product runtime to import provider internals.
 
 It creates temporary config/project/target, complete runtime and scripted offline responses without model network or personal credentials. It exercises actual parser/runner/loader, role tools, write/edit/scoped self-fixes, late registered fixture search, target cwd/materials, real IDs/result/steering, public RPC error/timeout paths and shared-source dispatch. Read exit status, assertions and each case; cleanup success cannot convert failure to PASS. Verify actual sessions and owned subprocesses exit rather than assuming a finally block proves all third-party cleanup.
 

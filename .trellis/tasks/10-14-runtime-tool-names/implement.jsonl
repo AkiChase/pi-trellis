@@ -1,0 +1,8 @@
+{"file":".trellis/spec/development/index.md","reason":"S2测试依赖与公共RPC、产品边界"}
+{"file":".trellis/spec/testing/index.md","reason":"真实SDK离线probe和自然退出证据"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"ID、run、停止和消费区分"}
+{"file":".trellis/tasks/10-14-runtime-tool-names/prd.md","reason":"已批准S2范围"}
+{"file":".trellis/tasks/10-14-runtime-tool-names/design.md","reason":"preset实际合同和唯一组合入口"}
+{"file":".trellis/tasks/10-14-runtime-tool-names/implement.md","reason":"S1checkpoint与S2执行步骤"}
+{"file":"tests/provider-contracts.mjs","reason":"唯一获准改动的S2probe owner"}
+{"file":"tests/runtime-fixture.mjs","reason":"完整固定runtime临时fixture"}

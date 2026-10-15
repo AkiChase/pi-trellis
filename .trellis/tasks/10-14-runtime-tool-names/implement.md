@@ -2,22 +2,22 @@
 
 ## 当前状态
 
-2026-10-15 用户明确批准激活并在当前工作区执行。`task.py start ... --allow-empty-context` 成功，session `pi-29d97c9035ea`，任务 in_progress／branch main／unbound；未创建 worktree。本次运行时门禁已允许正常 start，无部署修复／reload。S1 主会话实施中，S2 尚未开始。
+2026-10-15 用户明确批准激活并在当前工作区执行。`task.py start ... --allow-empty-context` 成功，session `pi-29d97c9035ea`，任务 in_progress／branch main／unbound；未创建 worktree。本次运行时门禁已允许正常 start，无部署修复／reload。S1 已提交，S2 最终候选通过主会话真实组合探针、全量回归与独立反证复查，准备阶段提交。
 
 ## 执行与审查
 
-建议主会话直接实施；本任务涉及公开接口和执行门禁，两个阶段均需独立合同审查。已准备 18 条真实 `check.jsonl` 引用；委派 reviewer 前刷新引用及明确本阶段范围，主会话复核实际 diff 与证据。实施角色无需为形式派发，`implement.jsonl` 可保持空。
+建议主会话直接实施 S1；S2 真实宿主探针可委派单文件实现以减少上下文，仍由主会话复核。本任务涉及公开接口和执行门禁，两个阶段均需独立合同审查。已准备 18 条真实 `check.jsonl` 引用；委派 reviewer 前刷新引用及明确本阶段范围，主会话复核实际 diff 与证据。实施角色无需为形式派发；S1 的 `implement.jsonl` 当时有意为空，S2 实际委派后已准备八条引用。
 
 源目录已有其他任务的 runtime/material、workflow、角色、hash 和测试修改。实施前刷新 Git／文件基线；共享文件只修改本任务必要区域，冲突无法安全分离时停止并报告，不覆盖／打包提交他人改动。未指定 worktree，也不自动创建。
 
-后续实施获批后，每个独立验证阶段由主会话提交本阶段范围（用户另有 no-commit 指令时遵守）；本次 planning 不提交。不推送、不改写历史、不自动归档。
+实施授权包含每个独立验证阶段由主会话提交本阶段范围。不推送、不改写历史、不自动归档。
 
 ## 启动前检查
 
 - [x] 用户审阅更新方案并批准实施；本会话正常 start 成功，未绕过门禁。
 - [x] 重新核对两仓库相关源码与新工具加载链；仅已有部署残留不纳入本任务提交。
 - [x] 已读取 development/testing/shared guides 和相关 owner／完整测试，check JSONL 已准备。
-- [x] 批准后已执行 `task.py start --allow-empty-context`；空 implement manifest 保留，不称 validate 全 PASS。
+- [x] 批准后已执行 `task.py start --allow-empty-context`；S2 后补实施引用。后续 validate exit0，两份 manifest 路径有效，但存在代码引用和大文件截断 warnings，执行者需全文读取。
 
 ## S1：入口与资源成套迁移
 
@@ -37,7 +37,9 @@
 - 聚焦十文件 164/164；补新角色／前后台负例的三文件 49/49。
 - 全量 `PI_TRELLIS_TEST_HOST=<上述host> env -u TRELLIS_CONTEXT_ID npm test`：450/450，自然退出；Python unittest 20/20。
 - 全量后只改变最终警告字符串和对应断言，单独重跑 agent-context integration：16/16；串联命令尾部的原生 provider `ls` 未找到路径导致整体 exit1，不是测试失败。独立审查 `328537d9-8724-41b` 已通过：216/216 自然退出、额外 disposable 门禁／截断／异常保持检查通过，无确认缺陷。
-- 日志分别 `/tmp/pi-bg/b6qq9agiy.log`、`ba61dxjc1.log`、`bm8ot0yev.log`；命令完成不代表新组合已验证，S2 未开始。
+- 日志分别 `/tmp/pi-bg/b6qq9agiy.log`、`ba61dxjc1.log`、`bm8ot0yev.log`；这是 S1 检查记录，不代表当时新组合已验证。
+
+S1 已提交 `56e8b9c`（23 文件，代码／测试／资源／规范／任务材料），未纳入五项部署残留或其他任务。S2 为减少真实宿主接线上下文，委派普通实现代理 `5606d46d-9ecf-4c0`，仅允许修改 `tests/provider-contracts.mjs`；不改变主会话对方案理解和最终验收责任。已补充 implement JSONL 八条真实引用；子代理无提交／生命周期权限，S2 仍需独立审查。
 
 ## S2：真实 provider／新工具组合验收
 
@@ -48,7 +50,16 @@
 5. 在获准使用的既有依赖上运行离线 SDK probe，记录准确 host/provider 版本、入口、工具集合、断言与实际退出／清理；没有依赖或授权时记 NOT_RUN，不能安装来填验收。
 6. 独立 reviewer 审查真实接线与证据边界；主会话验证最终全量和资源检查，提交 S2。
 
-## 计划测试命令（尚未运行）
+## S2 检查进度
+
+实现代理仅改 `tests/provider-contracts.mjs`，主会话全文复读实际候选后重跑指定 `--preset` 离线组合：exit0、自然退出。主日志 `/tmp/pi-bg/bihkqx3lf.log`；Pi1.2.0／Node24.14.1／preset0.1.0 revision `9687d94`。真实 RPC ID 新管理入口、错误字段／stale、运行中消息、取消等待保持运行、完整结果／消费通知正对照、真实 resume、后台 bash／workflow、source dispatch、cooperative stop/drain、child/main shutdown 与 RPC关闭后timeout全部通过。临时工作区清理成功，无 force-exit。
+
+- 实现代理最终版本三轮probe自然exit0、CLI八负例／syntax检查通过（日志 `/tmp/pi-bg/bbj9ekni7.log`、`b31uy1qug.log`）。
+- 原生 provider 本机未找到，NOT_RUN，不安装；monitor仅双源拒绝，未测成功流／WebSocket，不扩大为已验。
+- 主会话最终全量450/450、Python20/20自然退出通过（`/tmp/pi-bg/bptgfns74.log`）；syntax和六CLI负例通过（`bnnv9ue5n.log`）。独立S2 reviewer `cd4a62da-3981-4bc` 初审发现 P2：成功wait后output掩盖wait未消费。主会话将output移到通知控制后，并添加已完成run的预先取消wait触发非消费reconsider，区分真正消费和只取消通知timer。修复后主probe `bbyra9x56` 自然exit0；最终独立反证复查通过：省略首次wait消费的扰动确实执行（sourceLoads=1/executions=1），在通知断言 `7 !== 6` 自然exit1，非加载／wrapper错误，日志 `bwgn6sjnn.log`。预先取消retrieval wait不消费也不停止目标的源码语义已复核，P2关闭，无新确认缺陷。
+- 主会话补充既有 testing spec 的 `--preset` 用法与证据界限；不新增docs测试教程或修改邻仓产品。
+
+## 测试命令（执行结果见上述阶段记录）
 
 本仓库没有本地 node_modules；已发现现有 host 路径，下列设置只作用于测试 subprocess：
 
@@ -63,7 +74,7 @@ python3 -B -m unittest discover -s tests/python -p 'test_*.py'
 git diff --check
 ```
 
-S2 计划新增 `--preset` 参数后使用下列精确组合命令（当前 probe 尚不支持，禁止提前运行或记 PASS）：
+S2 已新增 `--preset` 参数，实际组合使用以下命令：
 
 ```bash
 env -u TRELLIS_CONTEXT_ID node tests/provider-contracts.mjs --host /Users/jyxc-dz-0101322/.pi/agent/install/releases/1.2.0/node_modules --preset /Users/jyxc-dz-0101322/tools/my-pi-preset
@@ -73,14 +84,14 @@ env -u TRELLIS_CONTEXT_ID node tests/provider-contracts.mjs --host /Users/jyxc-d
 
 无 lint/typecheck script，不能写 PASS；离线 scripted SDK 不证明在线模型、真实 terminal 外观或当前安装组合。实际 provider/terminal 执行须明确获准；未执行时 A6 不算通过。
 
-## 规划检查与证据
+## 规划检查与证据（历史阶段）
 
 首次本地 JSONL 路径检查在 `design.md` 尚未写入时失败，属于规划写入顺序问题；文件补齐后重新检查，不能将首次失败记成通过。
 
-文件补齐后本地检查通过：三个 Markdown 的相对链接／锚点／whitespace、task JSON planning/unbound、check JSONL 18 条路径与 `git diff --check`。`implement.jsonl` 按直接实施计划有意为空；未运行被门禁阻断的 task CLI validation，不称其 PASS。产品 owner／test／resource 七目录指纹在只读基线后保持不变，其他任务与 testing/tmux 的变化来自并行活动。
+文件补齐后本地检查通过：三个 Markdown 的相对链接／锚点／whitespace、task JSON planning/unbound、check JSONL 18 条路径与 `git diff --check`。S1 完成时 `implement.jsonl` 按直接实施计划有意为空，S2 实际委派后已补齐；当时未运行被门禁阻断的 task CLI validation，不称其 PASS。产品 owner／test／resource 七目录指纹在只读基线后保持不变，其他任务与 testing/tmux 的变化来自并行活动。
 
-2026-10-15 邻仓核对完成：主会话复读 contracts、facade、management、composition、RPC、source 与公开 launch/message schema，确认真实 ID／按动作参数／消费语义和唯一组合加载入口。代理早期的本任务状态描述已过时，仅采用可复核的接口结论；本次仍未执行新组合。
+2026-10-15 邻仓核对完成：主会话复读 contracts、facade、management、composition、RPC、source 与公开 launch/message schema，确认真实 ID／按动作参数／消费语义和唯一组合加载入口。代理早期的本任务状态描述已过时，仅采用可复核的接口结论；当时尚未执行新组合，后续执行结果见 S2。
 
-本次只检查任务 Markdown／JSON／JSONL／路径与 whitespace，不跑产品测试。主会话分析仅写本规划；若需保留 reviewer/test 证据放 `evidence/`，不写 `research/`。跨仓库核对先作为 design 中的事实依据，不复制邻仓庞大报告。
+规划阶段只检查任务 Markdown／JSON／JSONL／路径与 whitespace，不跑产品测试。主会话分析写规划／执行记录；若需保留 reviewer/test 证据放 `evidence/`，不写 `research/`。
 
-结束前检查：仅当前任务材料变化、状态仍 planning、未写 session pointer；非任务变化按并行来源报告而不误归本任务。历史 PASS 不是本次新组合验收。
+当前任务 in_progress，已按明确授权写本会话 pointer 并实施；非任务变化按并行来源报告而不误归本任务。历史 PASS 不是后续版本的组合验收。

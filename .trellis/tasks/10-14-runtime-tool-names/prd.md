@@ -62,13 +62,19 @@
 
 ## 验收标准
 
-- [ ] A1／R1：三个 Trellis 角色通过 `subagent_run` 注入正确材料；临时 isolation、managed marker／binding 被拒绝，非 Trellis 输入保持不变。
-- [ ] A2／R2：新名在 unsupported／失效／项目切换／发现错误下阻断且无子进程／指针副作用；缺失材料仍有可见 fallback。
-- [ ] A3／R2：`bash` 的前后台模式与 `monitor` 保持 session prefix 和结果刷新；不再以 `bash_bg` 作为有效入口。
-- [ ] A4／R3：RPC cwd／真实 ID／早到终态／stop／shutdown／unknown 与占用回归保持；真实 RPC ID 可由新管理入口查询、等待、读取并发送指导消息。
-- [ ] A5／R4：活跃说明只指导新入口，受影响 hash、focused／全量检查与独立合同审查通过；旧 provider 的结果单独标明。
-- [ ] A6／R4：最终新工具组合测试记录实际加载入口、host/provider 版本、返回字段、退出／清理结果；未执行的安装或真实终端／模型验证标明 NOT_RUN，不声称现有会话已切换。
+- [x] A1／R1：三个 Trellis 角色通过 `subagent_run` 注入正确材料；临时 isolation、managed marker／binding 被拒绝，非 Trellis 输入保持不变。
+- [x] A2／R2：新名在 unsupported／失效／项目切换／发现错误下阻断且无子进程／指针副作用；缺失材料仍有可见 fallback。
+- [x] A3／R2：`bash` 的前后台模式与 `monitor` 保持 session prefix 和结果刷新；不再以 `bash_bg` 作为有效入口。
+- [x] A4／R3：RPC cwd／真实 ID／早到终态／stop／shutdown／unknown 与占用回归保持；真实 RPC ID 可由新管理入口查询、等待、读取并发送指导消息。
+- [x] A5／R4：活跃说明只指导新入口，受影响 hash、focused／全量检查与独立合同审查通过；旧 provider 的结果单独标明。
+- [x] A6／R4：最终新工具组合测试记录实际加载入口、host/provider 版本、返回字段、退出／清理结果；未执行的安装或真实终端／模型验证标明 NOT_RUN，不声称现有会话已切换。
+
+## 验证与交付边界
+
+S1 已提交 `56e8b9c`；S2 正常真实组合探针、全量450/450、Python20/20和最终独立反证复查通过。`wait` 消费测试盲点已修复，省略消费的扰动会失败。详细命令／日志和阶段提交见 implement.md。
+
+原生旧 provider 未找到，NOT_RUN；monitor只验证双源拒绝，未验证成功流／WebSocket；未验证在线模型或真实终端外观。未安装、同步、reload、push或归档，不表示当前安装会话已加载这些源码改动。
 
 ## 启动前置
 
-本次首次 context CLI 成功；后续运行时调用被本会话工具门禁拒绝，提示 `Unsupported project runtime release`，命令未启动。只读核对时源码 runtime baseline 与项目 manifest 的 release ID 相同，这不能证明当前已加载扩展与源码相同。实施前重新确认有效会话／runtime；不绕过门禁，也不借改名任务自动修复部署。
+本次首次 context CLI 成功；后续运行时调用被本会话工具门禁拒绝，提示 `Unsupported project runtime release`，命令未启动。只读核对时源码 runtime baseline 与项目 manifest 的 release ID 相同，这不能证明当前已加载扩展与源码相同。后续按用户实施授权正常 start 成功，未修复部署或绕过门禁；本项不再阻碍当前源码实施。
