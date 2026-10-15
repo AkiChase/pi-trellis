@@ -629,3 +629,34 @@ viewer 区分归档隐藏与真正缺失；归档父子不展示，合法引用�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 23: 验收证据留存策略完成
+<!-- trellis-session: v=2 fp=b691142a5bdf5de7 -->
+
+**Date**: 2026-10-15
+**Task**: 验收证据留存策略完成
+**Branch**: `main`
+
+### Summary
+
+仅workflow发布模板、check/finish技能及测试/基线六文件：过程日志默认仓库外，诊断交接后精选最终记录，核验归属与活动进程后安全清理。未改项目运行规则，未执行apply。
+
+### Main Changes
+
+- 原始日志已核验清理，无证据附件；任务验收归档并清除本会话绑定
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8fce55f` | fix: keep raw task execution evidence outside repositories |
+| `f3d9601` | chore(task): archive 10-15-evidence-retention-policy |
+
+### Testing
+
+- [OK] focused85/85、全量545/545，自然exit0；独立只读审查通过并补强清理限制断言
+
+### Status
+
+[OK] **Completed**

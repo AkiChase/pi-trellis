@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 22
+- **Total Sessions**: 23
 - **Last Active**: 2026-10-15
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~631 | Active |
+| `journal-1.md` | ~662 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 23 | 2026-10-15 | 验收证据留存策略完成 | `8fce55f`, `f3d9601` | `main` |
 | 22 | 2026-10-15 | Worktree authority recovery completed | `9ec131f`, `176619d`, `3d12127`, `0f8624c`, `5b2a8b2` | `main` |
 | 21 | 2026-10-15 | Task Viewer 原生滚动完成与证据精简 | `fbc2988`, `b1f9f06` | `main` |
 | 20 | 2026-10-15 | Pi 指令菜单统一完成 | `5d3b4e4` | `main` |
