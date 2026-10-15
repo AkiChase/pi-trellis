@@ -677,6 +677,9 @@ viewer 区分归档隐藏与真正缺失；归档父子不展示，合法引用�
 
 | Hash | Message |
 |------|---------|
+| `ad2187b` | feat: add bounded static Trellis Check diagnostics |
+| `00abd33` | feat: add bounded runtime probes to Trellis Check |
+| `fc21fb7` | refactor: limit Trellis Check to project deployment health |
 | `88b1aaa` | docs(task): add S1 implementation summary |
 
 ### Status
