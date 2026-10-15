@@ -943,15 +943,15 @@ export default function (pi: ExtensionAPI): void {
 			);
 		}
 
-		// Q2: pi-subagents provides Agent/SubagentWorkflow. Warn only where a
-		// human can see it — a subagent session legitimately has no Agent tool.
+		// Q2: detect the public subagent_run entry, independently of RPC readiness.
+		// Headless child sessions need not expose a launch tool.
 		if (ctx.hasUI && !warnedMissingAgentTool) {
 			try {
-				const hasAgentTool = pi.getAllTools().some((tool) => tool.name === "Agent");
+				const hasAgentTool = pi.getAllTools().some((tool) => tool.name === "subagent_run");
 				if (!hasAgentTool) {
 					warnedMissingAgentTool = true;
 					ctx.ui?.notify?.(
-						"pi-trellis: no Agent tool found — install a subagent extension (e.g. pi install @tintinweb/pi-subagents) to dispatch trellis-* agents.",
+						"pi-trellis：未检测到 subagent_run。请确认 my-pi-preset 的 Task Composition 已启用并重载会话",
 						"warning",
 					);
 				}
@@ -1057,8 +1057,8 @@ export default function (pi: ExtensionAPI): void {
 		// Discovery is not authorization. Unsupported roots still allow ordinary
 		// read/search commands and non-Trellis agents, but cannot execute runtime.
 		const input = event.input as { command?: unknown; subagent_type?: unknown };
-		const trellisExecution = (["bash", "bash_bg", "monitor"].includes(event.toolName) && typeof input.command === "string" && invokesRuntime(input.command)) ||
-			(event.toolName === "Agent" && isTrellisRole(input.subagent_type));
+		const trellisExecution = (["bash", "monitor"].includes(event.toolName) && typeof input.command === "string" && invokesRuntime(input.command)) ||
+			(event.toolName === "subagent_run" && isTrellisRole(input.subagent_type));
 		let root: string | undefined;
 		try { root = findRoot(ctx.cwd); }
 		catch (error) {
@@ -1082,7 +1082,7 @@ export default function (pi: ExtensionAPI): void {
 			const current = session(ctx);
 			if (!current) return;
 
-			if (["bash", "bash_bg", "monitor"].includes(event.toolName)) {
+			if (["bash", "monitor"].includes(event.toolName)) {
 				const input = event.input as { command?: unknown };
 				if (typeof input.command !== "string") return;
 				// Scope every shell, including indirect CLI invocations, without a process-global mutation.
@@ -1091,10 +1091,10 @@ export default function (pi: ExtensionAPI): void {
 				return;
 			}
 
-			if (event.toolName !== "Agent") return;
+			if (event.toolName !== "subagent_run") return;
 			const input = event.input as { subagent_type?: unknown; prompt?: unknown; isolated?: unknown; isolation?: unknown };
 			if (!isTrellisRole(input.subagent_type) || typeof input.prompt !== "string") return;
-			// Ordinary Agent cannot promise task materials from a separately-created temporary tree.
+			// Ordinary subagent_run cannot promise task materials from a separately-created temporary tree.
 			if (input.isolation === "worktree") return { block: true, reason: "pi-trellis task agents need the current prepared checkout. Temporary worktree isolation cannot see its uncommitted task materials; no agent was started." };
 			if (isTrellisRole(input.subagent_type)) {
 				try { if (readMarker(current.root)) return { block: true, reason: "This is a managed task worktree. Dispatch through trellis_dispatch from the source host so directory occupancy is reserved; no ordinary child was started." }; }
@@ -1104,7 +1104,7 @@ export default function (pi: ExtensionAPI): void {
 			const task = facts ? { dir: facts.taskDir } : await sessionTask(current);
 			if (task) {
 				try {
-					if (readBinding(current.root, task.dir) || readMarker(current.root)) return { block: true, reason: "This task is bound to a worktree. Ordinary Agent cannot select or reserve its directory; use python3 .trellis/scripts/worktree.py prepare --task <task> (preview, then approved --confirm), then trellis_dispatch. No child was started." };
+					if (readBinding(current.root, task.dir) || readMarker(current.root)) return { block: true, reason: "This task is bound to a worktree. Ordinary subagent_run cannot select or reserve its directory; use python3 .trellis/scripts/worktree.py prepare --task <task> (preview, then approved --confirm), then trellis_dispatch. No child was started." };
 				} catch (error) { return { block: true, reason: `Worktree binding cannot be verified: ${String(error)}. No child was started.` }; }
 			}
 			if (!task) {
@@ -1117,10 +1117,10 @@ export default function (pi: ExtensionAPI): void {
 				prompt: input.prompt, taskDir: task.dir, contextId: current.key, role: input.subagent_type, context,
 			});
 		} catch (error) {
-			if (["bash", "bash_bg", "monitor"].includes(event.toolName) && typeof (event.input as { command?: unknown }).command === "string") {
+			if (["bash", "monitor"].includes(event.toolName) && typeof (event.input as { command?: unknown }).command === "string") {
 				return { block: true, reason: `Trellis runtime/context cannot be verified: ${String(error)}. No command was started.` };
 			}
-			if (event.toolName === "Agent") {
+			if (event.toolName === "subagent_run") {
 				const input = event.input as { subagent_type?: unknown; prompt?: unknown };
 				if (isTrellisRole(input.subagent_type) && typeof input.prompt === "string") {
 					if (/runtime|manifest|TRELLIS_CONTEXT_ID/i.test(String(error))) return { block: true, reason: `Trellis runtime/context cannot be verified: ${String(error)}. No child was started.` };
@@ -1134,7 +1134,7 @@ export default function (pi: ExtensionAPI): void {
 
 	pi.on("tool_result", async (event, ctx) => {
 		try {
-			if (!["bash", "bash_bg", "monitor"].includes(event.toolName)) return;
+			if (!["bash", "monitor"].includes(event.toolName)) return;
 			const command = (event.input as { command?: unknown }).command;
 			if (typeof command !== "string" || !/(?:task|get_context|init_developer|add_session)\.py/.test(command)) return;
 			const current = session(ctx);

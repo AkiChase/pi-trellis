@@ -10,7 +10,21 @@
 { "agent": "trellis-implement", "task": ".trellis/tasks/<完整目录名>", "prompt": "实施已批准的任务范围" }
 ```
 
-role 可选 `trellis-implement`、`trellis-check`、`trellis-research`；省略 task 使用当前会话任务。派发要求任务为 `in_progress`，但状态本身不代表用户实施授权。工具返回真实 agent ID，可交给现有 result/steering 工具。
+role 可选 `trellis-implement`、`trellis-check`、`trellis-research`；省略 task 使用当前会话任务。派发要求任务为 `in_progress`，但状态本身不代表用户实施授权。工具返回真实 agent ID，可直接作为 `task_manage` 的 `task_id`，无需转换 ID。
+
+```json
+{ "action": "status", "task_id": "<返回的 agent ID>" }
+```
+
+使用 `task_manage` 的 `wait` 等待完整回答、`output` 读取保留结果；可附上 status 返回的准确 `run_id`，省略时锁定调用入口的当前轮次。不要给 status/output/wait/stop 附 `task_type`。成功等待或终态读取会标记该轮结果已消费，抑制重复完成通知；取消等待不停止执行。
+
+运行中需要指导时调用 `subagent_message`：
+
+```json
+{ "agent_id": "<返回的 agent ID>", "message": "收敛并报告结果" }
+```
+
+这些管理工具需要兼容的运行任务扩展；RPC 可用不代表新管理工具已加载。
 
 ## 角色与定制
 
@@ -38,7 +52,7 @@ role 可选 `trellis-implement`、`trellis-check`、`trellis-research`；省略 
 
 ## 共享源目录
 
-不同任务可以同时执行；同一任务的 starting/running/unknown 记录会阻止重叠派发。主 agent 分配文件范围并协调冲突。工具不独占文件目录，也无法完整感知普通 Agent、其他会话或手动进程。
+不同任务可以同时执行；同一任务的 starting/running/unknown 记录会阻止重叠派发。主 agent 分配文件范围并协调冲突。工具不独占文件目录，也无法完整感知普通 `subagent_run`、其他会话或手动进程。
 
 每次源目录派发，子 agent 都收到：
 

@@ -28,7 +28,7 @@ Assert observables **and absence of forbidden side effects**: parent pointer rem
 | Changed boundary | Focused evidence |
 | --- | --- |
 | Context paths, references, budgets, marker ownership | `tests/task-context.test.mjs` |
-| Root/session identity, CLI provenance, child lifecycle, Agent injection | `tests/agent-context-integration.test.mjs`, `tests/worktree-protocol.test.mjs` |
+| Root/session identity, CLI provenance, child lifecycle, subagent_run injection | `tests/agent-context-integration.test.mjs`, `tests/worktree-protocol.test.mjs` |
 | Initialization, updates, adoption, templates, provenance | `tests/initialization.test.mjs`, `tests/adopt-project.test.mjs`, `tests/apply-template.test.mjs`, `tests/manifest-provenance.test.mjs` |
 | Fixed runtime, raw task records, developer/journal/archive scope | `tests/runtime-contracts.test.mjs` |
 | Native config/Git/binding/preview/deployment | `tests/worktree.test.mjs`, `tests/worktree-cli.test.mjs`, `tests/python/test_worktree.py` |

@@ -1,0 +1,86 @@
+# 实施计划
+
+## 当前状态
+
+2026-10-15 用户明确批准激活并在当前工作区执行。`task.py start ... --allow-empty-context` 成功，session `pi-29d97c9035ea`，任务 in_progress／branch main／unbound；未创建 worktree。本次运行时门禁已允许正常 start，无部署修复／reload。S1 主会话实施中，S2 尚未开始。
+
+## 执行与审查
+
+建议主会话直接实施；本任务涉及公开接口和执行门禁，两个阶段均需独立合同审查。已准备 18 条真实 `check.jsonl` 引用；委派 reviewer 前刷新引用及明确本阶段范围，主会话复核实际 diff 与证据。实施角色无需为形式派发，`implement.jsonl` 可保持空。
+
+源目录已有其他任务的 runtime/material、workflow、角色、hash 和测试修改。实施前刷新 Git／文件基线；共享文件只修改本任务必要区域，冲突无法安全分离时停止并报告，不覆盖／打包提交他人改动。未指定 worktree，也不自动创建。
+
+后续实施获批后，每个独立验证阶段由主会话提交本阶段范围（用户另有 no-commit 指令时遵守）；本次 planning 不提交。不推送、不改写历史、不自动归档。
+
+## 启动前检查
+
+- [x] 用户审阅更新方案并批准实施；本会话正常 start 成功，未绕过门禁。
+- [x] 重新核对两仓库相关源码与新工具加载链；仅已有部署残留不纳入本任务提交。
+- [x] 已读取 development/testing/shared guides 和相关 owner／完整测试，check JSONL 已准备。
+- [x] 批准后已执行 `task.py start --allow-empty-context`；空 implement manifest 保留，不称 validate 全 PASS。
+
+## S1：入口与资源成套迁移
+
+1. 在 `extensions/trellis.ts` 迁移能力提示、Trellis 执行识别、角色注入、异常处理和 shell／结果刷新白名单。保留控制流程，避免顺手抽象／重构。
+2. `lib/subagent-rpc.ts` 的 description 与 source/managed 回复统一提供新管理／消息指引；保持参数、RPC、details 和占用逻辑。
+3. 更新相关 fixture 的工具列表、事件名和 shell 参数；补真实新名的三个角色、非 Trellis 不变、unsupported/foreign/invalid marker/temp isolation、无任务与材料 fallback、前后台 bash／monitor prefix/refresh 断言。
+4. 同步 `docs/dispatch.md`、`resources/templates/workflow.md`、两个技能参考的活跃入口。规范仅更新已有通用说明中的工具名，不新建功能 spec。变动 skill/template 的对应 baseline hash 在同阶段更新；不改 agent/runtime baseline 或 deployed 项目资源。
+5. 独立审查所有新名路径，复核负例和被拒绝调用没有实际 spawn／写指针；主会话核 diff／测试后提交 S1。
+
+相关测试：`agent-context-integration`、`unsupported-runtime`、`project-activation`、`initialization`、`adopt-project`、`task-display`、`dispatch`、`source-executions`、`task-context`、`worktree-protocol`、`workflow-policy`、`skill-resources`、`manifest-provenance`、`agent-documents`。查看实际 filename 再执行，不以搜索命中数宣称覆盖。
+
+## S1 检查进度
+
+主会话已完成入口／提示／fixture／资源迁移，未改 RPC 执行机制。用户最终指定警告为 `pi-trellis：未检测到 subagent_run。请确认 my-pi-preset 的 Task Composition 已启用并重载会话`。
+
+- Node v24.14.1、Python 3.14.7；测试仅使用既有 host 1.2.0 node_modules。
+- 聚焦十文件 164/164；补新角色／前后台负例的三文件 49/49。
+- 全量 `PI_TRELLIS_TEST_HOST=<上述host> env -u TRELLIS_CONTEXT_ID npm test`：450/450，自然退出；Python unittest 20/20。
+- 全量后只改变最终警告字符串和对应断言，单独重跑 agent-context integration：16/16；串联命令尾部的原生 provider `ls` 未找到路径导致整体 exit1，不是测试失败。独立审查 `328537d9-8724-41b` 已通过：216/216 自然退出、额外 disposable 门禁／截断／异常保持检查通过，无确认缺陷。
+- 日志分别 `/tmp/pi-bg/b6qq9agiy.log`、`ba61dxjc1.log`、`bm8ot0yev.log`；命令完成不代表新组合已验证，S2 未开始。
+
+## S2：真实 provider／新工具组合验收
+
+1. 重构 `tests/provider-contracts.mjs` 的旧结果／消息耦合：保留原生 provider 独立套件；新增 `--preset <preset-root>` 组合模式，显式加载本仓库 trellis.ts 和 preset task-composition.ts，不并载独立 agent 后端或原生 pi-subagents。
+2. 原生 provider 与 preset 组合分别在独立进程运行并输出结论。临时 settings 持久写入两个组合入口供 child reload；断言唯一 task_manage/RPC 服务及实际 bash 后台 schema。组合测试经真实公开工具参数执行，不绕过 task_manage 接线直接调用内部 manager。
+3. RPC spawn 返回真实 ID 后：list 正文/status metadata 定位；运行中 subagent_message 指导；wait 完成并消费精确 run，output 再读保留结果；list/status 不消费。status/output/wait/stop 不附 task_type，不把其他可选字段统一填满。缺失 ID／错误 run_id 明确拒绝；独立 RPC consume 不带 run_id，其语义单独验证。source trellis_dispatch 的真实 ID 同样可以管理并保持材料/cwd/独立会话。
+4. stop 的回执／终态与 Trellis 占用分开断言，preserve unknown/shutdown/early-terminal 回归。无须在所有 action 上重复做 preset 自身后端测试。
+5. 在获准使用的既有依赖上运行离线 SDK probe，记录准确 host/provider 版本、入口、工具集合、断言与实际退出／清理；没有依赖或授权时记 NOT_RUN，不能安装来填验收。
+6. 独立 reviewer 审查真实接线与证据边界；主会话验证最终全量和资源检查，提交 S2。
+
+## 计划测试命令（尚未运行）
+
+本仓库没有本地 node_modules；已发现现有 host 路径，下列设置只作用于测试 subprocess：
+
+```bash
+HOST=/Users/jyxc-dz-0101322/.pi/agent/install/releases/1.2.0/node_modules
+node --version
+python3 --version
+PI_TRELLIS_TEST_HOST="$HOST" env -u TRELLIS_CONTEXT_ID node --import ./tests/host-tui.mjs --test tests/agent-context-integration.test.mjs tests/unsupported-runtime.test.mjs tests/project-activation.test.mjs tests/initialization.test.mjs tests/dispatch.test.mjs tests/source-executions.test.mjs
+PI_TRELLIS_TEST_HOST="$HOST" env -u TRELLIS_CONTEXT_ID node --import ./tests/host-tui.mjs --test tests/workflow-policy.test.mjs tests/skill-resources.test.mjs tests/manifest-provenance.test.mjs tests/agent-documents.test.mjs
+PI_TRELLIS_TEST_HOST="$HOST" env -u TRELLIS_CONTEXT_ID npm test
+python3 -B -m unittest discover -s tests/python -p 'test_*.py'
+git diff --check
+```
+
+S2 计划新增 `--preset` 参数后使用下列精确组合命令（当前 probe 尚不支持，禁止提前运行或记 PASS）：
+
+```bash
+env -u TRELLIS_CONTEXT_ID node tests/provider-contracts.mjs --host /Users/jyxc-dz-0101322/.pi/agent/install/releases/1.2.0/node_modules --preset /Users/jyxc-dz-0101322/tools/my-pi-preset
+```
+
+原生模式保留 `--host <node_modules> --provider <实际已获准的provider-package-root>`，与组合模式分进程运行；实际 provider 路径须在执行前确认，不猜测／安装。禁止把 preset 根当作具有 `src/index.ts` 的 provider，也禁止沿用固定“Pi 1.1”成功日志。preset package test 会 link SDK 且 force-exit，不运行它来证明本次自然退出组合；本任务的 probe 直接使用既有依赖。
+
+无 lint/typecheck script，不能写 PASS；离线 scripted SDK 不证明在线模型、真实 terminal 外观或当前安装组合。实际 provider/terminal 执行须明确获准；未执行时 A6 不算通过。
+
+## 规划检查与证据
+
+首次本地 JSONL 路径检查在 `design.md` 尚未写入时失败，属于规划写入顺序问题；文件补齐后重新检查，不能将首次失败记成通过。
+
+文件补齐后本地检查通过：三个 Markdown 的相对链接／锚点／whitespace、task JSON planning/unbound、check JSONL 18 条路径与 `git diff --check`。`implement.jsonl` 按直接实施计划有意为空；未运行被门禁阻断的 task CLI validation，不称其 PASS。产品 owner／test／resource 七目录指纹在只读基线后保持不变，其他任务与 testing/tmux 的变化来自并行活动。
+
+2026-10-15 邻仓核对完成：主会话复读 contracts、facade、management、composition、RPC、source 与公开 launch/message schema，确认真实 ID／按动作参数／消费语义和唯一组合加载入口。代理早期的本任务状态描述已过时，仅采用可复核的接口结论；本次仍未执行新组合。
+
+本次只检查任务 Markdown／JSON／JSONL／路径与 whitespace，不跑产品测试。主会话分析仅写本规划；若需保留 reviewer/test 证据放 `evidence/`，不写 `research/`。跨仓库核对先作为 design 中的事实依据，不复制邻仓庞大报告。
+
+结束前检查：仅当前任务材料变化、状态仍 planning、未写 session pointer；非任务变化按并行来源报告而不误归本任务。历史 PASS 不是本次新组合验收。

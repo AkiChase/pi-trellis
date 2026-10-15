@@ -87,7 +87,7 @@ export function registerDispatchTool(pi: ExtensionAPI, activeTask: (ctx: Extensi
 	});
 	pi.registerTool({
 		name: "trellis_dispatch", label: "Trellis Dispatch",
-		description: "Dispatch an approved Trellis role in the shared source directory when unbound, or its prepared managed worktree when bound. Never creates worktrees or falls back from a binding. Returns a real agent ID. Stop requests provider cancellation and retains occupancy until terminal evidence. Main coordinates shared-directory edits and phases.",
+		description: "Dispatch an approved Trellis role in the shared source directory when unbound, or its prepared managed worktree when bound. Never creates worktrees or falls back from a binding. Returns a real agent ID. Stop requests provider cancellation and retains occupancy until terminal evidence. Main coordinates shared-directory edits and phases. Use task_manage status/output/wait with the returned agent ID as task_id (optional exact run_id); successful final retrieval consumes that run. Use subagent_message with agent_id/message to steer a running agent.",
 		parameters: { type: "object", properties: { action: { type: "string", enum: ["dispatch", "stop", ""] }, agent: { type: "string", enum: ["trellis-implement", "trellis-check", "trellis-research", ""] }, task: { type: "string" }, prompt: { type: "string" } }, anyOf: [{ properties: { action: { const: "stop" } }, required: ["action"] }, { properties: { action: { enum: ["dispatch", ""] } }, required: ["agent", "prompt"] }], additionalProperties: false } as unknown as Parameters<ExtensionAPI["registerTool"]>[0]["parameters"],
 		executionMode: "sequential",
 		async execute(_id, input, signal, _update, ctx) {
@@ -169,7 +169,7 @@ export function registerDispatchTool(pi: ExtensionAPI, activeTask: (ctx: Extensi
 						record.state = finished?.state ?? "running"; record.error = typeof finished?.error === "string" ? finished.error.slice(0, 4096) : undefined;
 						writeSourceExecution(record);
 						if (!finished) sourceOwned.set(record.agentId, record);
-						return { content: [{ type: "text", text: `Agent ID: ${record.agentId}\nDirectory: ${source.root}\nShared source directory — no filesystem isolation. Coordinate overlapping edits.` }], details: { agentId: record.agentId, mode: "source", cwd: source.root } };
+						return { content: [{ type: "text", text: `Agent ID: ${record.agentId}\nDirectory: ${source.root}\nShared source directory — no filesystem isolation. Coordinate overlapping edits.\nUse task_manage status/output/wait with this ID as task_id; subagent_message uses agent_id/message for running agents.` }], details: { agentId: record.agentId, mode: "source", cwd: source.root } };
 					} catch (error) { record.state = "unknown"; record.error = String(error).slice(0, 4096); writeSourceExecution(record); throw error; }
 				}
 				const latest = await queryWorktree(ctx.cwd, task, true, signal, true);
@@ -198,7 +198,7 @@ export function registerDispatchTool(pi: ExtensionAPI, activeTask: (ctx: Extensi
 					if (finished) { try { record.finalSnapshot = worktreeSnapshot(binding); } catch { /* unverified snapshot */ } }
 					writeExecution(binding, record);
 					if (!finished) owned.set(record.agentId!, { binding, record });
-					return { content: [{ type: "text", text: `Agent ID: ${record.agentId}\nWorktree: ${binding.worktreePath}\nBinding: ${binding.bindingId}\nUse the existing result/steering tools. No automatic next phase or cleanup.` }], details: { agentId: record.agentId, bindingId: binding.bindingId, mode: "managed", cwd: binding.worktreePath } };
+					return { content: [{ type: "text", text: `Agent ID: ${record.agentId}\nWorktree: ${binding.worktreePath}\nBinding: ${binding.bindingId}\nUse task_manage status/output/wait with this ID as task_id; subagent_message uses agent_id/message for running agents. No automatic next phase or cleanup.` }], details: { agentId: record.agentId, bindingId: binding.bindingId, mode: "managed", cwd: binding.worktreePath } };
 				} catch (error) { record.state = "unknown"; record.error = String(error); writeExecution(binding, record); throw error; }
 			} finally { release(); }
 		},

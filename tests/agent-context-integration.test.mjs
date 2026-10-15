@@ -19,13 +19,32 @@ function setup(t) {
     put(`${dir}/implement.jsonl`, JSON.stringify({ file: `${dir}/prd.md` }));
   }
   const handlers = new Map(), messages = [], tools = new Map();
-  const pi = { events: { on: () => () => {}, emit: () => {} }, registerCommand: () => {}, registerTool: (tool) => tools.set(tool.name, tool), on: (name, handler) => handlers.set(name, handler), sendMessage: (message) => messages.push(message), getAllTools: () => [{ name: "Agent" }] };
+  const pi = { events: { on: () => () => {}, emit: () => {} }, registerCommand: () => {}, registerTool: (tool) => tools.set(tool.name, tool), on: (name, handler) => handlers.set(name, handler), sendMessage: (message) => messages.push(message), getAllTools: () => [{ name: "subagent_run" }] };
   trellis(pi);
   const ctx = (name) => ({ cwd: root, hasUI: false, sessionManager: { getSessionId: () => name, getSessionFile: () => undefined }, ui: {} });
   const pointer = (context, task) => put(`.trellis/.runtime/sessions/${__internals.contextKey(root, context)}.json`, JSON.stringify({ current_task: `.trellis/tasks/${task}` }));
-  const call = (context, input, toolName = "Agent") => handlers.get("tool_call")({ toolName, toolCallId: "test", input }, context);
-  return { root, put, ctx, pointer, call, handlers, messages, tools };
+  const call = (context, input, toolName = "subagent_run") => handlers.get("tool_call")({ toolName, toolCallId: "test", input }, context);
+  return { root, put, ctx, pointer, call, handlers, messages, tools, pi };
 }
+
+for (const role of ['trellis-implement', 'trellis-check', 'trellis-research']) {
+  test(`new public entry injects ${role} materials and ignores removed Agent alias`, async t => {
+    const f = setup(t), ctx = f.ctx(role); f.pointer(ctx, 'a');
+    f.put('.trellis/tasks/a/check.jsonl', JSON.stringify({file:'.trellis/tasks/a/prd.md'}));
+    const input = {subagent_type:role,description:'Scoped role work',prompt:'work',isolation:'off'};
+    assert.equal(await f.call(ctx,input),undefined);assert.match(input.prompt,/a requirements/);assert.ok(input.prompt.includes(INJECTED_MARKER));
+    const old = {subagent_type:role,prompt:'work'};assert.equal(await f.call(ctx,old,'Agent'),undefined);assert.equal(old.prompt,'work');
+  });
+}
+
+test('startup detection uses subagent_run rather than removed launch alias', async t => {
+  const f=setup(t),ctx=f.ctx('diagnostic'),notices=[];
+  ctx.hasUI=true;ctx.ui={notify:text=>notices.push(text)};
+  await f.handlers.get('session_start')({},ctx);assert.ok(!notices.some(text=>text.includes('未检测到 subagent_run')));
+  const missing=setup(t),other=missing.ctx('missing');other.hasUI=true;other.ui={notify:text=>notices.push(text)};
+  missing.pi.getAllTools=()=>[{name:'Agent'}];await missing.handlers.get('session_start')({},other);
+  assert.ok(notices.includes('pi-trellis：未检测到 subagent_run。请确认 my-pi-preset 的 Task Composition 已启用并重载会话'));
+});
 
 test("two sessions in one project keep keys, CLI context cache, and dispatch task materials separate", async (t) => {
   const f = setup(t), a = f.ctx("one"), b = f.ctx("two");
@@ -105,7 +124,7 @@ test("no task and missing materials retain fallback; other agents and read-only 
   const temporary = { subagent_type: "trellis-implement", prompt: "implement", isolation: "worktree" };
   const blocked = await f.call(ctx, temporary); assert.equal(blocked.block, true);
 });
-test("bound task ordinary Agent gate blocks before spawn; read-only exploration remains available", async (t) => {
+test("bound task ordinary subagent_run gate blocks before spawn; read-only exploration remains available", async (t) => {
   const f = setup(t), ctx = f.ctx("bound");
   f.pointer(ctx, "a");
   f.put(".trellis/.runtime/pi-trellis/binding.json", "invalid marker");

@@ -107,7 +107,7 @@ session key without calling start or hooks. Load role JSONL references and artif
 marker is present in the task-context block. Read omitted materials within the task store boundary.
 Prefer `trellis_dispatch` from the source host: unbound tasks execute in the shared source directory,
 with a short concurrency warning and main-coordinated file scope. Bound tasks require approved managed
-preparation and must not use ordinary Agent or temporary isolation to bypass their binding. Read the
+preparation and must not use ordinary subagent_run or temporary isolation to bypass their binding. Read the
 package-local worktree protocol from the session overview on demand.
 Delegation alone does not require creating a worktree; existing managed bindings retain their execution constraints.
 An already-running role works directly, never recursively dispatches. Sub-agents must not commit, install or finish.

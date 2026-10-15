@@ -12,7 +12,7 @@ function fixture(t) {
 }
 function harness(root) {
  const commands=new Map(),tools=new Map(),handlers=new Map(),messages=[],notices=[],display={};let subscriptions=0;
- trellis({registerCommand:(n,c)=>commands.set(n,c),registerTool:t=>tools.set(t.name,t),events:{on:()=>{subscriptions++;return()=>{};},emit:()=>{}},on:(n,h)=>{const previous=handlers.get(n);handlers.set(n,previous?async(...args)=>{await previous(...args);await h(...args);}:h);},getAllTools:()=>[{name:'Agent'}],sendMessage:m=>messages.push(m)});
+ trellis({registerCommand:(n,c)=>commands.set(n,c),registerTool:t=>tools.set(t.name,t),events:{on:()=>{subscriptions++;return()=>{};},emit:()=>{}},on:(n,h)=>{const previous=handlers.get(n);handlers.set(n,previous?async(...args)=>{await previous(...args);await h(...args);}:h);},getAllTools:()=>[{name:'subagent_run'}],sendMessage:m=>messages.push(m)});
  const ctx={cwd:root,hasUI:true,sessionManager:{getSessionId:()=>root,getSessionFile:()=>undefined},ui:{theme:{fg:(_c,t)=>t,bold:t=>t},notify:t=>notices.push(t),setWidget:(_k,v)=>display.widget=v,setStatus:(_k,v)=>display.status=v}};
  return {commands,tools,handlers,messages,notices,display,ctx,get subscriptions(){return subscriptions;}};
 }
@@ -60,7 +60,7 @@ test('registered runner refuses another project prompt, display and dispatch',as
  await assert.rejects(h.tools.get('trellis_dispatch').execute('id',{action:'stop'},undefined,undefined,h.ctx),/Project changed/);
  await h.handlers.get('session_start')({},h.ctx);assert.equal(h.subscriptions,2);assert.deepEqual([...h.commands.keys()].sort(),['trellis-init','trellis-task-viewer']);
  await h.commands.get('trellis-task-viewer').handler('',{...h.ctx,mode:'tui'});assert.ok(h.notices.some(n=>/Project changed/.test(n)));
- const blocked=await h.handlers.get('tool_call')({toolName:'Agent',input:{subagent_type:'trellis-check',prompt:'work'}},h.ctx);assert.equal(blocked?.block,true);
+ const blocked=await h.handlers.get('tool_call')({toolName:'subagent_run',input:{subagent_type:'trellis-check',prompt:'work'}},h.ctx);assert.equal(blocked?.block,true);
  const input={command:'pwd'};assert.equal(await h.handlers.get('tool_call')({toolName:'bash',input},h.ctx),undefined);assert.equal(input.command,'pwd');
 });
 
@@ -71,17 +71,17 @@ for(const route of ['tool_result','viewer','dispatch','tool_call'])test(`runtime
  if(route==='tool_result')await h.handlers.get(route)({toolName:'bash',input:{command:'python3 .trellis/scripts/task.py current'}},h.ctx);
  if(route==='viewer')await h.commands.get('trellis-task-viewer').handler('',{...h.ctx,mode:'tui'});
  if(route==='dispatch')await assert.rejects(h.tools.get('trellis_dispatch').execute('id',{action:'stop'},undefined,undefined,h.ctx),/missing or modified/);
- if(route==='tool_call')assert.equal((await h.handlers.get(route)({toolName:'Agent',input:{subagent_type:'trellis-implement',prompt:'work'}},h.ctx))?.block,true);
+ if(route==='tool_call')assert.equal((await h.handlers.get(route)({toolName:'subagent_run',input:{subagent_type:'trellis-implement',prompt:'work'}},h.ctx))?.block,true);
  assert.equal(h.display.widget,undefined);assert.equal(h.display.status,undefined);assert.deepEqual(h.messages,[]);
  assert.deepEqual(readFileSync(join(root,'.trellis/scripts/get_context.py')),before);assert.equal(existsSync(join(root,'.trellis/scripts/task.py')),false);
 });
 
 test('removed project marker blocks Trellis children and runtime commands but not ordinary reads',async t=>{
  const root=fixture(t);installRuntimeFixture(root);const h=harness(root);await h.handlers.get('session_start')({},h.ctx);rmSync(join(root,'.trellis'),{recursive:true});
- for(const event of [{toolName:'Agent',input:{subagent_type:'trellis-check',prompt:'work'}},{toolName:'bash',input:{command:'python3 .trellis/scripts/task.py current'}}]){
+ for(const event of [{toolName:'subagent_run',input:{subagent_type:'trellis-check',prompt:'work'}},{toolName:'bash',input:{command:'python3 .trellis/scripts/task.py current'}}]){
   assert.equal((await h.handlers.get('tool_call')(event,h.ctx))?.block,true);
  }
- for(const event of [{toolName:'read',input:{path:'README.md'}},{toolName:'bash',input:{command:'pwd'}},{toolName:'Agent',input:{subagent_type:'Explore',prompt:'read'}}])assert.equal(await h.handlers.get('tool_call')(event,h.ctx),undefined);
+ for(const event of [{toolName:'read',input:{path:'README.md'}},{toolName:'bash',input:{command:'pwd'}},{toolName:'subagent_run',input:{subagent_type:'Explore',prompt:'read'}}])assert.equal(await h.handlers.get('tool_call')(event,h.ctx),undefined);
  assert.equal(h.display.widget,undefined);assert.equal(h.display.status,undefined);assert.equal(existsSync(join(root,'.trellis')),false);
 });
 
@@ -93,7 +93,7 @@ test('unreadable discovery never inherits parent or disrupts ordinary read/searc
  const h=harness(child);h.display.widget=['stale'];h.display.status='stale';
  await h.handlers.get('session_start')({},h.ctx);await h.handlers.get('before_agent_start')({prompt:'inspect',systemPromptOptions:{sections:{}}},h.ctx);
  for(const event of [{toolName:'read',input:{path:'README.md'}},{toolName:'grep',input:{pattern:'foo'}},{toolName:'bash',input:{command:'pwd'}}])assert.equal(await h.handlers.get('tool_call')(event,h.ctx),undefined);
- assert.equal((await h.handlers.get('tool_call')({toolName:'Agent',input:{subagent_type:'trellis-implement',prompt:'work'}},h.ctx))?.block,true);
+ assert.equal((await h.handlers.get('tool_call')({toolName:'subagent_run',input:{subagent_type:'trellis-implement',prompt:'work'}},h.ctx))?.block,true);
  assert.deepEqual([...h.commands.keys()],['trellis-init']);assert.equal(h.tools.size,0);assert.equal(h.display.widget,undefined);assert.equal(h.display.status,undefined);assert.deepEqual(h.messages,[]);
  await assert.doesNotReject(h.handlers.get('agent_end')({},h.ctx));assert.doesNotThrow(()=>h.handlers.get('session_shutdown')({},h.ctx));
  } finally { chmodSync(child,0o700); }
@@ -108,6 +108,6 @@ test('fresh runner cannot activate another project on session replacement withou
  const a=fixture(t),b=fixture(t);installRuntimeFixture(b);const h=harness(a);await h.handlers.get('session_start')({},h.ctx);h.ctx.cwd=b;
  await h.handlers.get('session_start')({},h.ctx);const sections={};await h.handlers.get('before_agent_start')({prompt:'inspect',systemPromptOptions:{sections}},h.ctx);await h.handlers.get('agent_end')({},h.ctx);
  assert.deepEqual([...h.commands.keys()],['trellis-init']);assert.equal(h.tools.size,0);assert.equal(h.subscriptions,0);assert.deepEqual(sections,{});assert.deepEqual(h.messages,[]);assert.equal(h.display.widget,undefined);assert.equal(h.display.status,undefined);
- assert.equal((await h.handlers.get('tool_call')({toolName:'Agent',input:{subagent_type:'trellis-check',prompt:'work'}},h.ctx))?.block,true);
+ assert.equal((await h.handlers.get('tool_call')({toolName:'subagent_run',input:{subagent_type:'trellis-check',prompt:'work'}},h.ctx))?.block,true);
  const reloaded=harness(b);await reloaded.handlers.get('session_start')({},reloaded.ctx);assert.ok(reloaded.commands.has('trellis-task-viewer'));assert.ok(reloaded.tools.has('trellis_dispatch'));
 });

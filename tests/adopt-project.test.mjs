@@ -42,7 +42,7 @@ test('HOME is refused and the extension stops blocking runtime commands after ad
  try { process.env.HOME=f.root;assert.throws(()=>adoptPlan(f.root),/HOME/); } finally { if(home===undefined)delete process.env.HOME;else process.env.HOME=home; }
  assert.equal(readFileSync(join(f.root,'.trellis/scripts/task.py'),'utf8'),'legacy runtime');
  const handlers=new Map();
- trellis({events:{on:()=>()=>{},emit:()=>{}},on:(n,h)=>handlers.set(n,h),registerTool:()=>{},registerCommand:()=>{},sendMessage:()=>{},getAllTools:()=>[{name:'Agent'}]});
+ trellis({events:{on:()=>()=>{},emit:()=>{}},on:(n,h)=>handlers.set(n,h),registerTool:()=>{},registerCommand:()=>{},sendMessage:()=>{},getAllTools:()=>[{name:'subagent_run'}]});
  const ctx={cwd:f.root,hasUI:true,sessionManager:{getSessionId:()=>f.root,getSessionFile:()=>undefined},ui:{theme:{fg:(_c,s)=>s,bold:s=>s},setStatus:()=>{},setWidget:()=>{},notify:()=>{}}};
  const command='python3 .trellis/scripts/task.py current --json';
  const blocked=handlers.get('tool_call')({toolName:'bash',input:{command}},ctx);

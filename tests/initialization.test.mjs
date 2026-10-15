@@ -92,7 +92,14 @@ test('new workflow retains real Python phase parser steps and extension state sy
 test('task_error stays distinct from no_task and command tools scope/invalidate without touching WebSocket monitors',async t=>{
  const f=fixture(t);apply(plan(f.root,'Dev'));const handlers=new Map(),messages=[];trellis({on:(n,h)=>handlers.set(n,h),registerCommand:()=>{},registerTool:()=>{},events:{on:()=>()=>{},emit:()=>{}},sendMessage:m=>messages.push(m),getAllTools:()=>[]});const ctx={cwd:f.root,hasUI:false,ui:{},sessionManager:{getSessionId:()=>f.root,getSessionFile:()=>undefined}};const key=__internals.contextKey(f.root,ctx);const before=()=>handlers.get('before_agent_start')({prompt:'inspect',systemPromptOptions:{sections:{}}},ctx);
  await before();assert.match(messages.at(-1).content,/No active task/);
- f.put(`.trellis/.runtime/sessions/${key}.json`,'broken');for(const tool of ['bash','bash_bg','monitor']){const input={command:'task.py current --json'};await handlers.get('tool_call')({toolName:tool,input},ctx);assert.ok(input.command.startsWith(`export TRELLIS_CONTEXT_ID=${key}\n`));await handlers.get('tool_result')({toolName:tool,input},ctx);}
+ for(const input of [{toolName:'bash',command:'task.py current --json',run_in_background:false},{toolName:'bash',command:'task.py current --json',run_in_background:true},{toolName:'monitor',command:'task.py current --json'}]){
+  const {toolName,...args}=input;await handlers.get('tool_call')({toolName,input:args},ctx);
+  assert.ok(args.command.startsWith(`export TRELLIS_CONTEXT_ID=${key}\n`));
+  f.put(`.trellis/.runtime/sessions/${key}.json`,'broken');
+  await handlers.get('tool_result')({toolName,input:args},ctx);await before();assert.match(messages.at(-1).content,/task_error/);
+ }
+ const oldShell={command:'task.py current --json'};await handlers.get('tool_call')({toolName:'bash_bg',input:oldShell},ctx);assert.equal(oldShell.command,'task.py current --json');
+ f.put(`.trellis/.runtime/sessions/${key}.json`,'broken');for(const tool of ['bash','monitor']){const input={command:'task.py current --json'};await handlers.get('tool_call')({toolName:tool,input},ctx);assert.ok(input.command.startsWith(`export TRELLIS_CONTEXT_ID=${key}\n`));await handlers.get('tool_result')({toolName:tool,input},ctx);}
  await before();assert.match(messages.at(-1).content,/task_error/);assert.doesNotMatch(messages.at(-1).content,/No active task/);const ws={ws:{url:'ws://localhost'}};await handlers.get('tool_call')({toolName:'monitor',input:ws},ctx);assert.deepEqual(ws,{ws:{url:'ws://localhost'}});
 });
 
@@ -100,8 +107,8 @@ test('unsupported deployed release injects no state and blocks command/role exec
  const f=fixture(t);apply(plan(f.root,'Dev'));const file=join(f.root,'.trellis/.pi-trellis.json'),m=JSON.parse(readFileSync(file));m.runtimeReleaseId='wrong';writeFileSync(file,JSON.stringify(m));
  const handlers=new Map(),messages=[];trellis({on:(n,h)=>handlers.set(n,h),registerCommand:()=>{},registerTool:()=>{},events:{on:()=>()=>{},emit:()=>{}},sendMessage:m=>messages.push(m)});const ctx={cwd:f.root,hasUI:false,ui:{},sessionManager:{getSessionId:()=>f.root,getSessionFile:()=>undefined}};
  await handlers.get('before_agent_start')({prompt:'inspect',systemPromptOptions:{sections:{}}},ctx);assert.deepEqual(messages,[]);
- for(const tool of ['bash','bash_bg','monitor'])assert.equal((await handlers.get('tool_call')({toolName:tool,input:{command:'task.py deactivate'}},ctx)).block,true);
- assert.equal((await handlers.get('tool_call')({toolName:'Agent',input:{subagent_type:'trellis-implement',prompt:'work'}},ctx)).block,true);
+ for(const tool of ['bash','monitor'])assert.equal((await handlers.get('tool_call')({toolName:tool,input:{command:'task.py deactivate'}},ctx)).block,true);
+ assert.equal((await handlers.get('tool_call')({toolName:'subagent_run',input:{subagent_type:'trellis-implement',prompt:'work'}},ctx)).block,true);
  assert.equal(await handlers.get('tool_call')({toolName:'monitor',input:{ws:{url:'ws://localhost'}}},ctx),undefined);assert.equal(await handlers.get('tool_call')({toolName:'read',input:{path:'README.md'}},ctx),undefined);
 });
 

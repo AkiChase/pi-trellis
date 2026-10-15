@@ -12,7 +12,7 @@ function fixture(t, supported = false) {
  const put=(path,text)=>{mkdirSync(dirname(join(root,path)),{recursive:true});writeFileSync(join(root,path),text);};
  if(supported)apply(plan(root,'Fixture'));
  const handlers=new Map(),commands=new Map(),messages=[],notices=[];
- trellis({events:{on:()=>()=>{},emit:()=>{}},on:(n,h)=>handlers.set(n,h),registerTool:()=>{},registerCommand:(n,c)=>commands.set(n,c),sendMessage:m=>messages.push(m),getAllTools:()=>[{name:'Agent'}]});
+ trellis({events:{on:()=>()=>{},emit:()=>{}},on:(n,h)=>handlers.set(n,h),registerTool:()=>{},registerCommand:(n,c)=>commands.set(n,c),sendMessage:m=>messages.push(m),getAllTools:()=>[{name:'subagent_run'}]});
  const ctx={cwd:root,hasUI:true,sessionManager:{getSessionId:()=>root,getSessionFile:()=>undefined},ui:{theme:{fg:(_c,s)=>s,bold:s=>s},setStatus:()=>{},setWidget:()=>{},notify:(s)=>notices.push(s)}};
  const call=(command,toolName='bash')=>handlers.get('tool_call')({toolName,input:{command}},ctx);
  return {root,put,handlers,commands,messages,notices,ctx,call};
@@ -44,7 +44,7 @@ for(const state of ['absent manifest','mismatched bytes','corrupt manifest','inc
   assert.deepEqual(sections,{});assert.ok(f.notices.some(s=>/trellis-init/.test(s)));
   assert.ok(!existsSync(join(f.root,'executed-unverified')));assert.ok(!existsSync(join(f.root,'bound-unverified')));
   assert.ok(!existsSync(join(f.root,`.trellis/.runtime/sessions/${__internals.contextKey(f.root,f.ctx)}.json`)));
-  for(const tool of ['bash','bash_bg','monitor'])for(const command of [
+  for(const tool of ['bash','monitor'])for(const command of [
    'python3 .trellis/scripts/task.py deactivate','python3 -B ./.trellis/scripts/get_context.py --mode default --json',
    './.trellis/scripts/task.py current --json','task.py deactivate',
    'env X=1 python3 ".trellis/scripts/init_developer.py" Dev','env -u TRELLIS_CONTEXT_ID python3 .trellis/scripts/task.py deactivate',
@@ -56,10 +56,12 @@ for(const state of ['absent manifest','mismatched bytes','corrupt manifest','inc
   ]){
    const result=await f.call(command,tool);assert.equal(result?.block,true,`${tool}: ${command}`);assert.match(result.reason,/trellis-init/);
   }
-  const child=await f.handlers.get('tool_call')({toolName:'Agent',input:{subagent_type:'trellis-implement',prompt:'work'}},f.ctx);assert.equal(child?.block,true);
+  for (const role of ['trellis-implement','trellis-check','trellis-research']) {
+   const child=await f.handlers.get('tool_call')({toolName:'subagent_run',input:{subagent_type:role,description:'Scoped task role',prompt:'work'}},f.ctx);assert.equal(child?.block,true);
+  }
   for(const command of ['pwd','git status --short','cat .trellis/scripts/task.py','rg -n task.py .trellis','find .trellis -type f','python3 -c "print(1)"'])assert.equal(await f.call(command),undefined,command);
   assert.equal(await f.handlers.get('tool_call')({toolName:'monitor',input:{ws:{url:'wss://example.invalid'}}},f.ctx),undefined);
-  assert.equal(await f.handlers.get('tool_call')({toolName:'Agent',input:{subagent_type:'Explore',prompt:'read-only'}},f.ctx),undefined);
+  assert.equal(await f.handlers.get('tool_call')({toolName:'subagent_run',input:{subagent_type:'Explore',prompt:'read-only'}},f.ctx),undefined);
   assert.ok(f.commands.has('trellis-init'));assert.ok(!existsSync(join(f.root,'executed-unverified')));
   assert.deepEqual(executions,[], 'unsupported runtime spawned Python');
   await assert.doesNotReject(async()=>f.handlers.get('session_shutdown')({},f.ctx));

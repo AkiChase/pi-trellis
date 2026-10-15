@@ -157,7 +157,7 @@
       "adapted": true
     },
     "trellis-meta/references/platform-files/agents.md": {
-      "sha256": "6b319d01abecf0c641dfcd8f36c82fbed7d5333a96878f12b837c9ec25d0db71",
+      "sha256": "2133fb3b70c48cf4985366aba0134160358096efd09b2751662f3a9446d7690f",
       "sourcePath": ".agents/skills/trellis-meta/references/platform-files/agents.md",
       "sourceSha256": "b806b1f0de6dfc74720014aee15ede767a58925b2b3b964f2e557ed39a65bbc0",
       "license": "AGPL-3.0-only",
@@ -178,7 +178,7 @@
       "adapted": true
     },
     "trellis-meta/references/local-architecture/context-injection.md": {
-      "sha256": "03e0093aee6f6ac52a9e8a480e4bed1b55479bf98112e0a7adfdd099101c7770",
+      "sha256": "eb8a0b01d3b511ebf127c422c82c395b9a95f905caab29962c8c658524d78c68",
       "sourcePath": ".agents/skills/trellis-meta/references/local-architecture/context-injection.md",
       "sourceSha256": "b1ebaac467bf0195e2a21f2f8492a8b7c91ff3e0f9312f853468cda0255df1c7",
       "license": "AGPL-3.0-only",
