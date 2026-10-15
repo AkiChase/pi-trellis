@@ -509,3 +509,40 @@ viewer 区分归档隐藏与真正缺失；归档父子不展示，合法引用�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 19: Runtime工具名适配与preset组合验收
+<!-- trellis-session: v=2 fp=13a5d3839e0b8fd0 -->
+
+**Date**: 2026-10-15
+**Task**: Runtime工具名适配与preset组合验收
+**Branch**: `main`
+
+### Summary
+
+迁移subagent_run门禁和用户警告，完成真实Task Composition组合探针；修复wait消费测试盲点，独立复查通过并获用户验收归档。
+
+### Main Changes
+
+- 保留公共RPC、真实ID和终态占用规则；未安装、同步、reload或push。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `56e8b9c` | feat: adapt Trellis runtime tool names and role gates |
+| `94e54cf` | test: verify Trellis with preset runtime task composition |
+| `5f58f4e` | chore(task): record verified runtime tool stage checkpoints |
+
+### Testing
+
+- [OK] 全量450/450、Python20/20；真实离线组合自然退出通过。
+- [OK] 独立S1 216/216；S2省略wait消费扰动被通知断言检出，正常版本通过。
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 原生provider缺失NOT_RUN；monitor仅XOR边界，在线模型与真实终端未验证。
