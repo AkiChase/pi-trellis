@@ -1,5 +1,5 @@
 {"file":".trellis/spec/development/index.md","reason":"资源 ownership、生成角色、材料边界与并行保留"}
 {"file":".trellis/spec/testing/index.md","reason":"collect 安全回归、真实检查与报告限制"}
-{"file":".trellis/tasks/10-15-research-artifact-boundaries/prd.md","reason":"批准范围与 A1–A6 验收"}
-{"file":".trellis/tasks/10-15-research-artifact-boundaries/design.md","reason":"最小规则设计及历史读取兼容"}
-{"file":".trellis/tasks/10-15-research-artifact-boundaries/implement.md","reason":"实施与检查计划"}
+{"file":".trellis/tasks/archive/2026-10/10-15-research-artifact-boundaries/prd.md","reason":"批准范围与 A1–A6 验收"}
+{"file":".trellis/tasks/archive/2026-10/10-15-research-artifact-boundaries/design.md","reason":"最小规则设计及历史读取兼容"}
+{"file":".trellis/tasks/archive/2026-10/10-15-research-artifact-boundaries/implement.md","reason":"实施与检查计划"}
