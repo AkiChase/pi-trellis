@@ -6,12 +6,9 @@ import { discoverProject } from "../project-state.ts";
 import { containsPath } from "../config.ts";
 import { checkedPath, digest, packageRoot, validateUsername, packageProvenance, type PackageProvenance, type InstalledManifest } from "./engine.ts";
 
-/** Plain, caller-owned identity. Never derive a key, consult env or infer another session. */
+/** Deployment-check scope: the project directory only. No session/task identity. */
 export interface DiagnosticScope {
 	cwd: string;
-	authorityRoot?: string;
-	contextId?: string;
-	sessionId?: string;
 	isProjectTrusted?: boolean;
 }
 export interface DiagnosticItem {
@@ -26,7 +23,7 @@ export interface DiagnosticItem {
 }
 export interface DiagnosticResult {
 	schemaVersion: 1;
-	scope: DiagnosticScope & { executionRoot?: string; taskRef?: string };
+	scope: DiagnosticScope & { executionRoot?: string };
 	items: DiagnosticItem[];
 	omitted: number;
 	omittedCategories?: string[];
@@ -191,27 +188,7 @@ function operationSnapshot(value: unknown, root: string): "incomplete" | "comple
 	// Do not reconstruct outputs, resolve action destinations or revalidate historical user task bytes.
 	return value.status;
 }
-function taskRecord(value: unknown): void {
-	if (!object(value) || !["id", "name", "title", "status"].some(key => Object.hasOwn(value, key))) throw Error("task.json has no task identity/status fields");
-	// Python str.strip() includes NEL and U+001C–001F, but not JS's BOM.
-	const nonblank = (text: string) => !!text.replace(/^[\p{White_Space}\u001c-\u001f]+|[\p{White_Space}\u001c-\u001f]+$/gu, "");
-	for (const key of ["id", "name", "title", "status"]) if (Object.hasOwn(value, key) && (typeof value[key] !== "string" || !nonblank(value[key]) || [...value[key]].length > (key === "status" ? 128 : 8192))) throw Error(`task.json has invalid ${key}`);
-}
-/** Only the explicit source top-level tasks route may be external; internal routes remain local. */
-function exactTaskRoot(reader: DiagnosticReader, root: string, ref: string, allowExternal: boolean): { store: string; path: string } {
-	safePath(ref); if (!ref.startsWith(".trellis/tasks/") || ref.length > 8192) throw Error("Task must be beneath .trellis/tasks");
-	const lexical = join(root, ".trellis/tasks"); reader.stat(root, ".trellis");
-	let store: string;
-	if (allowExternal) {
-		const info = lstatSync(lexical); if (!info.isDirectory() && !info.isSymbolicLink()) throw Error("Task store must be a directory");
-		store = realpathSync(lexical); if (!lstatSync(store).isDirectory()) throw Error("Task store must resolve to a directory");
-	} else { const info = reader.stat(root, ".trellis/tasks"); if (!info?.isDirectory()) throw Error("Task store must be a local directory"); store = lexical; }
-	const path = ref.slice(".trellis/tasks/".length), actual = checkedPath(store, path);
-	if (!containsPath(store, actual) || !reader.stat(store, path)?.isDirectory()) throw Error("Task directory is missing or unsafe");
-	return { store, path };
-}
-
-export function collectDiagnostics(scope: DiagnosticScope, options: { signal?: AbortSignal; scopeError?: string; reader?: DiagnosticReader } = {}): DiagnosticResult {
+export function collectDiagnostics(scope: DiagnosticScope, options: { signal?: AbortSignal; reader?: DiagnosticReader } = {}): DiagnosticResult {
 	const reader = options.reader ?? new DiagnosticReader(options.signal), result: DiagnosticResult = { schemaVersion: 1, scope: { ...scope }, items: [], omitted: 0, facts: { project: "unsafe", packageValid: false, runtimeStaticValid: false, resourcesRestorable: false, operationInvalid: false, locked: false, managedMarker: false } };
 	const add = (id: string, category: string, status: DiagnosticItem["status"], summary: string, evidence: string[] = [], impact = "", advice = "", severity: DiagnosticItem["severity"] = status === "issue" ? "error" : "info") => {
 		if (result.items.length === DIAGNOSTIC_LIMITS.items) {
@@ -224,10 +201,9 @@ export function collectDiagnostics(scope: DiagnosticScope, options: { signal?: A
 		result.items.push({ id, category: clean(category, 32), status, severity, summary: clean(summary), evidence: evidence.slice(0, 12).map(v => clean(v)), impact: clean(impact), advice: clean(advice) });
 	};
 	const attempt = (id: string, category: string, location: string, action: () => void, impact: string, advice: string) => {
-		try { reader.checkpoint(); action(); } catch (error) { add(id, category, error instanceof Cancelled ? "cancelled" : id === "authority" ? "blocked" : "issue", error instanceof Error ? error.message : "Read failed", [location], impact, advice); }
+		try { reader.checkpoint(); action(); } catch (error) { add(id, category, error instanceof Cancelled ? "cancelled" : "issue", error instanceof Error ? error.message : "Read failed", [location], impact, advice); }
 	};
-	if (options.scopeError !== undefined) add("scope-resolver", "scope", "blocked", `Current-session resolver failed: ${options.scopeError}`, [], "Current-session identity is unavailable; no pointer fallback was read.", "Review the resolver/binding cause; Check does not bind or repair a session.");
-	let root: string | undefined, authority: string | undefined, pkg: PackageSnapshot | undefined;
+	let root: string | undefined, pkg: PackageSnapshot | undefined;
 	attempt("project", "project", scope.cwd, () => {
 		root = diagnosticExecutionRoot(scope.cwd); result.scope.executionRoot = root;
 		if (!lstatSync(root).isDirectory()) throw Error("Project root is not a directory");
@@ -238,16 +214,6 @@ export function collectDiagnostics(scope: DiagnosticScope, options: { signal?: A
 	}, "Project discovery is unsafe; local project checks are blocked.", "Inspect this marker/path; Check does not skip to an ancestor.");
 	attempt("package", "package", packageRoot, () => { pkg = packageSnapshot(reader); result.facts.packageValid = true; add("package", "package", "pass", "Package provenance verified (static)"); }, "Package damage is separate from project damage; execution remains unverified.", "Review the installed package/source provenance; do not repair project files to bypass it.");
 	if (root && result.facts.project !== "unsafe") {
-		attempt("authority", "scope", scope.authorityRoot ?? root, () => {
-			if (scope.authorityRoot !== undefined) {
-				if (typeof scope.authorityRoot !== "string" || !isAbsolute(scope.authorityRoot) || scope.authorityRoot.length > 8192 || /[\p{C}]/u.test(scope.authorityRoot)) throw Error("Invalid caller-supplied authority root");
-				// A memo/marker path is not authenticated source authority. Do not even stat/realpath
-				// a different source root before the S2/S3 native Git/binding identity transport.
-				if (resolve(scope.authorityRoot) !== root) throw Error("Cross-root authority is blocked: binding/Git identity not probed in S1");
-			}
-			authority = root;
-			result.scope.authorityRoot = authority;
-		}, "Current-session authority is not established; no pointer fallback is permitted.", "Obtain the scope from the extension's current session/source resolver.");
 		attempt("operation", "initialization", OPERATION, () => {
 			const value = reader.json(root!, OPERATION); if (value === undefined) { add("operation", "initialization", "pass", "No interrupted initialization record"); return; }
 			try { result.facts.operation = operationSnapshot(value, root!); } catch (error) { result.facts.operationInvalid = true; throw error; }
@@ -265,7 +231,10 @@ export function collectDiagnostics(scope: DiagnosticScope, options: { signal?: A
 			}
 			add("lock", "initialization", "issue", file.bytes ? "Initialization PID lock exists" : "Resource lock exists (legal empty lock)", [LOCK], "Concurrent state is uncertain; no stale-owner inference or lock removal.", "Inspect the owner before explicit resource changes.", "warning");
 		}, "Lock ownership is unknown; no lock was removed.", "Inspect the existing lock; an invalid lock does not authorize recovery.");
-		attempt("marker", "worktree", ".trellis/.runtime/pi-trellis/binding.json", () => { result.facts.managedMarker = !!reader.stat(root!, ".trellis/.runtime/pi-trellis/binding.json"); }, "Managed execution identity is unverified.", "Related worktree identity probing belongs to the next stage.");
+		attempt("marker", "project", ".trellis/.runtime/pi-trellis/binding.json", () => {
+			result.facts.managedMarker = !!reader.stat(root!, ".trellis/.runtime/pi-trellis/binding.json");
+			if (result.facts.managedMarker) add("marker", "project", "issue", "This directory is a managed task worktree checkout", [".trellis/.runtime/pi-trellis/binding.json"], "Check reports the deployment of the source project; runtime probes are skipped here.", "Run Check from the source project checkout.", "warning");
+		}, "Managed checkout marker could not be read safely.", "Run Check from the source project checkout.");
 		let raw: unknown;
 		attempt("manifest", "resources", MANIFEST, () => {
 			raw = reader.json(root!, MANIFEST);
@@ -275,38 +244,25 @@ export function collectDiagnostics(scope: DiagnosticScope, options: { signal?: A
 			result.facts.manifest = manifestSnapshot(raw, pkg);
 			add("manifest", "resources", raw.runtimeReleaseId === pkg.release ? "pass" : "issue", raw.runtimeReleaseId === pkg.release ? "Nonempty manifest provenance verified" : "Unsupported project runtime release", [MANIFEST], raw.runtimeReleaseId === pkg.release ? "" : "Old project code remains unauthorized.", raw.runtimeReleaseId === pkg.release ? "" : "Review an explicit resource update; Check does not upgrade.");
 		}, "Manifest is not execution authority; fixed inventory checks continue independently.", "Review the manifest and explicitly reconcile/update through the supported menu.");
-		for (const configRoot of [...new Set([root, authority].filter((v): v is string => !!v))]) {
+		for (const configRoot of [root!]) {
 			for (const path of [".trellis/config.yaml", ".pi/pi-trellis.json", ".pi/settings.json"]) attempt(`config:${configRoot}:${path}`, "configuration", join(configRoot, path), () => {
 				const file = reader.file(configRoot, path); if (!file) { add(`config:${configRoot}:${path}`, "configuration", "pass", `Optional configuration absent: ${path}`); return; }
 				if (path.endsWith(".json")) { let value: unknown; try { value = JSON.parse(file.text!); } catch { throw Error("Invalid configuration JSON"); } if (!object(value)) throw Error("Configuration JSON must be an object"); }
 				add(`config:${configRoot}:${path}`, "configuration", "pass", `${path.endsWith(".json") ? "JSON parsed" : "YAML text safely read (not parsed)"}: ${path}`, [], "Effective values/consumer fallback were not probed.");
 			}, "This present configuration could not be safely consumed; effective settings are unverified.", "Inspect the indicated file without publishing or creating configuration locks.");
 		}
-		if (authority) attempt("developer", "identity", join(authority, ".trellis/.developer"), () => {
-			const file = reader.file(authority!, ".trellis/.developer", DIAGNOSTIC_LIMITS.record);
+		attempt("developer", "identity", join(root!, ".trellis/.developer"), () => {
+			const file = reader.file(root!, ".trellis/.developer", DIAGNOSTIC_LIMITS.record);
 			if (!file) { add("developer", "identity", "skipped", "Local developer identity not set", [], "Environment/main-checkout effective identity was not probed."); return; }
 			const names = file.text!.split(/\r?\n/).filter(line => line.startsWith("name=")); if (names.length !== 1) throw Error("Developer identity is malformed");
 			const name = validateUsername(names[0].slice(5)); result.facts.developer = name;
-			add("developer", "identity", "pass", `Developer: ${name}`, [join(authority!, ".trellis/.developer")], "Local identity only; runtime fallback was not probed.");
+			add("developer", "identity", "pass", `Developer: ${name}`, [join(root!, ".trellis/.developer")], "Local identity only; runtime fallback was not probed.");
 			attempt("workspace", "identity", `.trellis/workspace/${name}`, () => {
-				if (!reader.stat(authority!, `.trellis/workspace/${name}`)?.isDirectory()) throw Error("Corresponding local workspace is missing");
-				const index = reader.file(authority!, `.trellis/workspace/${name}/index.md`); if (!index?.bytes) throw Error("Workspace index is missing or empty");
+				if (!reader.stat(root!, `.trellis/workspace/${name}`)?.isDirectory()) throw Error("Corresponding local workspace is missing");
+				const index = reader.file(root!, `.trellis/workspace/${name}/index.md`); if (!index?.bytes) throw Error("Workspace index is missing or empty");
 				add("workspace", "identity", "pass", "Corresponding workspace/index safely read", [], "No journal/history enumeration or write-permission test.");
 			}, "Local identity workspace is incomplete; journal capability is unverified.", "Review this identity's workspace without switching identity or changing history.");
 		}, "Local developer identity cannot select a workspace.", "Review .developer; Check does not guess a replacement identity.");
-		if (result.facts.project === "fresh") add("current-task", "context", "skipped", "Current task is not applicable before initialization");
-		else if (result.facts.managedMarker || options.scopeError !== undefined || result.items.some(i => i.id === "marker" && i.status !== "pass") || !authority || typeof scope.contextId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(scope.contextId)) add("current-task", "context", "blocked", "Current-session pointer check blocked: explicit authenticated scope unavailable", [], "No target/other session/key or environment fallback was read.", "Use the extension's current-session resolver; cross-root binding identity requires S2/S3.");
-		else attempt("current-task", "context", join(authority, `.trellis/.runtime/sessions/${scope.contextId}.json`), () => {
-			const pointer = reader.json(authority!, `.trellis/.runtime/sessions/${scope.contextId}.json`, DIAGNOSTIC_LIMITS.record);
-			if (pointer === undefined) { add("current-task", "context", "pass", "No current task (own pointer absent)"); return; }
-			if (!object(pointer)) throw Error("Session pointer must contain an object");
-			if (pointer.current_task === undefined || pointer.current_task === null || pointer.current_task === "") { add("current-task", "context", "pass", "No current task (own pointer empty)"); return; }
-			if (typeof pointer.current_task !== "string") throw Error("Session current_task must be a string or null");
-			const task = exactTaskRoot(reader, authority!, pointer.current_task, authority !== root || !result.facts.managedMarker);
-			const record = reader.json(task.store, `${task.path}/task.json`, DIAGNOSTIC_LIMITS.record); taskRecord(record);
-			result.scope.taskRef = pointer.current_task;
-			add("current-task", "context", "pass", "Own current task record verified (static)", [pointer.current_task, `Status: ${(record as Record<string, unknown>).status ?? "not declared"}`], "Planning is legal; no task material, readiness or runtime context was probed.");
-		}, "Current task is invalid, not no-task; no task materials or other pointer were read.", "Review only this session's pointer and exact task.json; no lifecycle action was performed.");
 		// Fixed, metadata-only routes: do not infer paths from an untrusted manifest.
 		let templateRoutesValid = true;
 		if (result.facts.project === "existing") attempt("template-routes", "resources", ".trellis template routes", () => {
@@ -352,11 +308,9 @@ export function collectDiagnostics(scope: DiagnosticScope, options: { signal?: A
 			}, "Workflow/spec entry could not be safely read.", "Inspect the indicated local entries; custom document hashes are not enforced.");
 		}
 	}
-	if (!root || result.facts.project === "unsafe") add("current-task", "context", "blocked", "Current-session pointer check blocked by unsafe project discovery");
 	const cancelled = options.signal?.aborted;
-	add("runtime-probe", "runtime", cancelled ? "cancelled" : "blocked", "Python/current-context runtime probe not performed (S1 static stage)", [], "Static provenance is not proof of a working runtime.", "The bounded worker/runner and shared consumer probes belong to S2.");
-	add("effective-config", "configuration", cancelled ? "cancelled" : "skipped", "Effective configuration/identity and YAML consumer parsing not probed (S2)");
-	add("worktree-probe", "worktree", cancelled ? "cancelled" : "skipped", "Related worktree identity/runtime not probed (S3)");
+	add("runtime-probe", "runtime", cancelled ? "cancelled" : "blocked", "Python runtime probe not performed (static collector)", [], "Static provenance is not proof of a working runtime.", "Use the bounded runtime probe.");
+	add("effective-config", "configuration", cancelled ? "cancelled" : "skipped", "Effective configuration/identity consumer parsing not probed (static collector)");
 	add("host-resources", "host", "skipped", "Host loaded resources/custom agent-dir state is not publicly verified", [], "Project trust was supplied only when visible; no settings manager/resource resolver was created.");
 	return result;
 }
@@ -367,8 +321,8 @@ export function formatDiagnostics(result: DiagnosticResult): string {
 	const passed = result.items.filter(i => i.status === "pass"), categories = [...new Set(passed.map(i => clean(i.category, 32)))];
 	const runtime = result.items.some(i => i.id === "python");
 	const title = result.items.some(i => i.status === "cancelled") ? "Cancelled" : issues.length ? "Issues found" : incomplete.length ? runtime ? "Checks completed · some capabilities unverified" : "Static checks completed · probes not completed" : runtime ? "Checks completed" : "Static checks completed";
-	const lines = [`Trellis Check · ${title}`, `Project: ${clean(result.scope.executionRoot ?? result.scope.cwd, 1000)}`, ...(result.scope.authorityRoot && result.scope.authorityRoot !== result.scope.executionRoot ? [`Requested authority${result.items.some(i => i.id === "authority" && i.status !== "pass") ? " (not authenticated)" : ""}: ${clean(result.scope.authorityRoot, 1000)}`] : []), runtime ? "Scope: current session; exact task/shared consumers only; related worktree not probed" : "Scope: current session; exact task record only; related worktree not probed", `Completed ${runtime ? "bounded" : "static"} items: ${passed.length} (${clean(categories.join(", "), 256) || "none"})`, `Issues: ${issues.length}; not completed/not applicable: ${incomplete.length}`, ...passed.filter(i => i.id === "developer" || i.id === "current-task" || i.id === "project").flatMap(i => [clean(i.summary), ...(i.id === "current-task" && result.scope.taskRef ? i.evidence.map(v => `Current task: ${clean(v)}`).concat([clean(i.impact)]) : [])])];
-	const footer = "Read-only: no files changed, hooks, model calls, lifecycle actions, refresh or reload.\n" + (runtime ? "Bounded worker/deployed-source probes; loaded host resources and cross-root worktree identity remain unverified. Not an OS sandbox." : "S1 limit: bounded reads/cooperative cancellation only; no hard 20-second deadline or execution probe. Not an OS sandbox.");
+	const lines = [`Trellis Check · ${title}`, `Project: ${clean(result.scope.executionRoot ?? result.scope.cwd, 1000)}`, "Scope: Trellis deployment in this project", `Completed ${runtime ? "bounded" : "static"} items: ${passed.length} (${clean(categories.join(", "), 256) || "none"})`, `Issues: ${issues.length}; not completed/not applicable: ${incomplete.length}`, ...passed.filter(i => i.id === "developer" || i.id === "project").map(i => clean(i.summary))];
+	const footer = "Read-only: no files changed, hooks, model calls, lifecycle actions, refresh or reload.\n" + (runtime ? "Bounded worker/deployed-source probes; loaded host resources remain unverified. Not an OS sandbox." : "Static collector only: bounded reads, no execution probe. Not an OS sandbox.");
 	let omitted = result.omitted;
 	const omittedCategories = new Set((result.omittedCategories ?? []).slice(0, 16).map(c => clean(c, 32)));
 	for (const item of [...issues, ...incomplete]) {

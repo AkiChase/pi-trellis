@@ -10,9 +10,7 @@ from unittest.mock import patch
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'runtime'))
 from common import config
-from common.active_task import ActiveTask, current_payload, current_ref_from_pointer
 from common.paths import developer_from_text, _read_developer_file
-from common.task_records import validate_task_record
 from common.trellis_config import parse_simple_yaml
 from common.workflow_phase import phase_index_from_text, get_phase_index
 import diagnostics
@@ -54,18 +52,6 @@ session:
                 self.assertEqual(config.get_hooks('after_start', root), config.get_hooks('after_start', snapshot=snapshot))
                 self.assertEqual([], config.get_hooks('after_archive', snapshot=snapshot))
 
-    def test_pointer_payload_shared_no_task_and_invalid_not_conflated(self):
-        for pointer in ({}, {'current_task': None}, {'current_task': ''}):
-            self.assertIsNone(current_ref_from_pointer(pointer))
-        for pointer in ([], None, {'current_task': 5}):
-            with self.assertRaises(ValueError): current_ref_from_pointer(pointer)
-        self.assertEqual('no-task', current_payload(ActiveTask(None, 'session', 'own', state='no-task'))['state'])
-        invalid = current_payload(ActiveTask('.trellis/tasks/own', 'session', 'own'), {})
-        self.assertEqual('invalid-task', invalid['state'])
-        self.assertIsNone(invalid['current_task'])
-        self.assertEqual('session:own', invalid['source'])
-        self.assertIsNone(validate_task_record({'id': '\u0085'})[0])
-
     def test_identity_and_phase_pure_helpers_preserve_ordinary_semantics(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -80,12 +66,11 @@ session:
 
     def test_consumer_runs_no_disk_subprocess_hook_history_or_material_read(self):
         row = lambda value: {'text': value, 'error': None}
-        snapshots = {'pointer': row('{"current_task":".trellis/tasks/own"}'), 'task': row('{"id":"own","status":"planning"}'),
-                     'config': row('hooks:\n  after_start:\n    - SECRET\nunknown: harmless\n'), 'identity': row('name=Fixture\n'),
+        snapshots = {'config': row('hooks:\n  after_start:\n    - SECRET\nunknown: harmless\n'), 'identity': row('name=Fixture\n'),
                      'workflow': row('## Phase Index\nPlan\n## Phase 1: Plan\n'), 'workspace': row('index')}
         with patch.object(Path, 'open', side_effect=AssertionError('no file opens')), patch.object(Path, 'read_text', side_effect=AssertionError('no reopen')), patch('subprocess.run', side_effect=AssertionError('no subprocess')), patch('tempfile.TemporaryFile', side_effect=AssertionError('no tempfile')):
-            value = diagnostics.collect({'contextId': 'own'}, snapshots, None)
-        self.assertEqual('valid', value['current']['state'])
+            value = diagnostics.collect(snapshots, None)
+        self.assertNotIn('current', value)
         self.assertEqual(1, value['configuration']['hooks']['after_start'])
         self.assertNotIn('SECRET', json.dumps(value))
         self.assertGreater(value['workflow']['phaseBytes'], 0)

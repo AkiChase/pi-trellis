@@ -96,17 +96,9 @@ Bootstrap 固定为包内字面代码，不从项目路径读取或拼接程序�
 
 解释器 stdlib/zip/native 模块及其 pyc 属可信解释器基，不承诺禁绝所有 Python 字节码。Trellis 依赖的 pyc/site/customize/PYTHONPATH/未托管 shadow 不可执行；closure 随 baseline 审查，不 import CLI/session_context/materials。S2 用 capture 前替换拒绝、capture 后只执行已验字节、missing allowlist 不 fallback 等 fixture 证明。技术依据见 [planning-contracts.md](research/planning-contracts.md)。
 
-## 5. 相关 worktree
+## 5. 相关 worktree（已删除）
 
-由 Python 权威 owner 增加只读 identity-only 查询，不走 source_materials、角色引用图、validate_ready、snapshot 或管理状态变更。只允许当前 task 的 source binding、当前 marker、相关 target 身份和源 authorityRoot 下当前会话 pointer。
-
-源码基线 `9ec131f`/`176619d` 已改为严格 version 2/source-authority。现有 `runtime/pi_trellis_worktree/diagnostics.py` 只提供 issue/DiagnosticError，不是诊断 collector；可复用其结构化错误语义，完整内部入口仍需新增。普通 query 会收集角色引用，不能包装成默认 Check。
-
-- 源为 managed target 时先验证 marker 提示的 source 权威记录，不能以 marker 自授权或覆盖当前 task。
-- 核对 canonical roots、bindingId、taskRef、common Git identity、目标路径/branch 与相应注册事实。优先针对 source/target 的 rev-parse/symbolic-ref 及目标 `.git`→private gitdir/commondir/gitdir backlink 验证注册，支持相对链接；不 glob 全部 worktrees，不 status/log。特殊布局无法证明则明确未验证，不凭 commonDir 相同判通过。身份 main-checkout fallback 若需 registration 文本只解析必要候选，不 canonicalize/探查无关 checkout。
-- target runtime 在加载任何 target 源前单独严格验证；目标只探测执行环境与绑定身份，不读取目标旧 task/session pointer。现行 child key 由 extension memo 提供，当前 child 的 pointer 在 source authorityRoot；binding.contextId 是派发绑定字段，不能当当前 child key。源 pointer/task 用共享 current helper 验证，不枚举其他源会话。prepare=ready 不等于完整 readiness 已验证，不恢复已删除的 target task start/副本合同。
-- 无 binding/尚未 prepare/planning 合法；目标缺失、外来 Git/marker、绑定 task/context 错才报告对应影响。running/preparing/锁是瞬时状态，不猜 owner 死亡、释放 occupancy 或修复。
-- 不把 task.json.worktree_path 当权威；新 directory 配置只影响新建，错误不自动使旧绝对绑定失效。
+2026-10-15 用户纠正范围：Check 只检查部署。本节原有的 worktree 身份/绑定/当前会话 pointer 设计全部作废；托管 worktree checkout 中运行 Check 仅报告 marker 并阻断运行探测，提示回源项目。
 
 ## 6. 预算、取消与只读边界
 

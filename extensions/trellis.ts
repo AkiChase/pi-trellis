@@ -927,18 +927,6 @@ export default function (pi: ExtensionAPI): void {
 		contextCache.clear(); taskCache.clear(); taskErrors.clear(); workflowCache.delete(root);
 		sectionCache.clear(); lastStateSent.clear();
 		await refreshProjectDisplay(ctx);
-	}, (ctx, root) => {
-		// Diagnosis needs the real memoized child key without running startup or
-		// requiring a healthy runtime. Cached authority is only a source hint;
-		// the collector must validate its current binding before reading it.
-		const identity = sessionIdentity(root, ctx);
-		if (authorityErrors.has(identity)) throw new Error(authorityErrors.get(identity));
-		return {
-			authorityRoot: authorityBySession.get(identity)?.sourceRoot ?? sourceRootBySession.get(identity) ?? root,
-			contextId: contextKey(root, ctx),
-			sessionId: ctx.sessionManager.getSessionId(),
-			isProjectTrusted: typeof ctx.isProjectTrusted === "function" && ctx.isProjectTrusted(),
-		};
 	}, async (_ctx, scope, options) => {
 		if (checkClosed) return undefined;
 		cancelCheck();
@@ -948,7 +936,7 @@ export default function (pi: ExtensionAPI): void {
 		options.signal?.addEventListener("abort", relay, { once: true });
 		if (options.signal?.aborted) controller.abort();
 		try {
-			const result = await runDiagnostics(scope, { scopeError: options.scopeError, signal: controller.signal });
+			const result = await runDiagnostics(scope, { signal: controller.signal });
 			return !checkClosed && generation === checkGeneration && !controller.signal.aborted ? result : undefined;
 		} finally {
 			options.signal?.removeEventListener("abort", relay);

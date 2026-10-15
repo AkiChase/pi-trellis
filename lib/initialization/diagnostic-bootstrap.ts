@@ -19,14 +19,9 @@ import re
 if not isinstance(request['requestId'], str) or not re.fullmatch(r'[a-f0-9-]{36}', request['requestId']):
     raise ValueError("Invalid request ID")
 scope = request['scope']
-exact(scope, ['executionRoot', 'authorityRoot', 'contextId', 'sessionId'])
-for key in ('executionRoot', 'authorityRoot'):
-    if not isinstance(scope[key], str) or not scope[key].startswith('/') or len(scope[key]) > 8192 or any(ord(c) < 32 for c in scope[key]):
-        raise ValueError("Invalid diagnostic root scope")
-if scope['contextId'] is not None and (not isinstance(scope['contextId'], str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,128}', scope['contextId'])):
-    raise ValueError("Invalid context scope")
-if scope['sessionId'] is not None and (not isinstance(scope['sessionId'], str) or len(scope['sessionId']) > 8192):
-    raise ValueError("Invalid session scope")
+exact(scope, ['executionRoot'])
+if not isinstance(scope['executionRoot'], str) or not scope['executionRoot'].startswith('/') or len(scope['executionRoot']) > 8192 or any(ord(c) < 32 for c in scope['executionRoot']):
+    raise ValueError("Invalid diagnostic root scope")
 if request['developer'] is not None and (not isinstance(request['developer'], str) or len(request['developer']) > 8192):
     raise ValueError("Invalid developer input")
 if not isinstance(request['sources'], dict) or not isinstance(request['snapshots'], dict):
@@ -36,8 +31,6 @@ if request['mode'] == 'environment':
         raise ValueError("Environment probe cannot load project sources")
     payload = {'version': list(sys.version_info[:3]), 'isolated': True, 'noSite': True, 'noBytecode': True, 'utf8': True}
 else:
-    if scope['executionRoot'] != scope['authorityRoot'] or scope['contextId'] is None:
-        raise ValueError("Unauthenticated cross-root/current-session scope")
     import base64, hashlib, importlib.abc, importlib.util
     rows = {}
     if not request['sources'] or len(request['sources']) > 64:
@@ -49,7 +42,7 @@ else:
         exact(row, ['data', 'sha256', 'mode', 'origin', 'package'])
         if not isinstance(row['data'], str) or not isinstance(row['sha256'], str) or not re.fullmatch(r'[a-f0-9]{64}', row['sha256']) or type(row['mode']) is not int or not 0 <= row['mode'] <= 511 or type(row['package']) is not bool:
             raise ValueError("Invalid source row")
-        if not isinstance(row['origin'], str) or not row['origin'].startswith(scope['authorityRoot'] + '/.trellis/scripts/') or '..' in row['origin'].split('/'):
+        if not isinstance(row['origin'], str) or not row['origin'].startswith(scope['executionRoot'] + '/.trellis/scripts/') or '..' in row['origin'].split('/'):
             raise ValueError("Invalid deployed source origin")
         data = base64.b64decode(row['data'], validate=True)
         total += len(data)
@@ -74,7 +67,7 @@ else:
             return spec
     sys.meta_path.insert(0, CapturedFinder())
     import diagnostics
-    payload = diagnostics.collect(scope, request['snapshots'], request['developer'])
+    payload = diagnostics.collect(request['snapshots'], request['developer'])
 print(json.dumps({'schemaVersion': 1, 'requestId': request['requestId'], 'scope': scope, 'mode': request['mode'], 'payload': payload}, ensure_ascii=False, separators=(',', ':')))
 `;
 export const DIAGNOSTIC_CLOSURE = Object.freeze({

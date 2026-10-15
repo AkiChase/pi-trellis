@@ -69,7 +69,7 @@
       "sourcePath": "dist/templates/trellis/scripts/common/active_task.py",
       "sourceSha256": "f52715bbcc0677607055903e799674d7d50d6fcbab413a8f453c4e4efc954726",
       "license": "AGPL-3.0-only",
-      "sha256": "947c1b669f6b7639a1b0808ffc6ab08e1487a2b01d96bf237996a4cd3cfa6a8b",
+      "sha256": "64fa2acc4ba18716f7e718f228a6b60a0bd3fa069582352a2a64934c1206bac5",
       "modified": true
     },
     "common/config.py": {
@@ -237,7 +237,7 @@
       "sourcePath": "dist/templates/trellis/scripts/task.py",
       "sourceSha256": "b415e0a2dbc9e8cba1ada0c7997999aaaaea0eec96d3419db640830e88e84cfe",
       "license": "AGPL-3.0-only",
-      "sha256": "f6b27017b00a01612e24bed353fcca26e0c6c137fb25cc78b77d4e6e95863e06",
+      "sha256": "cf1a1f198070cac7de44904a0d9636b88a0ebfde69f99fd4b7f76809ea3d7962",
       "modified": true
     },
     "query-worktree.py": {
@@ -308,7 +308,7 @@
       "sourcePath": null,
       "sourceSha256": null,
       "license": "AGPL-3.0-only",
-      "sha256": "30f5f1f7d0005622723e48add3ab0ede34bcfe889af749d460fdd8b70db54240",
+      "sha256": "036a46fd0b558a67f4e25f38d9741fab8a90cd7879e8419893ac65eb8a58c880",
       "modified": true
     },
     "pi_trellis_worktree/diagnostics.py": {
@@ -324,10 +324,10 @@
       "sourcePath": null,
       "sourceSha256": null,
       "license": "AGPL-3.0-only",
-      "sha256": "3b29a3d39beb1f87b08c264b80ebe2de4b081dd7dcee07c1db38ab273523a25e",
+      "sha256": "90d2dc86b52a50cd3f6868659ee7799aa20ead95af6f4253ec6cdd220ccbbf2f",
       "modified": true
     }
   },
-  "releaseId": "pi-trellis-runtime-v1-aa349537460c503586578037f4e14f4853948674492422a25947435777b5e3b6",
+  "releaseId": "pi-trellis-runtime-v1-9fee3ba21469a73efc18e4cd87b6f4557b8478a587e6bcbf9edc5adefbfe1598",
   "projectSourceRevision": "9af75d2f52f78ee932bb31563cc29fe7ce5a9b73"
 }

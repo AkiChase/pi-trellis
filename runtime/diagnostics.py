@@ -1,12 +1,9 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # Composes pi-trellis-maintained Trellis 0.6.16 shared consumers.
-"""Internal current-only diagnostics. No disk reads, subprocesses or lifecycle."""
+"""Internal deployment diagnostics. No disk reads, subprocesses or lifecycle."""
 from __future__ import annotations
 
 import contextlib
-import json
-from common.active_task import ActiveTask, current_payload, current_ref_from_pointer
-from common.task_records import validate_task_record
 from common.paths import developer_from_text
 from common import config as consumer
 from common.trellis_config import parse_simple_yaml
@@ -18,9 +15,9 @@ class _DiscardWarnings:
     def flush(self): pass
 
 
-def collect(scope: dict, snapshots: dict, env_developer: str | None) -> dict:
+def collect(snapshots: dict, env_developer: str | None) -> dict:
     """Safely captured text is passed to the actual production leaf consumers."""
-    if set(snapshots) != {'pointer', 'task', 'config', 'identity', 'workflow', 'workspace'}:
+    if set(snapshots) != {'config', 'identity', 'workflow', 'workspace'}:
         raise ValueError('Invalid consumer snapshot schema')
     def text(name):
         row = snapshots[name]
@@ -31,27 +28,6 @@ def collect(scope: dict, snapshots: dict, env_developer: str | None) -> dict:
         if row['error'] is not None and not isinstance(row['error'], str):
             raise ValueError('Invalid snapshot error')
         return row['text'], row['error']
-    key = scope['contextId']
-    ptr, error = text('pointer')
-    active = ActiveTask(None, 'session', key, state='no-task')
-    data = None
-    if error:
-        active = ActiveTask(None, 'session', key, error=error, state='invalid-pointer')
-    elif ptr is not None:
-        try:
-            ref = current_ref_from_pointer(json.loads(ptr))
-        except (ValueError, RecursionError):
-            active = ActiveTask(None, 'session', key, error='Invalid session pointer JSON/shape', state='invalid-pointer')
-        else:
-            if ref is not None:
-                raw, task_error = text('task')
-                try:
-                    data, record_error = validate_task_record(json.loads(raw) if raw is not None else None)
-                except (ValueError, RecursionError):
-                    data, record_error = None, 'Invalid task.json JSON'
-                error = task_error or record_error
-                active = ActiveTask(None if error else ref, 'session', key, stale=bool(error), error=error, raw_ref=ref, state='invalid-task' if error else 'valid')
-    payload = current_payload(active, data)
     cfg_text, cfg_error = text('config')
     parser_issues = []
     # Existing parser/getters warn with raw values. Diagnostics retains only shape/line metadata,
@@ -66,7 +42,6 @@ def collect(scope: dict, snapshots: dict, env_developer: str | None) -> dict:
         auto_commit = consumer.get_session_auto_commit(snapshot=cfg)
         packages = consumer.get_packages(snapshot=cfg)
         default_package = consumer.get_default_package(snapshot=cfg)
-        selected_package = consumer.resolve_package(data.get('package') if data else None, snapshot=cfg)
         spec_scope = consumer.get_spec_scope(snapshot=cfg)
         hooks = {event: len(consumer.get_hooks(event, snapshot=cfg)) for event in ('after_create', 'after_start', 'after_deactivate', 'after_archive')}
     ignored = []
@@ -98,9 +73,8 @@ def collect(scope: dict, snapshots: dict, env_developer: str | None) -> dict:
     phase = filter_platform(phase_index_from_text(workflow_text or ''), 'pi')
     workspace_text, workspace_error = text('workspace')
     return {
-        'current': payload,
         'configuration': {'readError': cfg_error, 'parserIssues': parser_issues[:64], 'ignored': ignored[:64], 'limits': limits,
-                          'journalLines': journal, 'autoCommit': auto_commit, 'packageCount': len(packages or {}), 'selectedPackage': bool(selected_package),
+                          'journalLines': journal, 'autoCommit': auto_commit, 'packageCount': len(packages or {}),
                           'specScopeKind': 'list' if isinstance(spec_scope, list) else 'string' if isinstance(spec_scope, str) else 'default', 'hooks': hooks},
         'identity': {'developer': developer, 'source': 'environment' if env_developer else 'local' if developer else 'unresolved',
                      'error': identity_error, 'workspace': bool(workspace_text), 'workspaceError': workspace_error},

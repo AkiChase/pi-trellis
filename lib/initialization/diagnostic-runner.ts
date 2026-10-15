@@ -5,14 +5,10 @@ export const PROCESS_LIMITS = Object.freeze({ stream: 256 * 1024, stdin: 8 * 102
 export type ProcessState = "complete" | "spawn" | "exit" | "timeout" | "output-limit" | "input-limit" | "aborted" | "pipe" | "cleanup-unconfirmed" | "unsupported";
 export interface ProcessResult { state: ProcessState; stdout: Buffer; stderr: Buffer; exitCode: number | null; pid?: number; ownedPidGone: boolean }
 /** Diagnostic-only environment; never edits the shared host environment. */
-export function diagnosticEnvironment(contextId?: string, developer?: string, inherited: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+export function diagnosticEnvironment(developer?: string, inherited: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
 	const env: NodeJS.ProcessEnv = {};
 	for (const key of ["PATH", "SystemRoot", "SYSTEMROOT", "WINDIR", "LANG", "LC_ALL", "LC_CTYPE", "COMSPEC", "PATHEXT"]) if (inherited[key] !== undefined) env[key] = inherited[key];
 	env.GIT_OPTIONAL_LOCKS = "0";
-	if (contextId !== undefined) {
-		if (!/^[A-Za-z0-9_-]{1,128}$/.test(contextId)) throw Error("Invalid explicit diagnostic context key");
-		env.TRELLIS_CONTEXT_ID = contextId;
-	}
 	if (developer !== undefined) env.TRELLIS_DEVELOPER = developer;
 	return env;
 }

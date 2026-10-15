@@ -89,16 +89,16 @@ for(const kind of ['ready','manifest-less','empty manifest','incomplete','manage
  if(kind==='managed target')f.put('.trellis/.runtime/pi-trellis/binding.json','{}');
  if(kind==='symlink marker')symlinkSync('missing',join(f.root,'.trellis'));
  const calls=spySubprocesses(t),before=snapshot(f.root);f.put('.git/index',Buffer.from([0,255,4,3]));if(kind!=='symlink marker')f.put('.trellis/.runtime/sessions/own.json','{"current_task":".trellis/tasks/keep"}');const guarded=snapshot(f.root);f.selections.push('Check');await f.run('');
- const report=f.notices.at(-1).text;assert.match(report,/Trellis Check ·/);assert.match(report,/Current-context runtime probe blocked/);assert.match(report,/Read-only: no files changed/);
+ const report=f.notices.at(-1).text;assert.match(report,/Trellis Check ·/);assert.match(report,/Runtime probe blocked/);assert.match(report,/Read-only: no files changed/);
  if(kind==='empty manifest')assert.match(report,/File is empty; expected JSON/);
  if(kind==='incomplete')assert.match(report,/incomplete/);
- if(kind==='managed target')assert.match(report,/pointer check blocked/);
+ if(kind==='managed target')assert.match(report,/managed task worktree/);
  if(kind==='symlink marker')assert.match(report,/symlinked/);
  assert.ok(onlyIsolatedProbe(calls),JSON.stringify(calls));assert.deepEqual(snapshot(f.root),guarded);assert.ok(Object.keys(before).every(path=>JSON.stringify(guarded[path])===JSON.stringify(before[path])));assert.equal(f.refreshes,0);assert.equal(f.reloads,0);assert.equal(f.messages.length,0);
 });
 
 test('manifest-less Check never runs adoption/project Python/Git and preserves independent failures',async t=>{
  const f=fixture(t);f.put('.trellis/workflow.md','legacy');f.put('.pi/settings.json','{broken');const before=snapshot(f.root),calls=spySubprocesses(t);
- f.selections.push('Check');await f.run('');assert.match(f.notices.at(-1).text,/No managed project manifest/);assert.match(f.notices.at(-1).text,/Invalid configuration JSON/);assert.match(f.notices.at(-1).text,/Current-context runtime probe blocked/);
+ f.selections.push('Check');await f.run('');assert.match(f.notices.at(-1).text,/No managed project manifest/);assert.match(f.notices.at(-1).text,/Invalid configuration JSON/);assert.match(f.notices.at(-1).text,/Runtime probe blocked/);
  assert.ok(onlyIsolatedProbe(calls),JSON.stringify(calls));assert.equal(f.notices.length,1);assert.deepEqual(snapshot(f.root),before);assert.equal(f.refreshes,0);assert.equal(f.reloads,0);
 });

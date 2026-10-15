@@ -7,7 +7,7 @@ import { applyResourcePlan, read, resourcePlan, templatePlan, applyTemplatePlan,
 import { initializationRoot } from "../project-state.ts";
 import { inspect, plan, apply, checkedPath, packageResources, defaultTemplates, verifyRuntime, validateUsername, type Inspection, type InitPlan } from "./engine.ts";
 import { runDiagnostics } from "./diagnostic-runtime.ts";
-import { collectDiagnostics, diagnosticExecutionRoot, formatDiagnostics, type DiagnosticScope } from "./diagnostics.ts";
+import { collectDiagnostics, formatDiagnostics, type DiagnosticScope } from "./diagnostics.ts";
 
 export const INIT_HELP = "Usage: /trellis-init — no arguments. Choose an operation, Check, Help or Cancel in the native menu.\nInitializes a new project, adopts an existing manifest-less project, or sets up identity on a supported clone. Usernames are selected or entered in the native UI.\nCheck reports bounded static facts and isolated verified-deployment shared-consumer probes in one read-only report. Missing/old/invalid runtime blocks project code; effective configuration fallbacks are visible. Cross-root worktree identity and loaded host state remain unverified.\nAll writes require native UI confirmation. Managed resources can be updated without resetting user data. Apply template explicitly replaces selected Workflow/Spec documents with backups. No force, active task selection, hooks, model turn, installation or Git changes.";
 const MIGRATION_NOTICE = "/trellis-init no longer accepts arguments (including --user, --check and --help). Run /trellis-init without arguments, then choose an operation, Check or Help. Select or enter the username in the native UI. No inspection or changes were performed.";
@@ -142,10 +142,9 @@ async function applyTemplates(ctx: ExtensionCommandContext, root: string, notify
 	notify(`Template applied.${backup ? `\nBackup: ${backup}` : " No files changed."}`);
 	return true;
 }
-export type GetDiagnosticScope = (ctx: ExtensionCommandContext, root: string) => Omit<DiagnosticScope, "cwd">;
 /** Optional parent lifecycle wrapper may suppress stale publication by returning undefined. */
-export type RunDiagnosticCheck = (ctx: ExtensionCommandContext, scope: DiagnosticScope, options: { signal?: AbortSignal; scopeError?: string }) => Promise<import("./diagnostics.ts").DiagnosticResult | undefined>;
-export function registerInitCommand(pi: ExtensionAPI, refresh: (ctx: ExtensionCommandContext, root: string) => Promise<void>, getDiagnosticScope?: GetDiagnosticScope, runCheck?: RunDiagnosticCheck): void {
+export type RunDiagnosticCheck = (ctx: ExtensionCommandContext, scope: DiagnosticScope, options: { signal?: AbortSignal }) => Promise<import("./diagnostics.ts").DiagnosticResult | undefined>;
+export function registerInitCommand(pi: ExtensionAPI, refresh: (ctx: ExtensionCommandContext, root: string) => Promise<void>, runCheck?: RunDiagnosticCheck): void {
 	pi.registerCommand("trellis-init", {
 		description: "Open Pi Trellis initialization, read-only Check and Help menu (no arguments)",
 		handler: async (args, ctx) => {
@@ -160,13 +159,9 @@ export function registerInitCommand(pi: ExtensionAPI, refresh: (ctx: ExtensionCo
 				const choice = await ctx.ui.select(boundedDialog(statusSummary(snapshot.state)), [...snapshot.operations, "Check", "Help", "Cancel"]);
 				if (choice === "Help") { notify(INIT_HELP); return; }
 				if (choice === "Check") {
-					let scope: DiagnosticScope = { cwd: ctx.cwd }, scopeError: string | undefined;
-					try { if (getDiagnosticScope) scope = { ...getDiagnosticScope(ctx, diagnosticExecutionRoot(ctx.cwd)), cwd: ctx.cwd }; }
-					catch (error) {
-						// Preserve the cause, but never borrow a key/root after resolver failure.
-						scopeError = error instanceof Error ? error.message : "Current-session resolver failed";
-					}
-					const result = await (runCheck ? runCheck(ctx, scope, { scopeError, signal: ctx.signal }) : runDiagnostics(scope, { scopeError, signal: ctx.signal }));
+					// Check inspects the project deployment only; no session or task identity is consulted.
+					const scope: DiagnosticScope = { cwd: ctx.cwd, isProjectTrusted: typeof ctx.isProjectTrusted === "function" && ctx.isProjectTrusted() };
+					const result = await (runCheck ? runCheck(ctx, scope, { signal: ctx.signal }) : runDiagnostics(scope, { signal: ctx.signal }));
 					if (result) notify(formatDiagnostics(result));
 					return;
 				}

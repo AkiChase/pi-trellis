@@ -32,7 +32,9 @@
 
 验收：A2 配置/上下文真实能力、A4 runtime、A5 source gate、A6 runner/import 防护、A7/A8；不能用 fake CLI 代替合法 manifest 的实际执行。
 
-## S3：相关 worktree 与最终集成
+## S3：相关 worktree 与最终集成（已取消）
+
+> 2026-10-15 用户纠正：Check 只检查部署，S3 整阶段取消；下列条目不再实施。
 
 - [ ] 在 Python 权威 worktree owner 增加 identity-only/no-materials 只读接缝，复用绑定/Git/marker 策略；不执行 readiness 管理或材料扫描。
 - [ ] 从 source 与 managed target 两种 cwd 验证 exact 相关绑定、target runtime fence、source authorityRoot 当前 child pointer，复核 scope 不一致；不读取目标旧 task/pointer，不以 binding.contextId 替代实际 memo child key。
@@ -120,3 +122,11 @@ python3 .trellis/scripts/task.py validate 10-15-init-check-diagnostics
 - 全量 `npm test` **582/582 exit0**（首次 575/582，7 项为上述旧断言）；Python 33/33；diffcheck 通过。
 - 本仓真实 smoke：304ms，正确报告部署 runtime 落后包版本→runtime probe blocked，静态问题独立保留。
 - 限制同 evidence/s2-implementation.md；S3 跨 root/worktree 身份未实施。
+
+## 范围纠正：移除当前任务/会话检查（2026-10-15）
+
+- 用户确认 Check 只查部署，选 a：删除 S1/S2 中的当前任务指针/记录检查。
+- 移除：`DiagnosticScope` 的 authorityRoot/contextId/sessionId，静态 authority/current-task/scope-resolver 项，worker 的 pointer/task 快照与 task-store 复核，runtime current payload 校验，bootstrap 的 context/session scope，Python `current` 消费；extension 的 session resolver 删除，`registerInitCommand(pi, refresh, runCheck?)`。
+- `runtime/common/active_task.py`、`task_records.py`、`task.py` 回到 ad2187b（S2 仅为 current payload 共享做的重构），runtime baseline 重算 hash 与 releaseId。
+- 托管 worktree marker 改为 project 类 warning：提示回源项目运行，运行探测阻断。
+- 测试删除指针/任务/跨 root/resolver 用例，新增读取 spy 证明不访问 sessions/tasks。

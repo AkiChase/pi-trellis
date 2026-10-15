@@ -76,11 +76,6 @@ def read_task_record(task_dir: Path, repo_root: Path) -> tuple[dict | None, str 
         data = json.loads(raw.decode("utf-8"))
     except (OSError, RuntimeError, ValueError, UnicodeError, RecursionError) as error:
         return None, f"task.json is missing, unreadable or invalid: {error}"
-    return validate_task_record(data)
-
-
-def validate_task_record(data: object) -> tuple[dict | None, str | None]:
-    """Same semantic record policy for live reads and safe snapshots."""
     if not isinstance(data, dict) or not data:
         return None, "task.json must be a nonempty object"
     if not any(k in data for k in ("id", "name", "title", "status")):

@@ -11,7 +11,7 @@ import { collectDiagnostics, formatDiagnostics, DIAGNOSTIC_LIMITS } from '../lib
 import { registerInitCommand } from '../lib/initialization/command.ts';
 import { installRuntimeFixture } from './runtime-fixture.mjs';
 import { verifyRuntime, packageRoot } from '../lib/initialization/engine.ts';
-import trellis, { __internals } from '../extensions/trellis.ts';
+import trellis from '../extensions/trellis.ts';
 
 function fixture(t, supported=false) {
  const root=realpathSync(mkdtempSync(join(tmpdir(),'trellis-diagnostic-')));t.after(()=>rmSync(root,{recursive:true,force:true}));
@@ -19,7 +19,7 @@ function fixture(t, supported=false) {
  const put=(path,value)=>{mkdirSync(dirname(join(root,path)),{recursive:true});writeFileSync(join(root,path),typeof value==='object'&&!Buffer.isBuffer(value)?JSON.stringify(value):value);};
  const task=(ref='.trellis/tasks/own',record={id:'own',status:'planning'})=>{put(ref+'/task.json',record);return ref;};
  const pointer=(value,key='own')=>put(`.trellis/.runtime/sessions/${key}.json`,{current_task:value});
- const check=(scope={})=>collectDiagnostics({cwd:root,contextId:'own',sessionId:'visible-session',...scope});
+ const check=(scope={})=>collectDiagnostics({cwd:root,...scope});
  return {root,put,task,pointer,check};
 }
 const item=(result,id)=>result.items.find(row=>row.id===id);
@@ -40,56 +40,30 @@ function guards(t,{forbidden=[],allowDiagnostic=false}={}) {
 }
 
 test('supported static report is short, no normal hashes/file inventory and no runtime health claim',t=>{
- const f=fixture(t,true);assert.ok(verifyRuntime(f.root));const before=snapshot(f.root),g=guards(t);
+ const f=fixture(t,true);f.pointer(f.task());assert.ok(verifyRuntime(f.root));const before=snapshot(f.root),g=guards(t,{forbidden:[join(f.root,'.trellis/.runtime/sessions'),join(f.root,'.trellis/tasks')]});
  const r=f.check(),report=formatDiagnostics(r);g.restore();
- assert.equal(item(r,'package').status,'pass');assert.equal(item(r,'manifest').status,'pass');assert.equal(item(r,'inventory:runtime').status,'pass');assert.equal(item(r,'documents').status,'pass');assert.equal(item(r,'current-task').status,'pass');assert.match(report,/No current task/);
- assert.equal(item(r,'runtime-probe').status,'blocked');assert.equal(item(r,'effective-config').status,'skipped');assert.equal(item(r,'worktree-probe').status,'skipped');assert.doesNotMatch(report,/All checks passed|allHealthy|[a-f0-9]{64}|scripts\/task\.py/);assert.ok(Buffer.byteLength(report)<5000);assert.equal(report.match(/Trellis Check ·/g).length,1);assert.deepEqual(g.calls,[]);assert.deepEqual(snapshot(f.root),before);
+ assert.equal(item(r,'package').status,'pass');assert.equal(item(r,'manifest').status,'pass');assert.equal(item(r,'inventory:runtime').status,'pass');assert.equal(item(r,'documents').status,'pass');assert.equal(item(r,'current-task'),undefined);assert.doesNotMatch(report,/current task|session/i);assert.match(report,/Scope: Trellis deployment in this project/);
+ assert.equal(item(r,'runtime-probe').status,'blocked');assert.equal(item(r,'effective-config').status,'skipped');assert.equal(item(r,'worktree-probe'),undefined);assert.doesNotMatch(report,/All checks passed|allHealthy|[a-f0-9]{64}|scripts\/task\.py/);assert.ok(Buffer.byteLength(report)<5000);assert.equal(report.match(/Trellis Check ·/g).length,1);assert.deepEqual(g.calls,[]);assert.deepEqual(snapshot(f.root),before);
 });
 
 test('fresh project stops at nearest Git and does not report every missing runtime file',t=>{
  const f=fixture(t);mkdirSync(join(f.root,'.git'));const child=join(f.root,'nested');mkdirSync(child);const g=guards(t);const r=f.check({cwd:child});g.restore();
- assert.equal(r.scope.executionRoot,f.root);assert.equal(item(r,'project').summary,'Not initialized');assert.equal(item(r,'current-task').status,'skipped');assert.ok(!r.items.some(i=>i.id.startsWith('inventory:')));assert.doesNotMatch(formatDiagnostics(r),/Missing:|not initialized.*failure/i);assert.deepEqual(g.calls,[]);
+ assert.equal(r.scope.executionRoot,f.root);assert.equal(item(r,'project').summary,'Not initialized');assert.ok(!r.items.some(i=>i.id.startsWith('inventory:')));assert.doesNotMatch(formatDiagnostics(r),/Missing:|not initialized.*failure/i);assert.deepEqual(g.calls,[]);
 });
 
-test('malformed manifest, invalid JSON config and corrupt own pointer accumulate independently, zero subprocess/writes',t=>{
+test('malformed manifest and invalid JSON config accumulate independently; session/task state is never read',t=>{
  const f=fixture(t,true);f.put('.trellis/.pi-trellis.json','{bad');f.put('.pi/settings.json','{"secret":"do-not-echo",bad}');f.put('.trellis/.runtime/sessions/own.json','broken');f.put('.git/index',Buffer.from([0,255,1]));f.pointer(f.task('.trellis/tasks/foreign'),'foreign');
- const before=snapshot(f.root),g=guards(t,{forbidden:[join(f.root,'.trellis/.runtime/sessions/foreign.json'),join(f.root,'.trellis/tasks/foreign')]});const r=f.check();g.restore();
- assert.equal(item(r,'manifest').status,'issue');assert.equal(item(r,`config:${f.root}:.pi/settings.json`).status,'issue');assert.equal(item(r,'current-task').status,'issue');assert.equal(item(r,'inventory:runtime').status,'pass');assert.doesNotMatch(formatDiagnostics(r),/do-not-echo/);assert.deepEqual(g.calls,[]);assert.deepEqual(snapshot(f.root),before);
+ const before=snapshot(f.root),g=guards(t,{forbidden:[join(f.root,'.trellis/.runtime/sessions'),join(f.root,'.trellis/tasks')]});const r=f.check();g.restore();
+ assert.equal(item(r,'manifest').status,'issue');assert.equal(item(r,`config:${f.root}:.pi/settings.json`).status,'issue');assert.equal(item(r,'inventory:runtime').status,'pass');assert.doesNotMatch(formatDiagnostics(r),/do-not-echo/);assert.deepEqual(g.calls,[]);assert.deepEqual(snapshot(f.root),before);
 });
 
-for(const kind of ['absent','null','empty','object-empty','malformed','array','number','missing-task','invalid-task'])test(`own pointer ${kind} is classified without borrowing a foreign session`,t=>{
- const f=fixture(t,true);const foreign=f.task('.trellis/tasks/foreign');f.pointer(foreign,'foreign');
- if(kind==='null')f.pointer(null);if(kind==='empty')f.pointer('');if(kind==='object-empty')f.put('.trellis/.runtime/sessions/own.json','{}');if(kind==='malformed')f.put('.trellis/.runtime/sessions/own.json','{');if(kind==='array')f.put('.trellis/.runtime/sessions/own.json','[]');if(kind==='number')f.pointer(42);if(kind==='missing-task')f.pointer('.trellis/tasks/missing');if(kind==='invalid-task')f.pointer(f.task('.trellis/tasks/own',{}));
- const g=guards(t,{forbidden:[join(f.root,'.trellis/.runtime/sessions/foreign.json'),join(f.root,foreign)]});const r=f.check();g.restore();
- assert.equal(item(r,'current-task').status,['absent','null','empty','object-empty'].includes(kind)?'pass':'issue');assert.deepEqual(g.calls,[]);
-});
-
-test('exact planning record ignores empty unused JSONL/materials and explicit child/pinned keys select only their own pointer',t=>{
- const f=fixture(t,true);const ref=f.task();f.pointer(ref,'actual-child');f.put(ref+'/implement.jsonl','');f.put(ref+'/prd.md','not part of Check');f.pointer('.trellis/tasks/invalid','own');
- const g=guards(t,{forbidden:[join(f.root,ref,'prd.md'),join(f.root,ref,'implement.jsonl'),join(f.root,'.trellis/.runtime/sessions/own.json')]});const r=f.check({contextId:'actual-child'});g.restore();assert.equal(r.scope.taskRef,ref);assert.equal(item(r,'current-task').status,'pass');assert.match(formatDiagnostics(r),/Planning is legal/);assert.deepEqual(g.calls,[]);
-});
-
-for(const value of [{},{title:42},{status:''},{name:'x'.repeat(8193)},[],{foo:'not-task'}])test(`task record semantic validation rejects ${JSON.stringify(value).slice(0,50)}`,t=>{
- const f=fixture(t,true);f.pointer(f.task('.trellis/tasks/own',value));assert.equal(item(f.check(),'current-task').status,'issue');
-});
-
-test('external source top-level task store is allowed; internal task/record redirects are rejected',t=>{
- const f=fixture(t,true),external=fixture(t);external.put('own/task.json',{id:'external',status:'planning'});rmSync(join(f.root,'.trellis/tasks'),{recursive:true});symlinkSync(external.root,join(f.root,'.trellis/tasks'));f.pointer('.trellis/tasks/own');assert.equal(item(f.check(),'current-task').status,'pass');
- const victim=fixture(t);victim.put('task.json',{id:'victim'});symlinkSync(victim.root,join(external.root,'escape'));f.pointer('.trellis/tasks/escape');assert.equal(item(f.check(),'current-task').status,'issue');
- f.pointer('.trellis/tasks/own');rmSync(join(external.root,'own/task.json'));symlinkSync(join(victim.root,'task.json'),join(external.root,'own/task.json'));const before=snapshot(victim.root),g=guards(t,{forbidden:[victim.root]});assert.equal(item(f.check(),'current-task').status,'issue');g.restore();assert.deepEqual(snapshot(victim.root),before);
-});
-
-for(const path of ['.trellis/.runtime/sessions','.trellis/.runtime/sessions/own.json','.pi/settings.json'])test(`symlink ${path} rejects external reads and preserves victim`,t=>{
- const f=fixture(t,true),victim=fixture(t);victim.put('own.json',{current_task:null});victim.put('settings.json',{});mkdirSync(dirname(join(f.root,path)),{recursive:true});symlinkSync(path.endsWith('own.json')?join(victim.root,'own.json'):path.endsWith('settings.json')?join(victim.root,'settings.json'):victim.root,join(f.root,path));
+for(const path of ['.pi/settings.json','.trellis/config.yaml'])test(`symlink ${path} rejects external reads and preserves victim`,t=>{
+ const f=fixture(t,true),victim=fixture(t);victim.put('target',{});mkdirSync(dirname(join(f.root,path)),{recursive:true});rmSync(join(f.root,path),{force:true});symlinkSync(join(victim.root,'target'),join(f.root,path));
  const before=snapshot(victim.root),g=guards(t,{forbidden:[victim.root]});const r=f.check();g.restore();assert.ok(r.items.some(i=>i.status==='issue'&&i.evidence.some(e=>e.includes(path))));assert.deepEqual(snapshot(victim.root),before);
 });
 
-for(const bytes of [Buffer.from([0xff]),Buffer.from('nul\0bad'),Buffer.alloc(1024*1024+1,32)])test(`invalid pointer text bytes (${bytes.length}) bounded before parse`,t=>{
- const f=fixture(t,true);f.put('.trellis/.runtime/sessions/own.json',bytes);assert.equal(item(f.check(),'current-task').status,'issue');
-});
-
 test('special/directory and denied descriptors fail explicitly, independent configuration still runs',t=>{
- const f=fixture(t,true);mkdirSync(join(f.root,'.trellis/.runtime/sessions/own.json'),{recursive:true});f.put('.pi/settings.json','{');let r=f.check();assert.equal(item(r,'current-task').status,'issue');assert.equal(item(r,`config:${f.root}:.pi/settings.json`).status,'issue');
+ const f=fixture(t,true);mkdirSync(join(f.root,'.pi/settings.json'),{recursive:true});let r=f.check();assert.equal(item(r,`config:${f.root}:.pi/settings.json`).status,'issue');assert.equal(item(r,'inventory:runtime').status,'pass');
  const open=fs.openSync;t.mock.method(fs,'openSync',(path,...args)=>{if(String(path).endsWith('/.trellis/.developer'))throw Object.assign(Error('Permission denied'),{code:'EACCES'});return open(path,...args);});syncBuiltinESMExports();t.after(()=>{t.mock.restoreAll();syncBuiltinESMExports();});r=f.check();assert.equal(item(r,'developer').status,'issue');assert.match(item(r,'developer').summary,/Permission denied/);
 });
 
@@ -106,17 +80,6 @@ test('legal empty resource lock and completed audit never execute recovery or re
  const op=JSON.parse(readFileSync(join(f.root,'.trellis/.runtime/init-operation.json')));op.status='incomplete';f.put('.trellis/.runtime/init-operation.json',op);assert.equal(item(f.check(),'operation').status,'issue');op.plan.root='/foreign';f.put('.trellis/.runtime/init-operation.json',op);assert.equal(item(f.check(),'operation').status,'issue');
 });
 
-test('cross-root source hints never stat/open another source before native identity proof',t=>{
- const f=fixture(t,true),source=fixture(t,true);source.pointer(source.task(),'actual-child');const original=fs.lstatSync,real=fs.realpathSync;
- t.mock.method(fs,'lstatSync',(path,...args)=>{assert.ok(!String(path).startsWith(source.root),'cross-root stat forbidden');return original(path,...args);});t.mock.method(fs,'realpathSync',(path,...args)=>{assert.ok(!String(path).startsWith(source.root),'cross-root realpath forbidden');return real(path,...args);});syncBuiltinESMExports();
- const g=guards(t,{forbidden:[source.root]});const r=f.check({authorityRoot:source.root,contextId:'actual-child'});g.restore();assert.equal(item(r,'authority').status,'blocked');assert.match(item(r,'authority').summary,/Cross-root authority is blocked/);assert.equal(item(r,'current-task').status,'blocked');assert.ok(!r.scope.taskRef);assert.deepEqual(g.calls,[]);
-});
-
-for(const resolver of [undefined,()=>{throw Error('bad memo');},()=>({contextId:'invalid/key'})])test(`menu Check missing/failed/invalid resolver blocks pointer, does not infer env or session`,async t=>{
- const f=fixture(t,true);f.pointer(f.task());let command;const notices=[];registerInitCommand({registerCommand:(_n,v)=>command=v},async()=>assert.fail('refresh forbidden'),resolver);
- const g=guards(t,{allowDiagnostic:true,forbidden:[join(f.root,'.trellis/.runtime/sessions/own.json')]});await command.handler('',{cwd:f.root,hasUI:true,sessionManager:{getSessionId:()=>assert.fail('no key inference')},reload:()=>assert.fail('no reload'),ui:{select:async()=> 'Check',notify:text=>notices.push(text)}});g.restore();assert.equal(notices.length,1);assert.match(notices[0],/pointer check blocked/);assert.deepEqual(g.calls,[]);
-});
-
 test('package descriptor malformed source inventory is separate from project errors and never reads unlisted victim paths',t=>{
  const f=fixture(t,true),read=fs.readSync,open=fs.openSync,fds=new Set();
  t.mock.method(fs,'openSync',(path,...args)=>{const fd=open(path,...args);if(String(path)===join(packageRoot,'resources/runtime-baseline.json'))fds.add(fd);return fd;});
@@ -125,9 +88,9 @@ test('package descriptor malformed source inventory is separate from project err
 });
 
 test('cooperative cancelled input and bounded formatter retain honest omission/runtime boundaries',t=>{
- const f=fixture(t,true),controller=new AbortController();controller.abort();const r=collectDiagnostics({cwd:f.root,contextId:'own'},{signal:controller.signal});assert.ok(r.items.some(i=>i.status==='cancelled'));assert.match(formatDiagnostics(r),/Cancelled/);
+ const f=fixture(t,true),controller=new AbortController();controller.abort();const r=collectDiagnostics({cwd:f.root},{signal:controller.signal});assert.ok(r.items.some(i=>i.status==='cancelled'));assert.match(formatDiagnostics(r),/Cancelled/);
  const item={id:'bad',category:'configuration',status:'issue',severity:'error',summary:'bad\x1b[31m\n'+ '字'.repeat(500),evidence:['字'.repeat(500)],impact:'字'.repeat(500),advice:'字'.repeat(500)};
- const report=formatDiagnostics({...r,items:Array.from({length:64},()=>item),omitted:2});assert.ok(Buffer.byteLength(report)<=DIAGNOSTIC_LIMITS.report);assert.match(report,/omitted by the report budget/);assert.match(report,/no hard 20-second deadline/);assert.doesNotMatch(report,/\x1b/);
+ const report=formatDiagnostics({...r,items:Array.from({length:64},()=>item),omitted:2});assert.ok(Buffer.byteLength(report)<=DIAGNOSTIC_LIMITS.report);assert.match(report,/omitted by the report budget/);assert.match(report,/no execution probe/);assert.doesNotMatch(report,/\x1b/);
 });
 
 for(const mutation of [m=>{m.schemaVersion=1;},m=>{delete m.files['.trellis/scripts/task.py'];},m=>{m.files['.trellis/scripts/evil.py']=m.files['.trellis/scripts/task.py'];delete m.files['.trellis/scripts/task.py'];},m=>{m.files['.trellis/scripts/task.py'].source='../victim';},m=>{m.templates['.trellis/workflow.md'].origin='preserved-project';m.templates['.trellis/workflow.md'].source={kind:'project-snapshot',revision:'/victim'};},m=>{m.extra=true;}])test('static manifest projection rejects strict engine provenance attack without authorizing execution',t=>{
@@ -140,13 +103,13 @@ test('old release is distinct from missing/empty manifest and never grants curre
 
 test('FIFO and descriptor replacement cannot hang or authorize reads',t=>{
  if(process.platform==='win32'){t.skip('POSIX FIFO fixture');return;}
- const f=fixture(t,true),file=join(f.root,'.trellis/.runtime/sessions/own.json');mkdirSync(dirname(file),{recursive:true});childProcess.execFileSync('mkfifo',[file]);let g=guards(t);assert.equal(item(f.check(),'current-task').status,'issue');g.restore();
- rmSync(file);f.pointer(null);const open=fs.openSync;let swapped=false;
- t.mock.method(fs,'openSync',(path,...args)=>{if(String(path)===file&&!swapped){swapped=true;rmSync(file);childProcess.execFileSync('mkfifo',[file]);}return open(path,...args);});syncBuiltinESMExports();t.after(()=>{t.mock.restoreAll();syncBuiltinESMExports();});assert.equal(item(f.check(),'current-task').status,'issue');assert.ok(swapped);
+ const f=fixture(t,true),file=join(f.root,'.pi/settings.json'),id=`config:${f.root}:.pi/settings.json`;mkdirSync(dirname(file),{recursive:true});childProcess.execFileSync('mkfifo',[file]);let g=guards(t);assert.equal(item(f.check(),id).status,'issue');g.restore();
+ rmSync(file);f.put('.pi/settings.json','{}');const open=fs.openSync;let swapped=false;
+ t.mock.method(fs,'openSync',(path,...args)=>{if(String(path)===file&&!swapped){swapped=true;rmSync(file);childProcess.execFileSync('mkfifo',[file]);}return open(path,...args);});syncBuiltinESMExports();t.after(()=>{t.mock.restoreAll();syncBuiltinESMExports();});assert.equal(item(f.check(),id).status,'issue');assert.ok(swapped);
 });
 
-test('text/config read totals are shared and oversized task records fail without broadening scope',t=>{
- const f=fixture(t,true);f.put('.trellis/config.yaml','x'.repeat(DIAGNOSTIC_LIMITS.file));f.put('.pi/pi-trellis.json',' '.repeat(DIAGNOSTIC_LIMITS.file-2)+'{}');f.put('.pi/settings.json','{}');f.pointer(f.task('.trellis/tasks/own',{id:'own',description:'x'.repeat(DIAGNOSTIC_LIMITS.record)}));const r=f.check();assert.ok(r.items.some(i=>/byte budget exceeded/.test(i.summary)));assert.equal(item(r,'current-task').status,'issue');assert.equal(item(r,'runtime-probe').status,'blocked');
+test('text/config read totals are shared without broadening scope',t=>{
+ const f=fixture(t,true);f.put('.trellis/config.yaml','x'.repeat(DIAGNOSTIC_LIMITS.file));f.put('.pi/pi-trellis.json',' '.repeat(DIAGNOSTIC_LIMITS.file-2)+'{}');f.put('.pi/settings.json','{}');const r=f.check();assert.ok(r.items.some(i=>/byte budget exceeded/.test(i.summary)));assert.equal(item(r,'runtime-probe').status,'blocked');
 });
 
 test('package runtime byte drift is detected separately through the bounded descriptor reader',t=>{
@@ -155,28 +118,21 @@ test('package runtime byte drift is detected separately through the bounded desc
  t.mock.method(fs,'readSync',(fd,buffer,...args)=>{const count=read(fd,buffer,...args);if(fds.has(fd)&&count){buffer[args[0]]^=1;fds.delete(fd);}return count;});syncBuiltinESMExports();t.after(()=>{t.mock.restoreAll();syncBuiltinESMExports();});const r=f.check();assert.equal(item(r,'package').status,'issue');assert.match(item(r,'package').summary,/Package runtime hash mismatch/);assert.equal(item(r,'manifest').status,'blocked');assert.equal(item(r,'runtime-probe').status,'blocked');
 });
 
-test('menu resolver receives discovered current root and explicit own key; Check preserves pointers/index/config/modes',async t=>{
- const f=fixture(t,true),ref=f.task();f.pointer(ref,'caller-key');f.pointer('.trellis/tasks/foreign','foreign');f.put('.git/index',Buffer.from([9,0,255]));f.put('.pi/settings.json','{}');const sub=join(f.root,'src');mkdirSync(sub);let command,seen;const notices=[];
- registerInitCommand({registerCommand:(_n,v)=>command=v},async()=>assert.fail('refresh forbidden'),(ctx,root)=>{seen=[ctx.cwd,root];return {authorityRoot:root,contextId:'caller-key',sessionId:'session-visible',isProjectTrusted:false};});
- const before=snapshot(f.root),g=guards(t,{allowDiagnostic:true,forbidden:[join(f.root,'.trellis/.runtime/sessions/foreign.json')]});await command.handler('',{cwd:sub,hasUI:true,reload:()=>assert.fail('reload forbidden'),ui:{select:async()=> 'Check',notify:text=>notices.push(text)}});g.restore();assert.deepEqual(seen,[sub,f.root]);assert.equal(notices.length,1);assert.match(notices[0],/Own current task record verified/);assert.match(notices[0],/Current task: .trellis\/tasks\/own/);assert.deepEqual(g.calls,[]);assert.deepEqual(snapshot(f.root),before);
+test('menu Check discovers project root from a subdirectory and preserves pointers/index/config/modes without reading session state',async t=>{
+ const f=fixture(t,true),ref=f.task();f.pointer(ref,'caller-key');f.put('.git/index',Buffer.from([9,0,255]));f.put('.pi/settings.json','{}');const sub=join(f.root,'src');mkdirSync(sub);let command;const notices=[];
+ registerInitCommand({registerCommand:(_n,v)=>command=v},async()=>assert.fail('refresh forbidden'));
+ const before=snapshot(f.root),g=guards(t,{allowDiagnostic:true,forbidden:[join(f.root,'.trellis/.runtime/sessions'),join(f.root,'.trellis/tasks')]});await command.handler('',{cwd:sub,hasUI:true,sessionManager:{getSessionId:()=>assert.fail('no session identity')},reload:()=>assert.fail('reload forbidden'),ui:{select:async()=> 'Check',notify:text=>notices.push(text)}});g.restore();assert.equal(notices.length,1);assert.match(notices[0],/Project: /);assert.doesNotMatch(notices[0],/Current task/);assert.deepEqual(g.calls,[]);assert.deepEqual(snapshot(f.root),before);
 });
 
 test('cancellation during fixed inventory never leaves a passed inventory item or escapes collector',t=>{
  const f=fixture(t,true),controller=new AbortController(),open=fs.openSync,read=fs.readSync;const fds=new Set();
  t.mock.method(fs,'openSync',(path,...args)=>{const fd=open(path,...args);if(String(path)===join(f.root,'.trellis/scripts/task.py'))fds.add(fd);return fd;});
- t.mock.method(fs,'readSync',(fd,...args)=>{const count=read(fd,...args);if(fds.has(fd)){controller.abort();fds.delete(fd);}return count;});syncBuiltinESMExports();t.after(()=>{t.mock.restoreAll();syncBuiltinESMExports();});const r=collectDiagnostics({cwd:f.root,contextId:'own'},{signal:controller.signal});assert.equal(item(r,'inventory:runtime').status,'cancelled');assert.equal(item(r,'inventory:agent').status,'cancelled');assert.ok(!r.items.some(i=>i.id==='inventory:runtime'&&i.status==='pass'));assert.match(formatDiagnostics(r),/Cancelled/);
+ t.mock.method(fs,'readSync',(fd,...args)=>{const count=read(fd,...args);if(fds.has(fd)){controller.abort();fds.delete(fd);}return count;});syncBuiltinESMExports();t.after(()=>{t.mock.restoreAll();syncBuiltinESMExports();});const r=collectDiagnostics({cwd:f.root},{signal:controller.signal});assert.equal(item(r,'inventory:runtime').status,'cancelled');assert.equal(item(r,'inventory:agent').status,'cancelled');assert.ok(!r.items.some(i=>i.id==='inventory:runtime'&&i.status==='pass'));assert.match(formatDiagnostics(r),/Cancelled/);
 });
 
-test('fresh project with explicit resolver remains not-applicable; unsafe target marker cannot fall through to local pointer',t=>{
- const fresh=fixture(t);assert.equal(item(fresh.check({authorityRoot:fresh.root}),'current-task').status,'skipped');
- const f=fixture(t,true),victim=fixture(t);f.pointer(f.task());mkdirSync(join(f.root,'.trellis/.runtime/pi-trellis'),{recursive:true});symlinkSync(join(victim.root,'missing'),join(f.root,'.trellis/.runtime/pi-trellis/binding.json'));const g=guards(t,{forbidden:[victim.root,join(f.root,'.trellis/.runtime/sessions/own.json')]});const r=f.check();g.restore();assert.equal(item(r,'marker').status,'issue');assert.equal(item(r,'current-task').status,'blocked');
-});
-
-test('resolver failure retains its bounded cause without reading any pointer',async t=>{
- const f=fixture(t,true);f.pointer(f.task());let command;const notices=[];
- registerInitCommand({registerCommand:(_n,v)=>command=v},async()=>assert.fail('refresh'),()=>{throw Error('Managed startup authority failed: binding mismatch\u202e\x1b[31m');});
- const g=guards(t,{allowDiagnostic:true,forbidden:[join(f.root,'.trellis/.runtime/sessions/own.json')]});await command.handler('',{cwd:f.root,hasUI:true,ui:{select:async()=> 'Check',notify:text=>notices.push(text)}});g.restore();
- assert.equal(notices.length,1);assert.match(notices[0],/Managed startup authority failed: binding mismatch/);assert.doesNotMatch(notices[0],/[\u202e\x1b]/);assert.match(notices[0],/pointer check blocked/);
+test('managed task worktree marker is reported and blocks runtime probes from that checkout',t=>{
+ const f=fixture(t,true),victim=fixture(t);mkdirSync(join(f.root,'.trellis/.runtime/pi-trellis'),{recursive:true});symlinkSync(join(victim.root,'missing'),join(f.root,'.trellis/.runtime/pi-trellis/binding.json'));const g=guards(t,{forbidden:[victim.root]});const r=f.check();g.restore();assert.equal(item(r,'marker').status,'issue');
+ const m=fixture(t,true);m.put('.trellis/.runtime/pi-trellis/binding.json','{}');const r2=m.check();assert.equal(item(r2,'marker').status,'issue');assert.match(item(r2,'marker').summary,/managed task worktree/);
 });
 
 test('package failure never hides malformed manifest or missing required documents',t=>{
@@ -188,10 +144,6 @@ test('package failure never hides malformed manifest or missing required documen
 test('unsafe non-required template route cannot masquerade as a valid runtime snapshot',t=>{
  const f=fixture(t,true),victim=fixture(t);rmSync(join(f.root,'.trellis/.gitignore'));symlinkSync(join(victim.root,'missing'),join(f.root,'.trellis/.gitignore'));
  assert.throws(()=>verifyRuntime(f.root));const g=guards(t,{forbidden:[victim.root]});const r=f.check();g.restore();assert.equal(item(r,'template-routes').status,'issue');assert.equal(r.facts.runtimeStaticValid,false);
-});
-
-test('Python whitespace-only task identity fields are invalid in the static projection',t=>{
- const f=fixture(t,true);f.pointer(f.task('.trellis/tasks/own',{id:'\u0085',status:'planning'}));assert.equal(item(f.check(),'current-task').status,'issue');
 });
 
 test('malformed completed operation plan metadata cannot pass as a valid audit envelope',t=>{
@@ -214,33 +166,12 @@ test('exhausted text budget does not drain or suppress independent fixed invento
  const r=f.check();assert.equal(item(r,'inventory:runtime').status,'pass');assert.ok(textBytes<=DIAGNOSTIC_LIMITS.text+1,`actual text bytes ${textBytes}`);assert.ok(r.items.some(i=>/byte budget exceeded/.test(i.summary)));
 });
 
-test('production extension resolver preserves two exact session keys without Python during Check',async t=>{
- const f=fixture(t,true),commands=new Map(),events=new Map(),notices=[];
- trellis({registerCommand:(name,value)=>commands.set(name,value),on:(name,value)=>events.set(name,value)});
- const ctx=name=>({cwd:f.root,hasUI:true,sessionManager:{getSessionId:()=>name,getSessionFile:()=>undefined},ui:{select:async()=> 'Check',notify:text=>notices.push(text)}});
- const a=ctx('real-a-'+f.root),b=ctx('real-b-'+f.root),aKey=__internals.contextKey(f.root,a),bKey=__internals.contextKey(f.root,b);assert.notEqual(aKey,bKey);
- f.pointer(f.task('.trellis/tasks/a'),aKey);f.pointer(f.task('.trellis/tasks/b'),bKey);
- let g=guards(t,{allowDiagnostic:true,forbidden:[join(f.root,`.trellis/.runtime/sessions/${bKey}.json`),join(f.root,'.trellis/tasks/b')]});await commands.get('trellis-init').handler('',a);g.restore();assert.match(notices.at(-1),/Current task: .trellis\/tasks\/a/);
- g=guards(t,{allowDiagnostic:true,forbidden:[join(f.root,`.trellis/.runtime/sessions/${aKey}.json`),join(f.root,'.trellis/tasks/a')]});await commands.get('trellis-init').handler('',b);g.restore();assert.match(notices.at(-1),/Current task: .trellis\/tasks\/b/);
-});
-
-test('production child authority failure retains cause and never borrows its original pointer',async t=>{
- const f=fixture(t,true),commands=new Map(),events=new Map(),notices=[];
- trellis({registerCommand:(name,value)=>commands.set(name,value),on:(name,value)=>events.set(name,value),sendMessage:()=>{}});
- const ctx={cwd:f.root,hasUI:false,sessionManager:{getSessionId:()=> 'failed-diagnostic-child-'+f.root,getSessionFile:()=>undefined},ui:{}};
- const old=__internals.contextKey(f.root,ctx);f.pointer(f.task(),old);
- await events.get('before_agent_start')({prompt:'Active task: .trellis/tasks/own\nTrellis context id: old\n\nIncomplete header',systemPromptOptions:{sections:{}}},ctx);
- const child=__internals.contextKey(f.root,ctx);assert.notEqual(child,old);
- const g=guards(t,{allowDiagnostic:true,forbidden:[join(f.root,`.trellis/.runtime/sessions/${old}.json`),join(f.root,`.trellis/.runtime/sessions/${child}.json`)]});await commands.get('trellis-init').handler('',{...ctx,hasUI:true,ui:{select:async()=> 'Check',notify:text=>notices.push(text)}});g.restore();
- assert.match(notices.at(-1),/Incomplete\/invalid source authority header/);assert.match(notices.at(-1),/pointer check blocked/);
-});
-
 test('formatter identifies omitted categories without leaking category controls',t=>{
  const f=fixture(t),r=f.check();const row={id:'issue',category:'secret-category\u202e',status:'issue',severity:'error',summary:'字'.repeat(500),evidence:Array.from({length:12},()=> '字'.repeat(500)),impact:'impact',advice:'next'};
  const report=formatDiagnostics({...r,items:Array.from({length:64},()=>row)});assert.ok(Buffer.byteLength(report)<=DIAGNOSTIC_LIMITS.report);assert.match(report,/Omitted categories: secret-category/);assert.doesNotMatch(report,/\u202e/);
 });
 
-test('parent lifecycle wrapper may suppress stale Check report without extra UI or writes',async t=>{const f=fixture(t,true);let command,calls=0,notices=0;registerInitCommand({registerCommand:(_name,v)=>command=v},async()=>assert.fail('refresh'),()=>({contextId:'own'}),async(_ctx,scope,options)=>{calls++;assert.equal(scope.contextId,'own');assert.equal(options.scopeError,undefined);return undefined;});await command.handler('',{cwd:f.root,hasUI:true,ui:{select:async()=> 'Check',notify:()=>notices++}});assert.equal(calls,1);assert.equal(notices,0);});
+test('parent lifecycle wrapper may suppress stale Check report without extra UI or writes',async t=>{const f=fixture(t,true);let command,calls=0,notices=0;registerInitCommand({registerCommand:(_name,v)=>command=v},async()=>assert.fail('refresh'),async(_ctx,scope)=>{calls++;assert.deepEqual(Object.keys(scope).sort(),['cwd','isProjectTrusted']);return undefined;});await command.handler('',{cwd:f.root,hasUI:true,ui:{select:async()=> 'Check',notify:()=>notices++}});assert.equal(calls,1);assert.equal(notices,0);});
 
 test('production Check lifecycle cancels stale runs before publishing reports',async t=>{
  const f=fixture(t,true),commands=new Map(),events=new Map(),notices=[];

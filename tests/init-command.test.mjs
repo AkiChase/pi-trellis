@@ -102,7 +102,7 @@ test('dialog core warnings stay bounded before path examples; Check is one bound
  f.selections.push('Check');await f.run('');const report=f.notices.at(-1).text;assert.ok(Buffer.byteLength(report)<=16*1024);assert.doesNotMatch(report,/legacy-299.py/);assert.match(report,/Trellis Check · Issues found/);
  f.selections.push('Adopt existing project','Cancel');await f.run('');
  for(const dialog of f.dialogs){const lines=(dialog.title??'').split('\n');assert.ok(lines.length<=14,`dialog title too tall: ${lines.length}`);}
- assert.match(f.dialogs.at(-1).title,/Legacy — left in place: 30[0-9] paths/);assert.doesNotMatch(f.dialogs.at(-1).title,/--check|Full per-path list/);assert.match(report,/Scope: current session/);assert.match(report,/Current-context runtime probe blocked/);assert.match(report,/Effective configuration/);assert.match(report,/worktree identity\/runtime not probed/);
+ assert.match(f.dialogs.at(-1).title,/Legacy — left in place: 30[0-9] paths/);assert.doesNotMatch(f.dialogs.at(-1).title,/--check|Full per-path list/);assert.match(report,/Scope: Trellis deployment in this project/);assert.match(report,/Runtime probe blocked/);assert.match(report,/Effective configuration/);assert.doesNotMatch(report,/worktree|Current task/);
  assert.ok(!existsSync(join(f.root,'.trellis/.pi-trellis.json')));
  const g=fixture(t,{selections:['Initialize project','Enter a different username'],inputs:['Dev'],confirm:true});await g.run('');
  const message=g.dialogs.find(d=>d.message).message;assert.ok(message.split('\n').length<=14,'initialization confirmation must stay bounded');assert.match(message,/additional path examples omitted/);assert.match(message,/No backups or automatic rollback/);assert.match(message,/Create: \d+/);

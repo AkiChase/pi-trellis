@@ -48,7 +48,6 @@ from common.paths import (
 )
 from common.active_task import (
     clear_active_task,
-    current_payload,
     resolve_active_task,
     resolve_context_key,
     set_active_task,
@@ -288,15 +287,21 @@ def cmd_deactivate(args: argparse.Namespace) -> int:
 def cmd_current(args: argparse.Namespace) -> int:
     repo_root = get_repo_root()
     active = resolve_active_task(repo_root)
-    data = None
+    task_obj = None
     if active.valid:
-        from common.task_records import read_task_record
+        from common.task_records import read_task_record, task_projection
         data, error = read_task_record(repo_root / active.task_path, repo_root)
         if error:
             from dataclasses import replace
             active = replace(active, task_path=None, stale=True, error=error, state="invalid-task")
+        else:
+            task_obj = {"dir": active.task_path, **task_projection(data)}
     if getattr(args, "json", False):
-        payload = current_payload(active, data if active.valid else None)
+        payload = {"current_task": task_obj, "source": active.source,
+                   "stale": active.stale, "state": active.state}
+        if active.error:
+            payload["error"] = {"message": active.error}
+            payload["raw_ref"] = active.raw_ref
         print(json.dumps(payload, ensure_ascii=False))
     elif args.source:
         print(f"Current task: {active.task_path or '(none)'}")
