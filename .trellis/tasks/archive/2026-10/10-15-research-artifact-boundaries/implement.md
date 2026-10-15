@@ -2,7 +2,7 @@
 
 ## 状态与执行边界
 
-in_progress；用户已明确授权开始实施。主会话直接修改并自检，随后独立审查，检查通过后按 workflow 做 scoped local commit。用户明确历史任务无需清理；已激活本会话任务，未操作其他会话绑定。
+实施已验收；用户已授权收尾。主会话完成直接实施、自检和独立审查，阶段提交 `60a1c04`。用户明确历史任务无需清理；仅归档本任务，不操作其他会话绑定。
 
 ## S1：完整材料契约与格式边界
 
@@ -47,4 +47,4 @@ git diff --check
 
 S1 实施、自检与独立审查完成。Python20/20、聚焦126/126、最终全量446/446；首次全量445/446为check skill哈希遗漏，补齐后重跑。独立审查发现tmux现行规范冲突，已修复并复核无blocker。详细命令、首次失败与本地资源发布记录见 [验证记录](evidence/implementation-verification.md)。
 
-本项目资源已通过支持的 guarded update 同步，当前包源码核验正常；已安装旧版插件仍可能拒绝部分Trellis命令，不绕过校验，不安装/同步已安装包/重载。历史归档任务指纹保持；其他会话planning改动不纳入提交。unused implement.jsonl保持空，不称task validate全通过。准备提交本阶段，任务保持in_progress等待用户收尾授权。
+本项目资源已通过支持的 guarded update 同步，当前包源码核验正常；已安装旧版插件仍可能拒绝部分Trellis命令，不绕过校验，不安装/同步已安装包/重载。历史归档任务指纹保持；其他会话planning改动不纳入提交。unused implement.jsonl保持空，不称task validate全通过。阶段提交为 `60a1c04`。用户已接受完成结果并授权归档与 journal；本任务在 Git `main` 分支直接实施，未采用 PR 工作流，归档使用明确的 `--skip-branch-validation`，不伪造分支或 PR。当前未提交部署资源变化保持原样，不进入收尾提交；不安装、同步已安装包、重载或 push。
