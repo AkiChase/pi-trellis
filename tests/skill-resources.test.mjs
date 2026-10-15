@@ -8,16 +8,16 @@ import { DefaultPackageManager, DefaultResourceLoader, SettingsManager } from '@
 import { adapterConfigured, projectSkillPaths } from '../lib/adapter-resources.ts';
 import { packageRoot, digest } from '../lib/initialization/engine.ts';
 
-const expected=['trellis-before-dev','trellis-brainstorm','trellis-break-loop','trellis-check','trellis-continue','trellis-finish-work','trellis-meta','trellis-spec-bootstrap','trellis-start','trellis-update-spec'].sort();
+const expected=['trellis-before-dev','trellis-brainstorm','trellis-break-loop','trellis-check','trellis-finish-work','trellis-meta','trellis-spec-bootstrap','trellis-start','trellis-update-spec'].sort();
 function fixture(t) {
  const base=mkdtempSync(join(tmpdir(),'pi resources ')),root=join(base,'project'),agentDir=join(base,'agent');mkdirSync(root);mkdirSync(agentDir);t.after(()=>rmSync(base,{recursive:true,force:true}));
  const put=(path,data)=>{mkdirSync(dirname(path),{recursive:true});writeFileSync(path,JSON.stringify(data));};
  return {base,root,agentDir,put};
 }
 
-test('ten curated package skills and complete bounded reference set have accurate hashes and no excluded commands/paths',()=>{
+test('nine curated package skills and complete bounded reference set have accurate hashes and no excluded commands/paths',()=>{
  const manifest=JSON.parse(readFileSync(join(packageRoot,'package.json')));assert.deepEqual(manifest.pi.skills,[]);assert.deepEqual(readdirSync(join(packageRoot,'skills')).sort(),expected);
- const baseline=JSON.parse(readFileSync(join(packageRoot,'resources/skill-baseline.json')));assert.equal(Object.keys(baseline.files).length,36);
+ const baseline=JSON.parse(readFileSync(join(packageRoot,'resources/skill-baseline.json')));assert.equal(Object.keys(baseline.files).length,35);assert.equal(Object.hasOwn(baseline.files,'trellis-continue/SKILL.md'),false);
  for(const [path,record] of Object.entries(baseline.files)){const text=readFileSync(join(packageRoot,'skills',path),'utf8');assert.equal(digest(text),record.sha256,path);assert.equal(record.license,'AGPL-3.0-only');assert.doesNotMatch(text,/\.agents\/|trellis (?:init|update|channel|mem)|trellis_subagent|--platform codex|src\/templates|\{\{[A-Z_]+\}\}/,path);
   for(const match of text.matchAll(/\]\((references\/[^)]+)\)/g)){assert.ok(existsSync(resolve(dirname(join(packageRoot,'skills',path)),match[1])),`${path}: ${match[1]}`);}
   if(path.endsWith('/SKILL.md')){assert.match(text,/^---\nname: [a-z0-9-]+\ndescription: .+\n/m);}
@@ -37,7 +37,7 @@ test('real Pi package resource filters and autoload:false project delta govern a
  const f=fixture(t),old=process.env.PI_CODING_AGENT_DIR;process.env.PI_CODING_AGENT_DIR=f.agentDir;t.after(()=>{if(old===undefined)delete process.env.PI_CODING_AGENT_DIR;else process.env.PI_CODING_AGENT_DIR=old;});
  const user=join(f.agentDir,'settings.json'),project=join(f.root,'.pi/settings.json');f.put(user,{packages:[packageRoot]});assert.equal(await adapterConfigured(f.root),true);
  f.put(project,{packages:[{source:packageRoot,autoload:false,skills:[]}]});assert.equal(await adapterConfigured(f.root),true);
- const resources=await new DefaultPackageManager({cwd:f.root,agentDir:f.agentDir,settingsManager:SettingsManager.create(f.root,f.agentDir,{projectTrusted:true})}).resolve(async()=>{throw Error('must not install');});assert.ok(resources.extensions.some(r=>r.enabled&&r.path.endsWith('/extensions/trellis.ts')));assert.equal(resources.skills.filter(r=>r.enabled&&r.metadata.packageRoot===packageRoot).length,0);assert.equal((await projectSkillPaths(f.root,true,f.agentDir)).length,10);
+ const resources=await new DefaultPackageManager({cwd:f.root,agentDir:f.agentDir,settingsManager:SettingsManager.create(f.root,f.agentDir,{projectTrusted:true})}).resolve(async()=>{throw Error('must not install');});assert.ok(resources.extensions.some(r=>r.enabled&&r.path.endsWith('/extensions/trellis.ts')));assert.equal(resources.skills.filter(r=>r.enabled&&r.metadata.packageRoot===packageRoot).length,0);assert.equal((await projectSkillPaths(f.root,true,f.agentDir)).length,9);
  f.put(project,{packages:[{source:packageRoot,autoload:false,extensions:[]}]});assert.equal(await adapterConfigured(f.root),true);
  f.put(project,{packages:[{source:packageRoot,autoload:false,extensions:['-extensions/trellis.ts']}]});assert.equal(await adapterConfigured(f.root),false);
  f.put(project,{packages:[{source:packageRoot,extensions:['+extensions/trellis.ts']}]});assert.equal(await adapterConfigured(f.root),true);
@@ -55,7 +55,7 @@ test('conditional defaults select installed package identity and scope, never a 
  const user=readFileSync(join(f.agentDir,'settings.json')),project=readFileSync(join(f.root,'.pi/settings.json'));
  let virtual;const fromStorage=SettingsManager.fromStorage;
  t.mock.method(SettingsManager,'fromStorage',function(...args){const result=fromStorage.apply(this,args);virtual=result;return result;});
- assert.equal((await projectSkillPaths(f.root,true,f.agentDir)).length,10);
+ assert.equal((await projectSkillPaths(f.root,true,f.agentDir)).length,9);
  assert.deepEqual(virtual.getGlobalSettings().packages,[{source,skills:['skills/**/SKILL.md']}]);
  assert.deepEqual(virtual.getProjectSettings().packages,[source]);
  assert.deepEqual(readFileSync(join(f.agentDir,'settings.json')),user);assert.deepEqual(readFileSync(join(f.root,'.pi/settings.json')),project);
@@ -66,7 +66,7 @@ for(const source of ['npm:pi-trellis@0.1.0','git:github.com/AkiChase/pi-trellis@
  const installed=source.startsWith('npm:')?join(f.agentDir,'npm/node_modules/pi-trellis'):join(f.agentDir,'git/github.com/AkiChase/pi-trellis');mkdirSync(dirname(installed),{recursive:true});symlinkSync(packageRoot,installed,'dir');
  const manager=new DefaultPackageManager({cwd:f.root,agentDir:f.agentDir,settingsManager:SettingsManager.create(f.root,f.agentDir,{projectTrusted:true})});assert.equal(manager.listConfiguredPackages()[0].installedPath,installed);
  const paths=await projectSkillPaths(f.root,true,f.agentDir);assert.equal(paths.length,1);assert.ok(paths[0].endsWith('/trellis-check/SKILL.md'));
- f.put(join(f.agentDir,'settings.json'),{packages:[source]});assert.equal((await projectSkillPaths(f.root,true,f.agentDir)).length,10);
+ f.put(join(f.agentDir,'settings.json'),{packages:[source]});assert.equal((await projectSkillPaths(f.root,true,f.agentDir)).length,9);
 });
 
 test('invalid settings fail discovery without overwriting bytes or installing',async t=>{
@@ -75,7 +75,7 @@ test('invalid settings fail discovery without overwriting bytes or installing',a
 });
 
 test('npm package closure includes all fixed runtime/templates/skills/agents/licenses without project-only dependency',()=>{
- const listing=spawnSync('npm',['pack','--dry-run','--json','--ignore-scripts'],{cwd:packageRoot,env:{...process.env,npm_config_cache:join(tmpdir(),'pi-init-npm-cache')},encoding:'utf8'});assert.equal(listing.status,0,listing.stderr);const paths=JSON.parse(listing.stdout)[0].files.map(f=>f.path);
+ const listing=spawnSync('npm',['pack','--dry-run','--json','--ignore-scripts'],{cwd:packageRoot,env:{...process.env,npm_config_cache:join(tmpdir(),'pi-init-npm-cache')},encoding:'utf8'});assert.equal(listing.status,0,listing.stderr);const paths=JSON.parse(listing.stdout)[0].files.map(f=>f.path);assert.ok(!paths.some(p=>p.startsWith('skills/trellis-continue/')));
  const walk=(root,prefix='')=>readdirSync(root,{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(join(root,e.name),prefix+e.name+'/'):[prefix+e.name]);
  for(const folder of ['runtime','resources/templates','skills','agents','licenses'])for(const path of walk(join(packageRoot,folder)))assert.ok(paths.includes(folder+'/'+path),folder+'/'+path);
 });

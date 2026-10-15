@@ -13,9 +13,9 @@
 
 ## S2 — 合并 continue 与同步资源
 
-- [ ] 读取完整 skills/start/continue/support refs；合并恢复路由至 start，删除 continue，同步当前 README/workflow 模板/相关 references/必要 spec。
-- [ ] 更新 skill/template provenance，与实际技能/资源数量及过滤行为测试同步；历史归档不改。
-- [ ] focused `env -u TRELLIS_CONTEXT_ID node --import ./tests/host-tui.mjs --test tests/skill-resources.test.mjs tests/workflow-policy.test.mjs tests/manifest-provenance.test.mjs tests/project-activation-host.test.mjs`；按实际影响补其他调用者；独立检查后主核提交 S2。
+- [x] 读取完整 skills/start/continue/support refs；合并恢复路由至 start，删除 continue，同步当前 README/workflow 模板/相关 references/必要 spec。
+- [x] 更新 skill/template provenance，与实际技能/资源数量及过滤行为测试同步；历史归档不改。
+- [x] focused五文件104/104、Python32/32通过；独立 review无阻塞，主核实际diff/provenance/过滤数量。S2提交见下方记录。
 
 ## S3 — 全量与验收收尾
 
@@ -26,7 +26,11 @@
 
 ## S1 检查记录
 
-Node v24.14.1。首次 focused Node 因本仓缺 pi-tui peer 在加载前失败；使用现有 `/Users/jyxc-dz-0101322/.pi/agent/install/releases/1.2.0/node_modules` 的 `PI_TRELLIS_TEST_HOST` 重跑，首次 25/26（新 help 文案被 argparse 换行，断言未允许换行）；仅修正测试 whitespace regex，最终 runtime focused 26/26 exit 0。Python discovery 32/32 exit 0；git diff --check 通过。原始输出均仓外。独立 review 无阻塞；另全量 npm test 548/548 exit 0（相同 host）。吸收非阻塞测试强化后最终 runtime26/26、diffcheck通过，真实 writer fault 无残留且多session各自CLI绑定成功。S1提交见Git检查点。
+Node v24.14.1。首次 focused Node 因本仓缺 pi-tui peer 在加载前失败；使用现有 `/Users/jyxc-dz-0101322/.pi/agent/install/releases/1.2.0/node_modules` 的 `PI_TRELLIS_TEST_HOST` 重跑，首次 25/26（新 help 文案被 argparse 换行，断言未允许换行）；仅修正测试 whitespace regex，最终 runtime focused 26/26 exit 0。Python discovery 32/32 exit 0；git diff --check 通过。原始输出均仓外。独立 review 无阻塞；另全量 npm test 548/548 exit 0（相同 host）。吸收非阻塞测试强化后最终 runtime26/26、diffcheck通过，真实 writer fault 无残留且多session各自CLI绑定成功。S1提交 `cd24552`；原始输出均仓外。
+
+## S2 检查记录
+
+删除 continue，start 合并恢复路由；create 提示同步为 start/active，因此 `common/task_store.py` adapted hash/releaseId 一并更新。当前技能9个、资源35个，真实SDK过滤排除一个为8。focused五文件104/104 exit0，Python32/32 exit0；增加删除技能不进入package closure的负向断言后重跑仍104/104。当前用户文档/模板/skills中无continue旧入口。独立 review无阻塞，特别确认未混入并行manifest/workflow provenance hunk。项目 `.trellis/workflow.md` 与 manifest 的既有并行修改未动，新合同仅更新包workflow模板和本项目spec。
 
 ## 已知限制与回滚
 

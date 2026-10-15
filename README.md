@@ -69,10 +69,17 @@ pi install @tintinweb/pi-subagents
 
 | 入口 | 用途 |
 |---|---|
-| `/skill:trellis-start` | 开始开发会话，了解项目、工作区和任务状态 |
-| `/skill:trellis-continue` | 继续当前任务，加载对应阶段的材料 |
+| `/skill:trellis-start` | 开始或恢复开发会话，读取任务记录并确定下一步 |
 | `/skill:trellis-finish-work` | 在确认工作完成后，按授权归档任务并记录进度 |
 | `/trellis-task-viewer` | 只读浏览任务及规划文档 |
+
+新会话续接已有任务时，可以让 Pi 将任务绑定到当前会话：
+
+```bash
+python3 .trellis/scripts/task.py active <任务目录或名称>
+```
+
+`active` 只绑定，不改任务状态、不运行启动 hook；多个会话可以绑定同一任务，旧会话的绑定保留。`start` 则用于批准实施后启动任务，会推进状态、记录分支并运行启动 hook。绑定后说“继续”，或使用 `trellis-start` 恢复任务上下文即可。
 
 默认会在编辑器上方显示任务信息，例如：
 

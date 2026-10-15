@@ -165,7 +165,7 @@
       "sourcePath": "dist/templates/trellis/scripts/common/task_store.py",
       "sourceSha256": "5712b0405e1fd0c2b7be5e5fbd420fa6eec2c49c8e4cf2b8fc69b7d2e4aeb016",
       "license": "AGPL-3.0-only",
-      "sha256": "121b0e27fd00cc5de87d918e1255c6be7eea32555d970f40e4aa526710e5b3a3",
+      "sha256": "eeb7e7286215f1121d67e8cc1841af283d91f8b8a690ac5d7af9ceb9199cd85a",
       "modified": true
     },
     "common/task_utils.py": {
@@ -328,6 +328,6 @@
       "modified": true
     }
   },
-  "releaseId": "pi-trellis-runtime-v1-0d186fdc99c96afc42b95f42422b62897baca0f276f7fc3643b8553b074b60aa",
+  "releaseId": "pi-trellis-runtime-v1-f585fde4c0f8f0b539815ca5daa78581581b5e9d7d5313d058cf4a052712c7e6",
   "projectSourceRevision": "9af75d2f52f78ee932bb31563cc29fe7ce5a9b73"
 }

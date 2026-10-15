@@ -55,16 +55,29 @@ cat .trellis/spec/<layer>/index.md   # for each relevant layer
 
 Index files list the specific guideline docs to read when you actually start coding.
 
-## Step 4: Decide next action
-From Step 1 you know the current task and status. Check the task directory:
+## Step 4: Start or resume the task
 
-- **Active task status `planning` + no `prd.md`** → Phase 1.1. Load the `trellis-brainstorm` skill.
-- **Active task status `planning` + `prd.md` exists** → stay in Phase 1. Lightweight tasks can be PRD-only; complex tasks need `design.md` + `implement.md`. Load the relevant Phase 1 step detail before `task.py start`.
-- **Active task status `in_progress`** → Phase 2 step 2.1. Load the step detail:
-  ```bash
-  python3 ./.trellis/scripts/get_context.py --mode phase --step 2.1
-  ```
-- **No active task** → Read-only conversation, research and explanation need no task. Before preparing changes, ask for task/planning approval. Corrupt bindings are task_error, not no_task.
+Read the current task's PRD and available design/implementation record, then choose the actual unfinished step. Document presence alone is not proof that a stage passed checks. This skill restores context; it does not approve implementation.
+
+- **No active task** → Read-only conversation needs no task. If the user explicitly selects an existing task, bind it with `python3 .trellis/scripts/task.py active <task>` and reload context. Do not guess another session's task. New work still requires task/planning approval.
+- **Invalid binding** → Report task_error; inspect or deactivate the invalid binding before selecting a task. Never treat corruption as no_task.
+- **Planning, no PRD** → **1.1**, load `trellis-brainstorm`.
+- **Planning, PRD only** → Lightweight work can go to **1.4**; complex work needs design/implement first.
+- **Planning, artifacts ready but selected dispatch context missing** → **1.3**.
+- **Planning, artifacts and selected context ready** → **1.4**. Start only within explicit implementation approval; `active` is not `start`.
+- **In progress, current stage not implemented** → **2.1**.
+- **In progress, current stage implemented but not checked** → **2.2**.
+- **In progress, current stage checked** → Follow the **2.2** checkpoint rules (including the pending commit), then return to **2.1** for the next approved stage.
+- **In progress, all stages checked** → **3.1–3.4** for final review, verification, spec assessment and Git review.
+- **Completed** → Review acceptance and use existing finish-work authorization, or obtain it if absent.
+
+Load the chosen step, rather than automatically restarting Phase 2:
+
+```bash
+python3 ./.trellis/scripts/get_context.py --mode phase --step <X.X>
+```
+
+Follow the loaded project workflow within approved scope, honoring existing authorization and opt-outs. Do not turn each resume step into a fresh approval question. `active` changes only this session's pointer; multiple sessions can bind the same task, and other bindings/operations are not cancelled.
 
 ---
 

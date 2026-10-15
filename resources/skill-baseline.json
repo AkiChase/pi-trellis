@@ -10,7 +10,7 @@
       "adapted": true
     },
     "trellis-start/SKILL.md": {
-      "sha256": "ce8948a12ff70d8e433d51e0bb2e2f30640a5ffc6784b3d6824f91f5cdfee4e1",
+      "sha256": "e9a270892e1434f3d2c1b36c26524c3ff5c2206a7b4637865b43656b44f59fcc",
       "sourcePath": ".agents/skills/trellis-start/SKILL.md",
       "sourceSha256": "79a5ba7a2aff3c72e06d7f4cd6942dc4f4f4092dd40f9c8e94f1838024a81e4d",
       "license": "AGPL-3.0-only",
@@ -34,13 +34,6 @@
       "sha256": "7aa9ae62b264ec230fec1209973b22fc62d17257ee08c4cae6040a3eb4da131f",
       "sourcePath": ".agents/skills/trellis-finish-work/SKILL.md",
       "sourceSha256": "161060fbcd44f787440d3a5c297a9f5223ea7774bb3021a50e376875a9ac5b2d",
-      "license": "AGPL-3.0-only",
-      "adapted": true
-    },
-    "trellis-continue/SKILL.md": {
-      "sha256": "7a3f3123af6ddf8526c9cca4f672c1af6fcae5297bada699d5a200c113170948",
-      "sourcePath": ".agents/skills/trellis-continue/SKILL.md",
-      "sourceSha256": "2b948434883636a1f1e2a4ad5b8a3d7dc2edc93ed05da6bca82882e8c024e22b",
       "license": "AGPL-3.0-only",
       "adapted": true
     },
@@ -199,7 +192,7 @@
       "adapted": true
     },
     "trellis-meta/references/local-architecture/bundled-skills.md": {
-      "sha256": "93f573d020f523ebc0a6e61984590a7e2219e1e5cf2eb90698a3a673ce3f8df5",
+      "sha256": "26a1ae648b27a730324adeda9b2fbec76ffc5c59cbacfacc15a03ab32afbcec5",
       "sourcePath": ".agents/skills/trellis-meta/references/local-architecture/bundled-skills.md",
       "sourceSha256": "aa6a0bf83060205ee4ea621c467fb900a7db06b4476a4ad472cc4e248c887389",
       "license": "AGPL-3.0-only",
@@ -220,7 +213,7 @@
       "adapted": true
     },
     "trellis-meta/references/local-architecture/task-system.md": {
-      "sha256": "6aea191790e23fac52fe4907fa9c858b4db4ee411bca94482bbfcfeeae15d31b",
+      "sha256": "39c4b2515f8e906d3c263797ba457f3de883d3dafe80c8a3c2fd03121657fed1",
       "sourcePath": ".agents/skills/trellis-meta/references/local-architecture/task-system.md",
       "sourceSha256": "b154568e74f1c738a51633df9f2503f416b3afa5f309325224422162e0b707e4",
       "license": "AGPL-3.0-only",

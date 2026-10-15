@@ -70,7 +70,9 @@ this only bypasses the CLI's empty-manifest gate, not approval, spec reading or 
 `task.py validate` still reports empty manifests; do not describe that result as full validation success.
 If dispatch becomes necessary later, curate that role's context before dispatching.
 Parent/child links are organization, not a dependency scheduler. Execute in the approved order.
-Session-scoped pointers never infer another session. `deactivate` clears only your session binding, not task status.
+Session-scoped pointers never infer another session. `task.py active <task>` binds only the caller without
+changing task status/branch or running hooks; multiple sessions may bind the same task. It is not implementation
+approval. `deactivate` clears only your session binding, not task status.
 
 ## Phase Index
 

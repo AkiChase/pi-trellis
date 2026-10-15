@@ -170,7 +170,7 @@ test('directly maintained role/skill/template hashes preserve historical provena
   assert.equal(agents.files[role].adapted, digest(readFileSync(`agents/trellis-${role}.md`)));
  }
  const skills = JSON.parse(readFileSync('resources/skill-baseline.json', 'utf8'));
- for (const [path, source] of [['trellis-start/SKILL.md', '79a5ba7a2aff3c72e06d7f4cd6942dc4f4f4092dd40f9c8e94f1838024a81e4d'], ['trellis-continue/SKILL.md', '2b948434883636a1f1e2a4ad5b8a3d7dc2edc93ed05da6bca82882e8c024e22b']]) {
+ for (const [path, source] of [['trellis-start/SKILL.md', '79a5ba7a2aff3c72e06d7f4cd6942dc4f4f4092dd40f9c8e94f1838024a81e4d']]) {
   assert.equal(skills.files[path].sourceSha256, source);
   assert.equal(skills.files[path].sha256, digest(readFileSync(`skills/${path}`)));
   assert.equal(skills.files[path].license, 'AGPL-3.0-only');

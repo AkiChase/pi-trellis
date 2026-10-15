@@ -57,7 +57,7 @@ test('retention separates temporary execution output from selected permanent evi
 });
 
 test('associated skills do not restore mandatory paired dispatch or redundant plan approval', () => {
- for (const name of ['start', 'before-dev', 'brainstorm', 'continue', 'check', 'finish-work', 'update-spec', 'break-loop']) {
+ for (const name of ['start', 'before-dev', 'brainstorm', 'check', 'finish-work', 'update-spec', 'break-loop']) {
   const text = readFileSync(`skills/trellis-${name}/SKILL.md`, 'utf8');
   assert.match(text, /Follow the (?:source )?project workflow for execution and review routing/);
   assert.doesNotMatch(text, /Main dispatches implementation\/check roles|must each contain at least one|fresh implementation approval|Only a subsequent user message/);
@@ -88,8 +88,13 @@ test('stage commits happen at implementation checkpoints, not only final wrap-up
  assert.match(finish, /Honor already-granted finish-work authorization without asking again/);
  assert.match(finish, /Code submission policy belongs to the project workflow/);
  assert.doesNotMatch(finish, /stage commits happen during Phase 2|task-level commit approval|Approved code commits belong to workflow step 3\.4/);
- const resume = readFileSync('skills/trellis-continue/SKILL.md', 'utf8');
+ const resume = readFileSync('skills/trellis-start/SKILL.md', 'utf8');
  assert.match(resume, /return to \*\*2\.1\*\* for the next approved stage/);
+ assert.match(resume, /current stage implemented but not checked/);
+ assert.match(resume, /Document presence alone is not proof/);
+ assert.match(resume, /task\.py active <task>/);
+ assert.match(resume, /multiple sessions can bind the same task/);
+ assert.match(resume, /all stages checked/);
 });
 
 test('finish-work authorization includes configured wrap-up commits without separate action approvals', () => {
@@ -145,7 +150,7 @@ test('workflow and entry skills keep source authority separate from execution an
   assert.match(text, /Main verifies obsolete references and repairs them/);
   assert.doesNotMatch(text, /unless a complete injection|marker is present in the task-context block|Read omitted materials|refresh --task|collect --task/);
  }
- for (const name of ['start', 'continue']) {
+ for (const name of ['start']) {
   const text = readFileSync(`skills/trellis-${name}/SKILL.md`, 'utf8');
   assert.match(text, /exact four-line header/);
   assert.match(text, /absolute sourceRoot\/materialRoot/);
