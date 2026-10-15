@@ -91,7 +91,7 @@ python3 .trellis/scripts/task.py validate 10-15-init-check-diagnostics
 
 独立审查 `9ecfb269-bf03-491` 已完成，限定 **S1 PASS**；具体修复与实际证据见 [S1 独立审查](evidence/s1-review.md)。主会话完整读取最终 diagnostics/command/tests，核对八文件 SHA-256 与审查报告相同。独立最终 focused **259/259**、全量 **545/545** 自然 exit0；此前并行 workflow/template hash 漂移导致的 full失败已保留，未改其资源，恢复一致后实际重验通过。
 
-主会话最终复测 `bqvn5schp`：**259/259自然 exit0**，八文件审查指纹一致、diffcheck通过。S1静态投影不能用作S2执行授权；S2需共享strict validator/worker/consumer真实探测，S3才补native跨root绑定证明。
+主会话最终复测 `bqvn5schp`：**259/259自然 exit0**，八文件审查指纹一致、diffcheck通过。S1检查点 **ad2187b**，精确17文件，不含raw logs/并行workflow/manifest。S1静态投影不能用作S2执行授权；S2需共享strict validator/worker/consumer真实探测，S3才补native跨root绑定证明。
 
 ## 最新源码收敛（2026-10-15）
 
@@ -110,3 +110,13 @@ python3 .trellis/scripts/task.py validate 10-15-init-check-diagnostics
 - 独立规划审阅 `f6212064-1580-403` 完成：方向可行，不是过度框架；主会话已整合共享读取预算/可终止验证 owner、安全消费者快照、身份与 worktree 共用 Git/env/trust seam、adoptionDialog 固定警告摘要。loader 具体实现作为研究依赖的 S2 技术门禁，不削弱 R5/A2/A6。
 - 补充调研 `4be8244d-c44f-42c` 已完成并通读核对关键 source：采用 fixed bootstrap/部署字节捕获/内存 allowlist loader、shared current payload、纯 config/workflow helper、host-only 子进程与 targeted registration。未采用其 blanket 排除 target pointer 的范围建议：最终合同只允许当前任务权威 binding 指定的一个相关目标 pointer，通过独立 target gate 与相同窄 helper 验证，不运行 target CLI/材料/readiness 管理。
 - 产品测试/真实诊断未运行；两项只读调研/审阅已完成并整合，不把规划证据当作产品验收。
+
+## S2 主会话接线与验证（2026-10-15）
+
+- 候选 22 文件与实现者最终指纹一致；实现者 focused 143/143、Python 33/33（日志主读）。
+- 用户取消独立审查代理并要求主会话直接完成；**S2 未经独立审查**，此为已知缺口。
+- 主会话接线 `extensions/trellis.ts`：Check generation/AbortController，新 Check 取消旧 run，`session_start`/`session_shutdown` 取消并抑制迟到报告；新增生命周期测试。
+- `init-menu-safety` 旧 S1 断言（Check 零子进程/“runtime probe not performed”）更新为 S2 契约：只允许固定 `-I -S -B -X utf8` bootstrap spawn，禁 Git/exec，报告显式 blocked。
+- 全量 `npm test` **582/582 exit0**（首次 575/582，7 项为上述旧断言）；Python 33/33；diffcheck 通过。
+- 本仓真实 smoke：304ms，正确报告部署 runtime 落后包版本→runtime probe blocked，静态问题独立保留。
+- 限制同 evidence/s2-implementation.md；S3 跨 root/worktree 身份未实施。

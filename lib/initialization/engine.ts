@@ -6,6 +6,7 @@ import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { readTaskRecord } from "../task-context.ts";
 import { containsPath } from "../config.ts";
+import { provenanceText, type ProvenanceReader } from "./provenance-reader.ts";
 
 export const packageRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 const MANIFEST = ".trellis/.pi-trellis.json";
@@ -81,11 +82,18 @@ function parse<T>(root: string, path: string): T | undefined {
 	const value = bytes(root, path);
 	return value === undefined ? undefined : JSON.parse(value.toString("utf8"));
 }
-export function runtimeBaseline() {
-	const baseline = JSON.parse(readFileSync(join(packageRoot, "resources/runtime-baseline.json"), "utf8"));
-	if (baseline.schemaVersion !== 1 || baseline.pythonMinimum !== "3.10" || !baseline.files || typeof baseline.releaseId !== "string") throw new Error("Unsupported package runtime baseline");
-	for (const [path, record] of Object.entries(baseline.files) as [string, { sha256: string }][]) {
-		if (digest(readFileSync(checkedPath(packageRoot, `runtime/${path}`))) !== record.sha256) throw new Error(`Package runtime hash mismatch: ${path}`);
+export const defaultProvenanceReader: ProvenanceReader = {
+	file(root, path) { const data = bytes(root, path); return data === undefined ? undefined : { data, text: provenanceText(data), bytes: data.length, sha256: digest(data), mode: lstatSync(checkedPath(root, path)).mode & 0o777 }; },
+	json(root, path) { const data = bytes(root, path); return data === undefined ? undefined : JSON.parse(provenanceText(data)); },
+	stat(root, path) { try { return lstatSync(checkedPath(root, path)); } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined; throw error; } },
+	path: checkedPath,
+};
+export function runtimeBaseline(reader: ProvenanceReader = defaultProvenanceReader) {
+	const baseline = reader.json(packageRoot, "resources/runtime-baseline.json");
+	if (!object(baseline) || baseline.schemaVersion !== 1 || baseline.pythonMinimum !== "3.10" || !object(baseline.files) || !Object.keys(baseline.files).length || Object.keys(baseline.files).length > 512 || typeof baseline.releaseId !== "string") throw new Error("Unsupported package runtime baseline");
+	for (const [path, record] of Object.entries(baseline.files)) {
+	 if (!path.endsWith(".py") || !object(record) || typeof record.sha256 !== "string" || !/^[a-f0-9]{64}$/.test(record.sha256) || record.sha256.length !== 64) throw Error("Malformed package runtime inventory");
+	 if (reader.file(packageRoot, `runtime/${path}`, MAX_BYTES, true)?.sha256 !== record.sha256) throw new Error(`Package runtime hash mismatch: ${path}`);
 	}
 	const hashes = Object.fromEntries(Object.keys(baseline.files).sort().map(path => [path, baseline.files[path].sha256]));
 	if (baseline.releaseId !== "pi-trellis-runtime-v1-" + digest(JSON.stringify({ files: hashes, schemaVersion: 1 }))) throw new Error("Package runtime release identity mismatch");
@@ -117,36 +125,42 @@ function checkFingerprint(value: Fingerprint | null): void {
 	fields(value, ["sha256", "mode"], "fingerprint");
 	if (typeof value.sha256 !== "string" || value.sha256.length !== 64 || !/^[a-f0-9]{64}$/.test(value.sha256) || !Number.isInteger(value.mode) || value.mode < 0 || value.mode > 0o777) throw new Error("Invalid fingerprint");
 }
-export function packageResources(): InstalledManifest["files"] {
+export function packageResources(reader: ProvenanceReader = defaultProvenanceReader, baseline = runtimeBaseline(reader)): InstalledManifest["files"] {
 	const files: InstalledManifest["files"] = {};
-	for (const [path, record] of Object.entries(runtimeBaseline().files)) {
+	for (const [path, record] of Object.entries(baseline.files)) {
 		const source = `runtime/${path}`;
-		files[`.trellis/scripts/${path}`] = { sha256: record.sha256, mode: lstatSync(checkedPath(packageRoot, source)).mode & 0o777, kind: "runtime", source };
+		files[`.trellis/scripts/${path}`] = { sha256: record.sha256, mode: reader.stat(packageRoot, source)!.mode & 0o777, kind: "runtime", source };
 	}
-	const agents = JSON.parse(readFileSync(join(packageRoot, "resources/agent-baseline.json"), "utf8"));
+	const agents = reader.json(packageRoot, "resources/agent-baseline.json");
+	if (!object(agents) || !object(agents.files)) throw Error("Malformed package role baseline");
 	for (const role of ["implement", "check", "research"]) {
-		const source = `agents/trellis-${role}.md`, sha256 = digest(readFileSync(checkedPath(packageRoot, source)));
-		if (sha256 !== agents.files[role]?.adapted) throw new Error(`Package role hash mismatch: ${role}`);
+		const source = `agents/trellis-${role}.md`, sha256 = reader.file(packageRoot, source, MAX_BYTES, true)?.sha256;
+		if (!sha256 || sha256 !== agents.files[role]?.adapted) throw new Error(`Package role hash mismatch: ${role}`);
 		files[`.pi/agents/trellis-${role}.md`] = { sha256, mode: 0o644, kind: "agent", source };
 	}
 	return files;
 }
-export function defaultTemplates(): Record<string, Fingerprint & { origin: "package-default"; source: string }> {
+export function defaultTemplates(reader: ProvenanceReader = defaultProvenanceReader): Record<string, Fingerprint & { origin: "package-default"; source: string }> {
 	return Object.fromEntries(Object.entries(templateTargets).map(([source, target]) => [target, {
-		origin: "package-default", sha256: digest(template(source)), mode: 0o644, source: `resources/templates/${source}`,
+		origin: "package-default", sha256: digest(template(source, reader)), mode: 0o644, source: `resources/templates/${source}`,
 	}]));
 }
-export function validateManifest(manifest: unknown): asserts manifest is InstalledManifest {
+export interface PackageProvenance { release: string; files: InstalledManifest["files"]; templates: InstalledManifest["templates"] }
+export function packageProvenance(reader: ProvenanceReader = defaultProvenanceReader): PackageProvenance {
+	const baseline = runtimeBaseline(reader);
+	return { release: baseline.releaseId, files: packageResources(reader, baseline), templates: defaultTemplates(reader) };
+}
+export function validateManifest(manifest: unknown, pkg: PackageProvenance = packageProvenance()): asserts manifest is InstalledManifest {
 	fields(manifest, ["schemaVersion", "runtimeReleaseId", "files", "templates"], "project resource manifest");
-	if (manifest.schemaVersion !== 2 || manifest.runtimeReleaseId !== runtimeBaseline().releaseId || !object(manifest.files) || !object(manifest.templates)) throw new Error("Unsupported project runtime release; explicit upgrade is not available");
-	const expected = packageResources();
+	if (manifest.schemaVersion !== 2 || manifest.runtimeReleaseId !== pkg.release || !object(manifest.files) || !object(manifest.templates)) throw new Error("Unsupported project runtime release; explicit upgrade is not available");
+	const expected = pkg.files;
 	if (Object.keys(manifest.files).length !== Object.keys(expected).length) throw new Error("Incomplete or unknown managed resource entries");
 	for (const [path, record] of Object.entries(expected)) {
 		const installed = manifest.files[path];
 		fields(installed, ["sha256", "mode", "kind", "source"], "project resource entry");
 		if (Object.keys(record).some(key => installed[key] !== record[key as keyof typeof record])) throw new Error(`Malformed project resource provenance: ${path}`);
 	}
-	const defaults = defaultTemplates();
+	const defaults = pkg.templates;
 	if (Object.keys(manifest.templates).length !== Object.keys(defaults).length) throw new Error("Incomplete or unknown template provenance entries");
 	for (const [path, record] of Object.entries(defaults)) {
 		const installed = manifest.templates[path];
@@ -162,23 +176,23 @@ export function validateManifest(manifest: unknown): asserts manifest is Install
 		} else throw new Error(`Unknown template origin: ${path}`);
 	}
 }
-export function verifyRuntime(root: string): InstalledManifest | undefined {
-	const operation = parse<Operation>(root, OPERATION);
+export function verifyRuntime(root: string, reader: ProvenanceReader = defaultProvenanceReader, pkg?: PackageProvenance): InstalledManifest | undefined {
+	const operation = reader.json(root, OPERATION);
 	if (operation !== undefined) {
 		fields(operation, ["schemaVersion", "status", "plan", "completed"], "initialization operation");
 		if (operation.schemaVersion !== 1 || operation.status !== "complete") throw new Error("Initialization operation is incomplete or invalid; runtime execution is blocked");
 	}
-	return verifiedManifest(root);
+	return verifiedManifest(root, reader, pkg);
 }
-function verifiedManifest(root: string): InstalledManifest | undefined {
-	const manifest = parse<InstalledManifest>(root, MANIFEST);
+function verifiedManifest(root: string, reader: ProvenanceReader = defaultProvenanceReader, pkg?: PackageProvenance): InstalledManifest | undefined {
+	const manifest = reader.json(root, MANIFEST);
 	if (manifest === undefined) return undefined;
-	validateManifest(manifest);
+	validateManifest(manifest, pkg ?? packageProvenance(reader));
 	for (const [path, record] of Object.entries(manifest.files)) {
-		checkedPath(root, path);
-		if (record.kind === "runtime" && !same(fingerprint(root, path), record)) throw new Error(`Project runtime is missing or modified: ${path}`);
+		reader.path(root, path);
+		if (record.kind === "runtime" && !same(reader.file(root, path, MAX_BYTES, true) ?? null, record)) throw new Error(`Project runtime is missing or modified: ${path}`);
 	}
-	for (const path of Object.keys(manifest.templates)) checkedPath(root, path);
+	for (const path of Object.keys(manifest.templates)) reader.path(root, path);
 	return manifest;
 }
 function readOperation(root: string): Operation | undefined {
@@ -238,10 +252,10 @@ const templateTargets: Record<string, string> = {
 	"workflow.md": ".trellis/workflow.md", "config.yaml": ".trellis/config.yaml", "trellis.gitignore": ".trellis/.gitignore", "workspace-index.md": ".trellis/workspace/index.md",
 	"spec/index.md": ".trellis/spec/index.md", "spec/guides/index.md": ".trellis/spec/guides/index.md", "spec/guides/code-reuse-thinking-guide.md": ".trellis/spec/guides/code-reuse-thinking-guide.md", "spec/guides/cross-layer-thinking-guide.md": ".trellis/spec/guides/cross-layer-thinking-guide.md",
 };
-export function template(path: string): Buffer {
-	const value = readFileSync(checkedPath(packageRoot, `resources/templates/${path}`));
-	const baseline = JSON.parse(readFileSync(join(packageRoot, "resources/template-baseline.json"), "utf8"));
-	if (baseline.schemaVersion !== 1 || baseline.files[path]?.sha256 !== digest(value)) throw new Error(`Package template hash mismatch: ${path}`);
+export function template(path: string, reader: ProvenanceReader = defaultProvenanceReader): Buffer {
+	const value = reader.file(packageRoot, `resources/templates/${path}`, MAX_BYTES, true)?.data;
+	const baseline = reader.json(packageRoot, "resources/template-baseline.json");
+	if (!value || !object(baseline) || baseline.schemaVersion !== 1 || !object(baseline.files) || baseline.files[path]?.sha256 !== digest(value)) throw new Error(`Package template hash mismatch: ${path}`);
 	return value;
 }
 export function appendBlock(original: Buffer | undefined, block: Buffer, start: string, end: string): Buffer {

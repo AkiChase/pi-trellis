@@ -323,16 +323,43 @@ def resolve_active_task(repo_root: Path, platform_input: dict[str, Any] | None =
         if len(raw) > 1024 * 1024:
             raise ValueError("Session pointer exceeds 1 MiB")
         context = json.loads(raw.decode("utf-8"))
-        if not isinstance(context, dict):
-            raise ValueError("Session pointer must contain an object")
-        ref = context.get("current_task")
-        if ref is None or ref == "":
+        ref = current_ref_from_pointer(context)
+        if ref is None:
             return ActiveTask(None, "session", key, state="no-task")
-        if not isinstance(ref, str):
-            raise ValueError("Session current_task must be a string or null")
     except (OSError, ValueError, UnicodeError, RecursionError) as error:
         return ActiveTask(None, "session", key, error=str(error), state="invalid-pointer")
     return _active_from_ref(ref, repo_root, "session", key)
+
+
+def current_ref_from_pointer(context: object) -> str | None:
+    """Strict shared pointer parser; malformed never becomes no-task."""
+    if not isinstance(context, dict):
+        raise ValueError("Session pointer must contain an object")
+    ref = context.get("current_task")
+    if ref is None or ref == "":
+        return None
+    if not isinstance(ref, str):
+        raise ValueError("Session current_task must be a string or null")
+    return ref
+
+
+def current_payload(active: ActiveTask, data: dict | None = None) -> dict:
+    """Ordinary CLI and diagnostics share the exact current projection."""
+    from .task_records import task_projection, validate_task_record
+    task_obj = None
+    if active.valid:
+        data, error = validate_task_record(data)
+        if error:
+            from dataclasses import replace
+            active = replace(active, task_path=None, stale=True, error=error, state="invalid-task")
+        else:
+            task_obj = {"dir": active.task_path, **task_projection(data)}
+    payload = {"current_task": task_obj, "source": active.source,
+               "stale": active.stale, "state": active.state}
+    if active.error:
+        payload["error"] = {"message": active.error}
+        payload["raw_ref"] = active.raw_ref
+    return payload
 
 
 def _utc_now() -> str:

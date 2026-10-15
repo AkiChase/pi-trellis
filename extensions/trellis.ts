@@ -30,6 +30,7 @@ import { registerDispatchTool } from "../lib/subagent-rpc.ts";
 import { readBinding, readMarker, sameIdentity, type WorktreeBinding } from "../lib/bindings.ts";
 import { canonicalPath, containsPath } from "../lib/config.ts";
 import { registerInitCommand } from "../lib/initialization/command.ts";
+import { runDiagnostics } from "../lib/initialization/diagnostic-runtime.ts";
 import { registerTaskBrowserCommand } from "../lib/task-browser/command.ts";
 import { readCurrentTaskIdentity } from "../lib/task-browser/reader.ts";
 import { checkedPath } from "../lib/initialization/engine.ts";
@@ -918,6 +919,10 @@ export const __internals = {
 };
 
 export default function (pi: ExtensionAPI): void {
+	// One extension instance publishes at most its latest Check. A newer Check,
+	// session replacement, or shutdown aborts the old run and suppresses its report.
+	let checkGeneration = 0, checkController: AbortController | undefined, checkClosed = false;
+	const cancelCheck = () => { checkGeneration++; checkController?.abort(); checkController = undefined; };
 	registerInitCommand(pi, async (ctx, root) => {
 		contextCache.clear(); taskCache.clear(); taskErrors.clear(); workflowCache.delete(root);
 		sectionCache.clear(); lastStateSent.clear();
@@ -934,6 +939,21 @@ export default function (pi: ExtensionAPI): void {
 			sessionId: ctx.sessionManager.getSessionId(),
 			isProjectTrusted: typeof ctx.isProjectTrusted === "function" && ctx.isProjectTrusted(),
 		};
+	}, async (_ctx, scope, options) => {
+		if (checkClosed) return undefined;
+		cancelCheck();
+		const generation = checkGeneration, controller = new AbortController();
+		checkController = controller;
+		const relay = () => controller.abort();
+		options.signal?.addEventListener("abort", relay, { once: true });
+		if (options.signal?.aborted) controller.abort();
+		try {
+			const result = await runDiagnostics(scope, { scopeError: options.scopeError, signal: controller.signal });
+			return !checkClosed && generation === checkGeneration && !controller.signal.aborted ? result : undefined;
+		} finally {
+			options.signal?.removeEventListener("abort", relay);
+			if (checkController === controller) checkController = undefined;
+		}
 	});
 	let registeredRoot: string | undefined;
 	let startupCwd: string | undefined;
@@ -979,6 +999,7 @@ export default function (pi: ExtensionAPI): void {
 	// ---- M1 / M4 / M2: session bootstrap -----------------------------------
 
 	pi.on("session_start", async (_event, ctx) => {
+		cancelCheck(); checkClosed = false;
 		startupCwd ??= ctx.cwd;
 		if (!registeredRoot && ctx.cwd !== startupCwd) {
 			clearDisplay(ctx);
@@ -1285,6 +1306,7 @@ export default function (pi: ExtensionAPI): void {
 	// ---- Cleanup -----------------------------------------------------------
 
 	pi.on("session_shutdown", (_event, ctx) => {
+		cancelCheck(); checkClosed = true;
 		clearDisplay(ctx);
 		let root: string | undefined;
 		try { root = findRoot(ctx.cwd); } catch { return; }

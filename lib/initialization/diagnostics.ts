@@ -4,7 +4,7 @@ import { closeSync, constants, fstatSync, lstatSync, openSync, readSync, realpat
 import { isAbsolute, join, resolve } from "node:path";
 import { discoverProject } from "../project-state.ts";
 import { containsPath } from "../config.ts";
-import { checkedPath, digest, packageRoot, validateUsername, type InstalledManifest } from "./engine.ts";
+import { checkedPath, digest, packageRoot, validateUsername, packageProvenance, type PackageProvenance, type InstalledManifest } from "./engine.ts";
 
 /** Plain, caller-owned identity. Never derive a key, consult env or infer another session. */
 export interface DiagnosticScope {
@@ -63,11 +63,12 @@ const clean = (value: string, limit = 500) => value.replace(/[\p{C}\p{Zl}\p{Zp}]
 const identity = (s: ReturnType<typeof lstatSync>) => [s.dev, s.ino, s.mode, s.size, s.mtimeMs, s.ctimeMs].join(":");
 class Cancelled extends Error {}
 /** S1 has byte budgets/cooperative checkpoints, NOT a hard wall-clock deadline. S2 owns the terminable worker. */
-class Reader {
+export class DiagnosticReader {
 	textBytes = 0;
 	inventoryBytes = 0;
 	signal?: AbortSignal;
 	constructor(signal?: AbortSignal) { this.signal = signal; }
+ path(root: string, path: string) { this.root(root); safePath(path); return checkedPath(root, path); }
 	checkpoint() { if (this.signal?.aborted) throw new Cancelled("Check cancelled"); }
 	root(root: string) {
 		this.checkpoint();
@@ -77,7 +78,7 @@ class Reader {
 		this.root(root); const file = checkedPath(root, path);
 		try { return lstatSync(file); } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined; throw error; }
 	}
-	file(root: string, path: string, limit = DIAGNOSTIC_LIMITS.file, inventory = false): { text?: string; sha256: string; mode: number; bytes: number } | undefined {
+	file(root: string, path: string, limit = DIAGNOSTIC_LIMITS.file, inventory = false): { data: Buffer; text?: string; sha256: string; mode: number; bytes: number } | undefined {
 		this.checkpoint(); safePath(path); const file = checkedPath(root, path), before = this.stat(root, path);
 		if (!before) return undefined;
 		if (!before.isFile() || before.size > limit) throw Error(`Expected regular file no larger than ${limit} bytes`);
@@ -106,7 +107,7 @@ class Reader {
 			if (length !== before.size || identity(fstatSync(fd)) !== identity(before) || identity(this.stat(root, path)!) !== identity(before) || checkedPath(root, path) !== file) throw Error("File changed during bounded read");
 			const bytes = Buffer.concat(chunks, length);
 			if (!isUtf8(bytes) || bytes.includes(0)) throw Error("Invalid UTF-8 or NUL bytes");
-			return { ...(inventory ? {} : { text: bytes.toString("utf8") }), sha256: hasher.digest("hex"), mode: before.mode & 0o777, bytes: length };
+			return { data: bytes, ...(inventory ? {} : { text: bytes.toString("utf8") }), sha256: hasher.digest("hex"), mode: before.mode & 0o777, bytes: length };
 		} finally { closeSync(fd); }
 	}
 	json(root: string, path: string, limit = DIAGNOSTIC_LIMITS.file): unknown {
@@ -121,36 +122,9 @@ export function diagnosticExecutionRoot(cwd: string): string {
 }
 /** Static diagnostic projection only: never use these facts as execution/publication authority.
  * S2 must use the shared strict provenance reader seam before any runtime execution. */
-interface PackageSnapshot { files: InstalledManifest["files"]; templates: InstalledManifest["templates"]; release: string }
+type PackageSnapshot = PackageProvenance;
 /** Static provenance snapshot only. No unbounded engine validators, dynamic imports or project code. */
-function packageSnapshot(reader: Reader): PackageSnapshot {
-	const baseline = reader.json(packageRoot, "resources/runtime-baseline.json");
-	if (!object(baseline) || baseline.schemaVersion !== 1 || baseline.pythonMinimum !== "3.10" || !object(baseline.files) || !Object.keys(baseline.files).length || Object.keys(baseline.files).length > DIAGNOSTIC_LIMITS.entries || typeof baseline.releaseId !== "string") throw Error("Unsupported package runtime baseline");
-	const files: InstalledManifest["files"] = {}, hashes: Record<string, string> = {};
-	for (const path of Object.keys(baseline.files).sort()) {
-		safePath(path); if (!path.endsWith(".py") || !object(baseline.files[path]) || !hash(baseline.files[path].sha256)) throw Error("Malformed package runtime inventory");
-		const source = `runtime/${path}`, actual = reader.file(packageRoot, source, DIAGNOSTIC_LIMITS.file, true);
-		if (!actual || actual.sha256 !== baseline.files[path].sha256) throw Error(`Package runtime hash mismatch: ${path}`);
-		hashes[path] = actual.sha256;
-		files[`.trellis/scripts/${path}`] = { sha256: actual.sha256, mode: actual.mode, kind: "runtime", source };
-	}
-	if (baseline.releaseId !== "pi-trellis-runtime-v1-" + digest(JSON.stringify({ files: hashes, schemaVersion: 1 }))) throw Error("Package runtime release identity mismatch");
-	const agents = reader.json(packageRoot, "resources/agent-baseline.json");
-	if (!object(agents) || !object(agents.files)) throw Error("Malformed package role baseline");
-	for (const role of ["implement", "check", "research"]) {
-		const source = `agents/trellis-${role}.md`, actual = reader.file(packageRoot, source, DIAGNOSTIC_LIMITS.file, true);
-		if (!actual || !hash(agents.files[role]?.adapted) || actual.sha256 !== agents.files[role].adapted) throw Error(`Package role hash mismatch: ${role}`);
-		files[`.pi/agents/trellis-${role}.md`] = { sha256: actual.sha256, mode: 0o644, kind: "agent", source };
-	}
-	const templateBaseline = reader.json(packageRoot, "resources/template-baseline.json"), templates: InstalledManifest["templates"] = {};
-	if (!object(templateBaseline) || templateBaseline.schemaVersion !== 1 || !object(templateBaseline.files)) throw Error("Malformed package template baseline");
-	for (const [path, target] of Object.entries(TEMPLATE_TARGETS)) {
-		const source = `resources/templates/${path}`, actual = reader.file(packageRoot, source, DIAGNOSTIC_LIMITS.file, true);
-		if (!actual || !hash(templateBaseline.files[path]?.sha256) || actual.sha256 !== templateBaseline.files[path].sha256) throw Error(`Package template hash mismatch: ${path}`);
-		templates[target] = { origin: "package-default", sha256: actual.sha256, mode: 0o644, source };
-	}
-	return { files, templates, release: baseline.releaseId };
-}
+function packageSnapshot(reader: DiagnosticReader): PackageSnapshot { return packageProvenance(reader); }
 function manifestEnvelope(value: unknown): asserts value is InstalledManifest {
 	fields(value, ["schemaVersion", "runtimeReleaseId", "files", "templates"], "project resource manifest");
 	if (value.schemaVersion !== 2 || typeof value.runtimeReleaseId !== "string" || value.runtimeReleaseId.length !== 86 || !/^pi-trellis-runtime-v1-[a-f0-9]{64}$/.test(value.runtimeReleaseId) || !object(value.files) || !Object.keys(value.files).length || Object.keys(value.files).length > DIAGNOSTIC_LIMITS.entries || !object(value.templates) || !Object.keys(value.templates).length || Object.keys(value.templates).length > DIAGNOSTIC_LIMITS.entries) throw Error("Invalid/nonempty managed project manifest required");
@@ -224,7 +198,7 @@ function taskRecord(value: unknown): void {
 	for (const key of ["id", "name", "title", "status"]) if (Object.hasOwn(value, key) && (typeof value[key] !== "string" || !nonblank(value[key]) || [...value[key]].length > (key === "status" ? 128 : 8192))) throw Error(`task.json has invalid ${key}`);
 }
 /** Only the explicit source top-level tasks route may be external; internal routes remain local. */
-function exactTaskRoot(reader: Reader, root: string, ref: string, allowExternal: boolean): { store: string; path: string } {
+function exactTaskRoot(reader: DiagnosticReader, root: string, ref: string, allowExternal: boolean): { store: string; path: string } {
 	safePath(ref); if (!ref.startsWith(".trellis/tasks/") || ref.length > 8192) throw Error("Task must be beneath .trellis/tasks");
 	const lexical = join(root, ".trellis/tasks"); reader.stat(root, ".trellis");
 	let store: string;
@@ -237,8 +211,8 @@ function exactTaskRoot(reader: Reader, root: string, ref: string, allowExternal:
 	return { store, path };
 }
 
-export function collectDiagnostics(scope: DiagnosticScope, options: { signal?: AbortSignal; scopeError?: string } = {}): DiagnosticResult {
-	const reader = new Reader(options.signal), result: DiagnosticResult = { schemaVersion: 1, scope: { ...scope }, items: [], omitted: 0, facts: { project: "unsafe", packageValid: false, runtimeStaticValid: false, resourcesRestorable: false, operationInvalid: false, locked: false, managedMarker: false } };
+export function collectDiagnostics(scope: DiagnosticScope, options: { signal?: AbortSignal; scopeError?: string; reader?: DiagnosticReader } = {}): DiagnosticResult {
+	const reader = options.reader ?? new DiagnosticReader(options.signal), result: DiagnosticResult = { schemaVersion: 1, scope: { ...scope }, items: [], omitted: 0, facts: { project: "unsafe", packageValid: false, runtimeStaticValid: false, resourcesRestorable: false, operationInvalid: false, locked: false, managedMarker: false } };
 	const add = (id: string, category: string, status: DiagnosticItem["status"], summary: string, evidence: string[] = [], impact = "", advice = "", severity: DiagnosticItem["severity"] = status === "issue" ? "error" : "info") => {
 		if (result.items.length === DIAGNOSTIC_LIMITS.items) {
 			result.omitted++;
@@ -391,9 +365,10 @@ export function collectDiagnostics(scope: DiagnosticScope, options: { signal?: A
 export function formatDiagnostics(result: DiagnosticResult): string {
 	const issues = result.items.filter(i => i.status === "issue"), incomplete = result.items.filter(i => ["blocked", "skipped", "cancelled"].includes(i.status));
 	const passed = result.items.filter(i => i.status === "pass"), categories = [...new Set(passed.map(i => clean(i.category, 32)))];
-	const title = result.items.some(i => i.status === "cancelled") ? "Cancelled" : issues.length ? "Issues found" : incomplete.length ? "Static checks completed · probes not completed" : "Static checks completed";
-	const lines = [`Trellis Check · ${title}`, `Project: ${clean(result.scope.executionRoot ?? result.scope.cwd, 1000)}`, ...(result.scope.authorityRoot && result.scope.authorityRoot !== result.scope.executionRoot ? [`Requested authority${result.items.some(i => i.id === "authority" && i.status !== "pass") ? " (not authenticated)" : ""}: ${clean(result.scope.authorityRoot, 1000)}`] : []), "Scope: current session; exact task record only; related worktree not probed", `Completed static items: ${passed.length} (${clean(categories.join(", "), 256) || "none"})`, `Issues: ${issues.length}; not completed/not applicable: ${incomplete.length}`, ...passed.filter(i => i.id === "developer" || i.id === "current-task" || i.id === "project").flatMap(i => [clean(i.summary), ...(i.id === "current-task" && result.scope.taskRef ? i.evidence.map(v => `Current task: ${clean(v)}`).concat([clean(i.impact)]) : [])])];
-	const footer = "Read-only: no files changed, hooks, model calls, lifecycle actions, refresh or reload.\nS1 limit: bounded reads/cooperative cancellation only; no hard 20-second deadline or execution probe. Not an OS sandbox.";
+	const runtime = result.items.some(i => i.id === "python");
+	const title = result.items.some(i => i.status === "cancelled") ? "Cancelled" : issues.length ? "Issues found" : incomplete.length ? runtime ? "Checks completed · some capabilities unverified" : "Static checks completed · probes not completed" : runtime ? "Checks completed" : "Static checks completed";
+	const lines = [`Trellis Check · ${title}`, `Project: ${clean(result.scope.executionRoot ?? result.scope.cwd, 1000)}`, ...(result.scope.authorityRoot && result.scope.authorityRoot !== result.scope.executionRoot ? [`Requested authority${result.items.some(i => i.id === "authority" && i.status !== "pass") ? " (not authenticated)" : ""}: ${clean(result.scope.authorityRoot, 1000)}`] : []), runtime ? "Scope: current session; exact task/shared consumers only; related worktree not probed" : "Scope: current session; exact task record only; related worktree not probed", `Completed ${runtime ? "bounded" : "static"} items: ${passed.length} (${clean(categories.join(", "), 256) || "none"})`, `Issues: ${issues.length}; not completed/not applicable: ${incomplete.length}`, ...passed.filter(i => i.id === "developer" || i.id === "current-task" || i.id === "project").flatMap(i => [clean(i.summary), ...(i.id === "current-task" && result.scope.taskRef ? i.evidence.map(v => `Current task: ${clean(v)}`).concat([clean(i.impact)]) : [])])];
+	const footer = "Read-only: no files changed, hooks, model calls, lifecycle actions, refresh or reload.\n" + (runtime ? "Bounded worker/deployed-source probes; loaded host resources and cross-root worktree identity remain unverified. Not an OS sandbox." : "S1 limit: bounded reads/cooperative cancellation only; no hard 20-second deadline or execution probe. Not an OS sandbox.");
 	let omitted = result.omitted;
 	const omittedCategories = new Set((result.omittedCategories ?? []).slice(0, 16).map(c => clean(c, 32)));
 	for (const item of [...issues, ...incomplete]) {

@@ -5,6 +5,8 @@ import childProcess from 'node:child_process';
 import { syncBuiltinESMExports } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
+import { runDiagnostics } from '../lib/initialization/diagnostic-runtime.ts';
+import { DIAGNOSTIC_BOOTSTRAP } from '../lib/initialization/diagnostic-bootstrap.ts';
 import { collectDiagnostics, formatDiagnostics, DIAGNOSTIC_LIMITS } from '../lib/initialization/diagnostics.ts';
 import { registerInitCommand } from '../lib/initialization/command.ts';
 import { installRuntimeFixture } from './runtime-fixture.mjs';
@@ -26,9 +28,9 @@ function snapshot(root) {
  const walk=dir=>{for(const name of readdirSync(dir)){const path=join(dir,name),s=lstatSync(path);out[path.slice(root.length)]=[s.mode,s.isSymbolicLink()?readlinkSync(path):s.isDirectory()?'directory':s.isFile()?readFileSync(path).toString('base64'):'special'];if(s.isDirectory())walk(path);}};
  walk(root);return out;
 }
-function guards(t,{forbidden=[]}={}) {
- const calls=[],reads=[],open=fs.openSync;
- for(const name of ['exec','execSync','execFile','execFileSync','spawn','spawnSync','fork'])t.mock.method(childProcess,name,()=>{calls.push(name);assert.fail(`Forbidden subprocess: ${name}`);});
+function guards(t,{forbidden=[],allowDiagnostic=false}={}) {
+ const calls=[],reads=[],open=fs.openSync,spawn=childProcess.spawn;
+ for(const name of ['exec','execSync','execFile','execFileSync','spawn','spawnSync','fork'])t.mock.method(childProcess,name,(...args)=>{if(allowDiagnostic&&name==='spawn'){assert.deepEqual(args[1],['-I','-S','-B','-X','utf8','-c',DIAGNOSTIC_BOOTSTRAP]);assert.equal(args[2].shell,false);assert.equal(args[2].env.TMPDIR,undefined);return spawn(...args);}calls.push(name);assert.fail(`Forbidden subprocess: ${name}`);});
  for(const name of ['writeFileSync','mkdirSync','unlinkSync','renameSync','rmSync','chmodSync','fchmodSync','appendFileSync','truncateSync','symlinkSync'])t.mock.method(fs,name,()=>{calls.push(name);assert.fail(`Forbidden write: ${name}`);});
  t.mock.method(fs,'openSync',(path,flags,...args)=>{assert.equal(typeof flags,'number');assert.equal(flags&(fs.constants.O_WRONLY|fs.constants.O_RDWR|fs.constants.O_CREAT|fs.constants.O_TRUNC|fs.constants.O_APPEND),0);const text=String(path);reads.push(text);assert.ok(!forbidden.some(p=>text===p||text.startsWith(p+'/')),`Forbidden read: ${text}`);return open(path,flags,...args);});
  t.mock.method(fs,'readdirSync',()=>assert.fail('No task/session/history/material or directory enumeration'));
@@ -112,7 +114,7 @@ test('cross-root source hints never stat/open another source before native ident
 
 for(const resolver of [undefined,()=>{throw Error('bad memo');},()=>({contextId:'invalid/key'})])test(`menu Check missing/failed/invalid resolver blocks pointer, does not infer env or session`,async t=>{
  const f=fixture(t,true);f.pointer(f.task());let command;const notices=[];registerInitCommand({registerCommand:(_n,v)=>command=v},async()=>assert.fail('refresh forbidden'),resolver);
- const g=guards(t,{forbidden:[join(f.root,'.trellis/.runtime/sessions/own.json')]});await command.handler('',{cwd:f.root,hasUI:true,sessionManager:{getSessionId:()=>assert.fail('no key inference')},reload:()=>assert.fail('no reload'),ui:{select:async()=> 'Check',notify:text=>notices.push(text)}});g.restore();assert.equal(notices.length,1);assert.match(notices[0],/pointer check blocked/);assert.deepEqual(g.calls,[]);
+ const g=guards(t,{allowDiagnostic:true,forbidden:[join(f.root,'.trellis/.runtime/sessions/own.json')]});await command.handler('',{cwd:f.root,hasUI:true,sessionManager:{getSessionId:()=>assert.fail('no key inference')},reload:()=>assert.fail('no reload'),ui:{select:async()=> 'Check',notify:text=>notices.push(text)}});g.restore();assert.equal(notices.length,1);assert.match(notices[0],/pointer check blocked/);assert.deepEqual(g.calls,[]);
 });
 
 test('package descriptor malformed source inventory is separate from project errors and never reads unlisted victim paths',t=>{
@@ -156,7 +158,7 @@ test('package runtime byte drift is detected separately through the bounded desc
 test('menu resolver receives discovered current root and explicit own key; Check preserves pointers/index/config/modes',async t=>{
  const f=fixture(t,true),ref=f.task();f.pointer(ref,'caller-key');f.pointer('.trellis/tasks/foreign','foreign');f.put('.git/index',Buffer.from([9,0,255]));f.put('.pi/settings.json','{}');const sub=join(f.root,'src');mkdirSync(sub);let command,seen;const notices=[];
  registerInitCommand({registerCommand:(_n,v)=>command=v},async()=>assert.fail('refresh forbidden'),(ctx,root)=>{seen=[ctx.cwd,root];return {authorityRoot:root,contextId:'caller-key',sessionId:'session-visible',isProjectTrusted:false};});
- const before=snapshot(f.root),g=guards(t,{forbidden:[join(f.root,'.trellis/.runtime/sessions/foreign.json')]});await command.handler('',{cwd:sub,hasUI:true,reload:()=>assert.fail('reload forbidden'),ui:{select:async()=> 'Check',notify:text=>notices.push(text)}});g.restore();assert.deepEqual(seen,[sub,f.root]);assert.equal(notices.length,1);assert.match(notices[0],/Own current task record verified/);assert.match(notices[0],/Current task: .trellis\/tasks\/own/);assert.deepEqual(g.calls,[]);assert.deepEqual(snapshot(f.root),before);
+ const before=snapshot(f.root),g=guards(t,{allowDiagnostic:true,forbidden:[join(f.root,'.trellis/.runtime/sessions/foreign.json')]});await command.handler('',{cwd:sub,hasUI:true,reload:()=>assert.fail('reload forbidden'),ui:{select:async()=> 'Check',notify:text=>notices.push(text)}});g.restore();assert.deepEqual(seen,[sub,f.root]);assert.equal(notices.length,1);assert.match(notices[0],/Own current task record verified/);assert.match(notices[0],/Current task: .trellis\/tasks\/own/);assert.deepEqual(g.calls,[]);assert.deepEqual(snapshot(f.root),before);
 });
 
 test('cancellation during fixed inventory never leaves a passed inventory item or escapes collector',t=>{
@@ -173,7 +175,7 @@ test('fresh project with explicit resolver remains not-applicable; unsafe target
 test('resolver failure retains its bounded cause without reading any pointer',async t=>{
  const f=fixture(t,true);f.pointer(f.task());let command;const notices=[];
  registerInitCommand({registerCommand:(_n,v)=>command=v},async()=>assert.fail('refresh'),()=>{throw Error('Managed startup authority failed: binding mismatch\u202e\x1b[31m');});
- const g=guards(t,{forbidden:[join(f.root,'.trellis/.runtime/sessions/own.json')]});await command.handler('',{cwd:f.root,hasUI:true,ui:{select:async()=> 'Check',notify:text=>notices.push(text)}});g.restore();
+ const g=guards(t,{allowDiagnostic:true,forbidden:[join(f.root,'.trellis/.runtime/sessions/own.json')]});await command.handler('',{cwd:f.root,hasUI:true,ui:{select:async()=> 'Check',notify:text=>notices.push(text)}});g.restore();
  assert.equal(notices.length,1);assert.match(notices[0],/Managed startup authority failed: binding mismatch/);assert.doesNotMatch(notices[0],/[\u202e\x1b]/);assert.match(notices[0],/pointer check blocked/);
 });
 
@@ -218,8 +220,8 @@ test('production extension resolver preserves two exact session keys without Pyt
  const ctx=name=>({cwd:f.root,hasUI:true,sessionManager:{getSessionId:()=>name,getSessionFile:()=>undefined},ui:{select:async()=> 'Check',notify:text=>notices.push(text)}});
  const a=ctx('real-a-'+f.root),b=ctx('real-b-'+f.root),aKey=__internals.contextKey(f.root,a),bKey=__internals.contextKey(f.root,b);assert.notEqual(aKey,bKey);
  f.pointer(f.task('.trellis/tasks/a'),aKey);f.pointer(f.task('.trellis/tasks/b'),bKey);
- let g=guards(t,{forbidden:[join(f.root,`.trellis/.runtime/sessions/${bKey}.json`),join(f.root,'.trellis/tasks/b')]});await commands.get('trellis-init').handler('',a);g.restore();assert.match(notices.at(-1),/Current task: .trellis\/tasks\/a/);
- g=guards(t,{forbidden:[join(f.root,`.trellis/.runtime/sessions/${aKey}.json`),join(f.root,'.trellis/tasks/a')]});await commands.get('trellis-init').handler('',b);g.restore();assert.match(notices.at(-1),/Current task: .trellis\/tasks\/b/);
+ let g=guards(t,{allowDiagnostic:true,forbidden:[join(f.root,`.trellis/.runtime/sessions/${bKey}.json`),join(f.root,'.trellis/tasks/b')]});await commands.get('trellis-init').handler('',a);g.restore();assert.match(notices.at(-1),/Current task: .trellis\/tasks\/a/);
+ g=guards(t,{allowDiagnostic:true,forbidden:[join(f.root,`.trellis/.runtime/sessions/${aKey}.json`),join(f.root,'.trellis/tasks/a')]});await commands.get('trellis-init').handler('',b);g.restore();assert.match(notices.at(-1),/Current task: .trellis\/tasks\/b/);
 });
 
 test('production child authority failure retains cause and never borrows its original pointer',async t=>{
@@ -229,11 +231,23 @@ test('production child authority failure retains cause and never borrows its ori
  const old=__internals.contextKey(f.root,ctx);f.pointer(f.task(),old);
  await events.get('before_agent_start')({prompt:'Active task: .trellis/tasks/own\nTrellis context id: old\n\nIncomplete header',systemPromptOptions:{sections:{}}},ctx);
  const child=__internals.contextKey(f.root,ctx);assert.notEqual(child,old);
- const g=guards(t,{forbidden:[join(f.root,`.trellis/.runtime/sessions/${old}.json`),join(f.root,`.trellis/.runtime/sessions/${child}.json`)]});await commands.get('trellis-init').handler('',{...ctx,hasUI:true,ui:{select:async()=> 'Check',notify:text=>notices.push(text)}});g.restore();
+ const g=guards(t,{allowDiagnostic:true,forbidden:[join(f.root,`.trellis/.runtime/sessions/${old}.json`),join(f.root,`.trellis/.runtime/sessions/${child}.json`)]});await commands.get('trellis-init').handler('',{...ctx,hasUI:true,ui:{select:async()=> 'Check',notify:text=>notices.push(text)}});g.restore();
  assert.match(notices.at(-1),/Incomplete\/invalid source authority header/);assert.match(notices.at(-1),/pointer check blocked/);
 });
 
 test('formatter identifies omitted categories without leaking category controls',t=>{
  const f=fixture(t),r=f.check();const row={id:'issue',category:'secret-category\u202e',status:'issue',severity:'error',summary:'字'.repeat(500),evidence:Array.from({length:12},()=> '字'.repeat(500)),impact:'impact',advice:'next'};
  const report=formatDiagnostics({...r,items:Array.from({length:64},()=>row)});assert.ok(Buffer.byteLength(report)<=DIAGNOSTIC_LIMITS.report);assert.match(report,/Omitted categories: secret-category/);assert.doesNotMatch(report,/\u202e/);
+});
+
+test('parent lifecycle wrapper may suppress stale Check report without extra UI or writes',async t=>{const f=fixture(t,true);let command,calls=0,notices=0;registerInitCommand({registerCommand:(_name,v)=>command=v},async()=>assert.fail('refresh'),()=>({contextId:'own'}),async(_ctx,scope,options)=>{calls++;assert.equal(scope.contextId,'own');assert.equal(options.scopeError,undefined);return undefined;});await command.handler('',{cwd:f.root,hasUI:true,ui:{select:async()=> 'Check',notify:()=>notices++}});assert.equal(calls,1);assert.equal(notices,0);});
+
+test('production Check lifecycle cancels stale runs before publishing reports',async t=>{
+ const f=fixture(t,true),commands=new Map(),events=new Map(),notices=[];
+ trellis({registerCommand:(name,value)=>commands.set(name,value),registerTool:()=>{},on:(name,value)=>events.set(name,value),events:{on:()=>()=>{},emit:()=>{}},sendMessage:()=>{}});
+ const ctx={cwd:f.root,hasUI:true,sessionManager:{getSessionId:()=> 'lifecycle-'+f.root,getSessionFile:()=>undefined},ui:{select:async()=> 'Check',notify:text=>notices.push(text)}};
+ const handler=commands.get('trellis-init').handler;
+ const first=handler('',ctx);await events.get('session_shutdown')({},ctx);await first;assert.equal(notices.length,0,'shutdown suppresses old report');
+ await events.get('session_start')({},ctx);notices.length=0;
+ const older=handler('',ctx),newer=handler('',ctx);await Promise.all([older,newer]);assert.equal(notices.length,1,'only latest Check publishes');assert.match(notices[0],/Trellis/);
 });
