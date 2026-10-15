@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 19
+- **Total Sessions**: 20
 - **Last Active**: 2026-10-15
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~548 | Active |
+| `journal-1.md` | ~570 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 20 | 2026-10-15 | Pi 指令菜单统一完成 | `5d3b4e4` | `main` |
 | 19 | 2026-10-15 | Runtime工具名适配与preset组合验收 | `56e8b9c`, `94e54cf`, `5f58f4e` | `main` |
 | 18 | 2026-10-15 | 明确研究产物与任务证据边界 | `60a1c04` | `main` |
 | 17 | 2026-10-15 | 用户级 Trellis 激活与真实终端验收 | `568634f`, `740824c`, `19e8bb0`, `23c0a9a`, `4f85b6a` | `main` |

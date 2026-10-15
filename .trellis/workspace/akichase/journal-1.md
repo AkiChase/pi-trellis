@@ -546,3 +546,25 @@ viewer 区分归档隐藏与真正缺失；归档父子不展示，合法引用�
 ### Next Steps
 
 - 原生provider缺失NOT_RUN；monitor仅XOR边界，在线模型与真实终端未验证。
+
+
+## Session 20: Pi 指令菜单统一完成
+<!-- trellis-session: v=2 fp=8e34b13331bff483 -->
+
+**Date**: 2026-10-15
+**Task**: Pi 指令菜单统一完成
+**Branch**: `main`
+
+### Summary
+
+纯菜单 init：Check/Help/原生用户名，取消优先最终确认；独立76/76与184/184通过，全量467/468唯一并行资源数量断言失败。指令任务已接受归档，接着查看诊断planning，不部署或reload。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5d3b4e4` | feat: unify Trellis Pi commands with native menus |
+
+### Status
+
+[OK] **Completed**
