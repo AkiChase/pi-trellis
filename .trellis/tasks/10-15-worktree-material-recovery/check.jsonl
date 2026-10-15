@@ -1,0 +1,6 @@
+{"file":".trellis/tasks/10-15-worktree-material-recovery/prd.md","reason":"已批准需求与A1-A7验收"}
+{"file":".trellis/tasks/10-15-worktree-material-recovery/design.md","reason":"S1原生source-authority合同与不改边界"}
+{"file":".trellis/tasks/10-15-worktree-material-recovery/implement.md","reason":"分stage审查范围与测试命令"}
+{"file":".trellis/spec/development/index.md","reason":"源码所有权/安全/并发；本任务明确替换旧复制与生成规则，按新批准合同审查"}
+{"file":".trellis/spec/testing/index.md","reason":"负例与真实fixture、资源hash/运行环境和证据要求"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Python/TS binding、角色根与未知执行保护"}

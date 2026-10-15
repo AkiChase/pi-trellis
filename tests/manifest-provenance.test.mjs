@@ -43,7 +43,7 @@ test('schema2 separates exact runtime/roles from seven preserved old-project tem
  const f = preserved(t), before = f.snapshot(), release = runtimeBaseline().releaseId;
  const m = verifyRuntime(f.root);
  assert.equal(m.schemaVersion, 2); assert.equal(m.runtimeReleaseId, release);
- assert.equal(Object.values(m.files).filter(v => v.kind === 'runtime').length, 32);
+ assert.equal(Object.values(m.files).filter(v => v.kind === 'runtime').length, Object.keys(runtimeBaseline().files).length);
  assert.equal(Object.values(m.files).filter(v => v.kind === 'agent').length, 3);
  assert.equal(Object.keys(m.templates).length, 8);
  for (const [path, value] of Object.entries(m.templates)) {
@@ -156,3 +156,11 @@ for (const attack of ['preserved manifest output', 'arbitrary template output', 
   assert.equal(inspect(f.root).state, 'conflict'); assert.throws(() => plan(f.root, 'Returning User')); assert.throws(() => apply(q)); assert.deepEqual(f.snapshot(), before);
  });
 }
+
+test('native diagnostics is MIT package source with an exact release hash',()=>{
+ const baseline=JSON.parse(readFileSync('resources/runtime-baseline.json','utf8'));
+ const path='pi_trellis_worktree/diagnostics.py', record=baseline.files[path];
+ assert.equal(record.origin,'pi-trellis');assert.equal(record.license,'MIT');
+ assert.equal(record.sha256,digest(readFileSync('runtime/'+path)));
+ assert.equal(record.sourceSha256,null);assert.equal(record.sourcePath,null);
+});

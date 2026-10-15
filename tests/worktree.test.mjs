@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
 import { canonicalPath } from "../lib/config.ts";
-import { readBinding, markerFile, bindingFile, acquireBindingLock } from "../lib/bindings.ts";
+import { readBinding, markerFile, bindingFile, acquireBindingLock, parseBinding } from "../lib/bindings.ts";
 import { manageWorktree } from "./worktree-fixture.mjs";
 
 function fixture(t) {
@@ -172,4 +172,9 @@ test("binding storage symlink is not a trusted external task store", async (t) =
   mkdirSync(join(f.root, ".trellis/.runtime/pi-trellis"), { recursive: true });
   symlinkSync(outside.root, join(f.root, ".trellis/.runtime/pi-trellis/bindings"));
   await assert.rejects(f.run(), /symlink outside/);
+});
+
+test('host strict v2 binding schema rejects old descriptors and unknown combinations',async t=>{
+ const f=fixture(t),b=(await f.run()).binding;assert.equal(b.version,2);assert.deepEqual(parseBinding(b),b);
+ for(const bad of [{...b,version:1},{...b,preparedFiles:{}},{...b,materials:{}},{...b,unknown:true},{...b,branch:'bad\tbranch'}])assert.throws(()=>parseBinding(bad));
 });

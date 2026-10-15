@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { canonicalPath, containsPath, taskSlug } from "./config.ts";
 
 export interface WorktreeBinding {
-	version: 1;
+	version: 2;
 	bindingId: string;
 	taskDir: string;
 	sourceRoot: string;
@@ -14,8 +14,6 @@ export interface WorktreeBinding {
 	baseCommit: string;
 	contextId: string;
 	preparationState: "creating" | "unprepared" | "preparing" | "ready" | "error";
-	preparedFiles?: Record<string, string>;
-	materials?: { version: 1; revision: string; snapshotId: string };
 	createdAt: string;
 	lastError?: string;
 }
@@ -40,19 +38,17 @@ export function markerFile(root: string): string { return join(runtimeDirectory(
 export function parseBinding(value: unknown): WorktreeBinding {
 	if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid worktree binding");
 	const b = value as WorktreeBinding;
-	if (b.version !== 1 || !["creating", "unprepared", "preparing", "ready", "error"].includes(b.preparationState)) throw new Error("Unsupported worktree binding version/state");
+	const allowed = new Set(["version", "bindingId", "taskDir", "sourceRoot", "worktreePath", "repositoryIdentity", "branch", "baseCommit", "contextId", "preparationState", "createdAt", "lastError"]);
+	if (b.version !== 2 || Object.keys(b).some(key => !allowed.has(key)) || !["creating", "unprepared", "preparing", "ready", "error"].includes(b.preparationState)) throw new Error("Unsupported worktree binding version/state or unknown fields; expected strict version 2 (no migration)");
 	for (const key of ["bindingId", "taskDir", "sourceRoot", "worktreePath", "repositoryIdentity", "branch", "baseCommit", "contextId", "createdAt"] as const) {
-		if (typeof b[key] !== "string" || !b[key] || /[\0\r\n]/.test(b[key])) throw new Error(`Invalid binding ${key}`);
+		if (typeof b[key] !== "string" || !b[key].trim() || /[\x00-\x1f\x7f]/.test(b[key])) throw new Error(`Invalid binding ${key}`);
 	}
 	taskSlug(b.taskDir);
 	if (!/^[a-f0-9]{40,64}$/.test(b.baseCommit) || !/^[A-Za-z0-9_-]+$/.test(b.contextId) || !/^[A-Za-z0-9-]+$/.test(b.bindingId)) throw new Error("Invalid binding base/context/binding id");
 	for (const key of ["sourceRoot", "worktreePath", "repositoryIdentity"] as const) {
 		if (canonicalPath(b[key]) !== b[key]) throw new Error(`Binding ${key} must be a canonical absolute path`);
 	}
-	if (b.materials !== undefined) {
-		const m = b.materials;
-		if (!m || m.version !== 1 || Object.keys(m).sort().join(",") !== "revision,snapshotId,version" || ![m.revision, m.snapshotId].every((v) => typeof v === "string" && /^[A-Za-z0-9-]{1,80}$/.test(v))) throw new Error("Invalid material descriptor");
-	}
+	if (b.lastError !== undefined && (typeof b.lastError !== "string" || [...b.lastError].length > 4096 || b.lastError.includes("\0"))) throw new Error("Invalid binding lastError");
 	return b;
 }
 
@@ -60,7 +56,9 @@ function readRecord(file: string): WorktreeBinding | undefined {
 	try {
 		const stat = lstatSync(file);
 		if (!stat.isFile() || stat.size > 1024 * 1024) throw new Error(`Binding must be a regular file under 1 MiB: ${file}`);
-		return parseBinding(JSON.parse(readFileSync(file, "utf8")));
+		const data = readFileSync(file);
+		if (data.length > 1024 * 1024 || data.includes(0)) throw new Error(`Invalid bounded UTF-8 binding: ${file}`);
+		return parseBinding(JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(data)));
 	} catch (error) {
 		if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
 		throw error;

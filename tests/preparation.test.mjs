@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, cpSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { canonicalPath } from '../lib/config.ts';
 import { manageWorktree } from './worktree-fixture.mjs';
-import { readBinding, markerFile } from '../lib/bindings.ts';
+import { readBinding } from '../lib/bindings.ts';
 import { writeExecution } from '../lib/executions.ts';
 
 export function fixture(t) {
@@ -16,8 +16,9 @@ export function fixture(t) {
  const git=(...args)=>execFileSync('git',['-C',root,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
  git('init','-q');
  put('.gitignore','/.worktree/\n/.trellis/.runtime/\n/.pi/\n');
+ put('.trellis/workflow.md','fixture workflow\n');
  put('code.txt','baseline\n');put('.trellis/spec/spec.md','committed specification\n');
- // Fixture models the documented task.py start/current contract, without copying runtime into product.
+ // Fixture task.py would produce a pointer if accidentally executed; S1 must never call it.
  put('.trellis/scripts/task.py',`import os,sys,json,pathlib
 root=pathlib.Path.cwd()
 token=os.environ['TRELLIS_CONTEXT_ID']
@@ -40,32 +41,42 @@ else:
  return {root,put,git,task,run};
 }
 
-test('prepare preview selects task-only materials; writes isolated pointer and ready without source changes',async t=>{
- const f=fixture(t),created=await f.run();
- const sourceRecord=readFileSync(join(f.root,f.task,'task.json'),'utf8');
- const preview=await f.run({action:'prepare',confirm:false});assert.equal(preview.preview,true);assert.match(preview.note,/after_start/);
- assert.ok(!existsSync(join(created.binding.worktreePath,f.task)));
- const ready=await f.run({action:'prepare'});assert.equal(ready.binding.preparationState,'ready');
- assert.equal(readFileSync(join(f.root,f.task,'task.json'),'utf8'),sourceRecord);
- assert.ok(existsSync(join(ready.binding.worktreePath,f.task,'research/topic.md')));
- assert.ok(!existsSync(join(f.root,'.trellis/.runtime/sessions')));
- const pointer=JSON.parse(readFileSync(join(ready.binding.worktreePath,'.trellis/.runtime/sessions',ready.binding.contextId+'.json')));
- assert.equal(pointer.current_task,f.task);
+test('prepare preview/confirm use source materials without task copies, start, hooks, pointers or Git changes',async t=>{
+ const f=fixture(t),created=await f.run(),target=created.binding.worktreePath;
+ const sourceRecord=readFileSync(join(f.root,f.task,'task.json'));
+ const targetGit=(...args)=>execFileSync('git',['-C',target,...args],{encoding:'utf8'});
+ const snapshot=()=>[targetGit('status','--porcelain'),targetGit('diff'),targetGit('diff','--cached')];
+ const before=snapshot();
+ const preview=await f.run({action:'prepare',confirm:false});assert.equal(preview.preview,true);assert.match(preview.note,/No task copies/);
+ assert.ok(!existsSync(join(target,f.task)));
+ const ready=await f.run({action:'prepare'});assert.equal(ready.binding.preparationState,'ready');assert.equal(ready.binding.version,2);
+ assert.deepEqual(snapshot(),before);assert.deepEqual(readFileSync(join(f.root,f.task,'task.json')),sourceRecord);
+ assert.ok(!existsSync(join(target,f.task)));assert.ok(!existsSync(join(f.root,'.trellis/.runtime/sessions')));
+ assert.ok(!existsSync(join(target,'.trellis/.runtime/sessions')));
+ assert.equal(ready.materials.role,'implement');assert.equal(ready.materials.taskPath,join(f.root,f.task));
+ assert.equal(ready.materials.specRoot,join(f.root,'.trellis/spec'));
+ assert.ok(ready.materials.references.some(ref=>ref.path===join(f.root,f.task,'research/topic.md')));
+ assert.equal(Object.hasOwn(ready.binding,'materials'),false);assert.equal(Object.hasOwn(ready.binding,'preparedFiles'),false);
  assert.equal((await f.run({action:'prepare'})).reused,true);
 });
 
-test('planning task, missing reference and source baseline differences cannot be prepared',async t=>{
+test('planning task and broken own references fail; uncommitted source specs are valid without target comparison',async t=>{
  const f=fixture(t);await f.run();
  f.put(f.task+'/task.json','{"status":"planning"}');await assert.rejects(f.run({action:'prepare'}),/normal workflow/);
  f.put(f.task+'/task.json','{"status":"in_progress"}');
- f.put('.trellis/spec/spec.md','uncommitted spec');await assert.rejects(f.run({action:'prepare'}),/differs|uncommitted/);
+ f.put(f.task+'/implement.jsonl',JSON.stringify({file:'.trellis/spec/missing.md'}));await assert.rejects(f.run({action:'prepare'}),/Source material/);
+ f.put(f.task+'/implement.jsonl',JSON.stringify({file:'.trellis/spec/spec.md'}));
+ f.put('.trellis/spec/spec.md','uncommitted spec');const result=await f.run({action:'prepare'});
+ assert.equal(result.materials.references[0].path,join(f.root,'.trellis/spec/spec.md'));
 });
 
-test('existing target materials are never overwritten',async t=>{
+test('existing target materials are irrelevant and never overwritten',async t=>{
  const f=fixture(t),created=await f.run();
  const dest=join(created.binding.worktreePath,f.task);mkdirSync(dest,{recursive:true});writeFileSync(join(dest,'prd.md'),'user target PRD');
- await assert.rejects(f.run({action:'prepare'}),/conflict/);
- assert.equal(readFileSync(join(dest,'prd.md'),'utf8'),'user target PRD');assert.equal(readBinding(f.root,f.task).preparationState,'unprepared');
+ await f.run({action:'prepare'});
+ assert.equal(readFileSync(join(dest,'prd.md'),'utf8'),'user target PRD');assert.equal(readBinding(f.root,f.task).preparationState,'ready');
+ await assert.rejects(f.run({action:'remove',integratedInto:'HEAD'}),/untracked/);
+ assert.equal(readFileSync(join(dest,'prd.md'),'utf8'),'user target PRD');
 });
 
 test('remove requires clean worktree and preserving reference, preview exposes ignored file risk',async t=>{
@@ -87,12 +98,12 @@ test('remove cannot delete current worktree or unknown execution; recover live o
  await assert.rejects(f.run({action:'recover'}),/still alive/);
 });
 
-test('preparing committed task metadata overrides only target branch, source stays unchanged',async t=>{
+test('committed target task metadata remains byte-identical, including source branch',async t=>{
  const f=fixture(t);f.put(f.task+'/task.json','{"status":"in_progress","branch":"source-branch"}');
  f.git('add',f.task);f.git('-c','user.name=Fixture','-c','user.email=fixture@example.invalid','-c','commit.gpgsign=false','commit','-qm','committed task');
- const created=await f.run();await f.run({action:'prepare'});
+ const created=await f.run(), before=readFileSync(join(created.binding.worktreePath,f.task,'task.json'));await f.run({action:'prepare'});
+ assert.deepEqual(readFileSync(join(created.binding.worktreePath,f.task,'task.json')),before);
  assert.equal(JSON.parse(readFileSync(join(f.root,f.task,'task.json'))).branch,'source-branch');
- assert.equal(JSON.parse(readFileSync(join(created.binding.worktreePath,f.task,'task.json'))).branch,created.binding.branch);
 });
 
 test('dead-owner unknown execution is released only by confirmed recovery',async t=>{
@@ -116,4 +127,13 @@ test('remove rejects commits not preserved in the approved reference',async t=>{
 test('stale target can be explicitly unbound without deleting branch',async t=>{
  const f=fixture(t),created=await f.run();rmSync(created.binding.worktreePath,{recursive:true});
  const result=await f.run({action:'remove'});assert.match(result.note,/Removed/);assert.equal(readBinding(f.root,f.task),undefined);
+});
+
+test('prepare preview/confirm reject running and unknown leases without material writes',async t=>{
+ const f=fixture(t),created=await f.run();
+ for(const state of ['running','unknown']){
+  writeExecution(created.binding,{bindingId:created.binding.bindingId,requestId:'busy',state,role:'trellis-implement',ownerPid:process.pid,ownerToken:'x',createdAt:new Date().toISOString()});
+  for(const confirm of [false,true])await assert.rejects(f.run({action:'prepare',confirm}),/active|unknown/);
+  assert.equal(readBinding(f.root,f.task).preparationState,'unprepared');assert.ok(!existsSync(join(created.binding.worktreePath,f.task)));
+ }
 });

@@ -1,4 +1,4 @@
-"""Repository, v1 records and source lock shared with the Pi host."""
+"""Repository, strict v2 bindings and source lock shared with the Pi host."""
 import hashlib
 import json
 import os
@@ -10,6 +10,8 @@ import uuid
 import tempfile
 from contextlib import contextmanager
 from datetime import datetime, timezone
+
+from .diagnostics import DiagnosticError
 
 
 def now():
@@ -109,9 +111,9 @@ def require_ignored(root, path):
 
 def worktree_directory(root):
     file = Path(root) / ".pi/pi-trellis.json"
-    if not file.exists():
+    if not os.path.lexists(file):
         return canonical(Path(root) / ".worktree")
-    config = json_value(file.read_text(encoding="utf-8"))
+    config = read_json(file, 1024 * 1024)
     if not isinstance(config, dict):
         raise ValueError("pi-trellis.json must contain an object")
     section = config.get("worktree", {})
@@ -150,22 +152,19 @@ IDENTITY = ("version", "bindingId", "taskDir", "sourceRoot", "worktreePath", "re
 
 
 def parse_binding(b):
-    if not isinstance(b, dict) or (type(b.get("version")) is not int or b.get("version") != 1) or b.get("preparationState") not in ("creating", "unprepared", "preparing", "ready", "error"):
-        raise ValueError("Unsupported worktree binding version/state")
+    allowed = set(IDENTITY) | {"preparationState", "lastError"}
+    if not isinstance(b, dict) or type(b.get("version")) is not int or b.get("version") != 2 or set(b) - allowed or b.get("preparationState") not in ("creating", "unprepared", "preparing", "ready", "error"):
+        raise DiagnosticError("binding_invalid", "Unsupported worktree binding version/state or unknown fields; expected strict version 2 (no migration)")
     for key in IDENTITY[1:]:
         text(b.get(key), f"binding {key}")
     task_slug(b["taskDir"])
     if not re.fullmatch(r"[a-f0-9]{40,64}", b["baseCommit"]) or not re.fullmatch(r"[A-Za-z0-9_-]+", b["contextId"]) or not re.fullmatch(r"[A-Za-z0-9-]+", b["bindingId"]):
-        raise ValueError("Invalid binding base/context/binding id")
+        raise DiagnosticError("binding_invalid", "Invalid binding base/context/binding id")
     for key in ("sourceRoot", "worktreePath", "repositoryIdentity"):
         if str(canonical(b[key])) != b[key]:
-            raise ValueError(f"Binding {key} must be a canonical absolute path")
-    if "preparedFiles" in b and (not isinstance(b["preparedFiles"], dict) or any(not isinstance(k, str) or not isinstance(v, str) for k, v in b["preparedFiles"].items())):
-        raise ValueError("Invalid preparedFiles")
-    if 'materials' in b:
-        m = b['materials']
-        if not isinstance(m, dict) or type(m.get('version')) is not int or m['version'] != 1 or set(m) != {'version', 'revision', 'snapshotId'} or any(not isinstance(m.get(k), str) or not re.fullmatch(r'[A-Za-z0-9-]{1,80}', m[k]) for k in ('revision', 'snapshotId')):
-            raise ValueError('Invalid material descriptor')
+            raise DiagnosticError("binding_invalid", f"Binding {key} must be a canonical absolute path")
+    if "lastError" in b and (not isinstance(b["lastError"], str) or len(b["lastError"]) > 4096 or "\0" in b["lastError"]):
+        raise DiagnosticError("binding_invalid", "Invalid binding lastError")
     return b
 
 
@@ -182,10 +181,17 @@ def read_json(file, limit):
     except FileNotFoundError:
         return None
     if not stat.S_ISREG(info.st_mode) or info.st_size > limit:
-        raise ValueError(f"Record must be a local regular bounded file: {file}")
-    value = json_value(file.read_text(encoding="utf-8"))
+        raise DiagnosticError("record_invalid", f"Record must be a local regular bounded file: {file}", path=str(file))
+    try:
+        with file.open("rb") as stream:
+            data = stream.read(limit + 1)
+        if len(data) > limit or b"\0" in data:
+            raise ValueError("Record exceeds byte bound or contains NUL")
+        value = json_value(data.decode("utf-8"))
+    except (ValueError, UnicodeError) as error:
+        raise DiagnosticError("record_invalid", "Invalid UTF-8 JSON record: " + str(error), path=str(file)) from error
     if not isinstance(value, dict):
-        raise ValueError(f"Record must contain a JSON object: {file}")
+        raise DiagnosticError("record_invalid", f"Record must contain a JSON object: {file}", path=str(file))
     return value
 
 
@@ -229,7 +235,7 @@ def source_lock(root):
     try:
         fd = os.open(file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     except FileExistsError:
-        raise ValueError(f"Worktree operation already locked; inspect {file} before explicitly recovering a stale lock") from None
+        raise DiagnosticError("operation_locked", f"Worktree operation already locked; inspect {file} before explicitly recovering a stale lock", path=str(file)) from None
     try:
         os.write(fd, (json.dumps(dict(pid=os.getpid(), token=str(uuid.uuid4()), createdAt=now())) + "\n").encode())
         yield
