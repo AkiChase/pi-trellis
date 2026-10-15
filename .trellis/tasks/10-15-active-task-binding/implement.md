@@ -34,9 +34,9 @@ Node v24.14.1。首次 focused Node 因本仓缺 pi-tui peer 在加载前失败�
 
 ## S3 检查记录
 
-S2提交 `2677f87`。新增 `tests/active-session-host.test.mjs` 使用 Pi1.2真实SDK与public runToolCall（真实tool_call/tool_result），持久会话A关闭→创建B绑定同任务→open恢复A→切A任务；严格验证dir/id/source/state/stale、session文件路径、他人pointer/task/runtime/settings字节保持。关闭为idle SDK dispose，不是运行中取消或真实CLI `/resume`。无模型网络/个人凭据。初稿通过1/1；独立审查指出弱regex/未验证切换等证据缺口，已改为精确断言并补字节保持，最终fixture1/1 exit0，独立复核确认缺口关闭、无新阻塞。
+S2提交 `2677f87`。新增 `tests/active-session-host.test.mjs` 使用 Pi1.2真实SDK与public runToolCall（真实tool_call/tool_result），持久会话A关闭→创建B绑定同任务→open恢复A→切A任务；严格验证dir/id/source/state/stale、session文件路径、他人pointer/task/runtime/settings字节保持。关闭为idle SDK dispose，不是运行中取消或真实CLI `/resume`。无模型网络/个人凭据。初稿通过1/1；独立审查指出弱regex/未验证切换等证据缺口，已改为精确断言并补字节保持，最终fixture1/1 exit0，独立复核确认缺口关闭、无新阻塞。验收阶段提交 `b4c79cb`。
 
-共享全量547/549，两失败发生于并行 `lib/subagent-rpc.ts` 和新增 `tests/dispatch-params.test.mjs`（stop参数合同/ESM require），本任务未修改。隔离2677f87＋新test完整运行548/549，唯一已有viewer unpreloaded SDK子进程SIGKILL。该单项在隔离/tmp、系统TMPDIR、加入现有dependency symlink、原仓均重复SIGKILL；未定位原因，不宣称是任务实现缺陷或纯环境问题。保持失败，最终检查未全过，因此不执行用户有条件授权的archive/journal。原始日志和快照仓外；排除该项的剩余覆盖运行结果单独记录，不称完整PASS。
+共享全量547/549，两失败发生于并行 `lib/subagent-rpc.ts` 和新增 `tests/dispatch-params.test.mjs`（stop参数合同/ESM require），本任务未修改。隔离2677f87＋新test完整运行548/549，唯一已有viewer unpreloaded SDK子进程SIGKILL。该单项在隔离/tmp、系统TMPDIR、加入现有dependency symlink、原仓均重复SIGKILL；未定位原因，不宣称是任务实现缺陷或纯环境问题。保持失败，最终检查未全过，因此不执行用户有条件授权的archive/journal。原始日志和快照仓外；初次负向test-name-pattern未排除该项（Node匹配语义），仍548/549失败；改用明确test-skip-pattern后，隔离快照剩余548/548 exit0、Python32/32 exit0；被排除的viewer单项仍未通过，此为有界覆盖而非完整PASS。
 
 ## 已知限制与回滚
 
