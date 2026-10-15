@@ -685,3 +685,44 @@ viewer 区分归档隐藏与真正缺失；归档父子不展示，合法引用�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 25: Active task binding and continue consolidation
+<!-- trellis-session: v=2 fp=b5dd3d78dfab0e53 -->
+
+**Date**: 2026-10-16
+**Task**: Active task binding and continue consolidation
+**Branch**: `main`
+
+### Summary
+
+新增 task.py active 纯会话绑定；删除 trellis-continue 并将恢复路由并入 trellis-start；真实 SDK 持久会话验收通过。
+
+### Main Changes
+
+- runtime/task.py 新增 active 子命令：只写当前 session 指针，保留多会话共享绑定，不改状态/分支、不运行 hook、不新增锁
+- 删除 skills/trellis-continue，恢复路由与阶段判断合并进 trellis-start；README/AGENTS/workflow 模板/spec/来源清单同步，技能数 10→9、资源 36→35
+- runtime/common/task_store.py 仅更新 create 的提示文案；runtime-baseline adapted hash/releaseId 同步
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `cd24552` | feat(task): add session-only active binding |
+| `2677f87` | refactor(skills): consolidate task resume into start |
+| `b4c79cb` | test(task): verify persisted session activation with real SDK |
+| `e9100aa` | docs(task): record final activation verification limits |
+
+### Testing
+
+- [OK] runtime focused 26/26、资源/策略 focused 104/104、Python 32/32（Node v24.14.1，PI_TRELLIS_TEST_HOST 指向现有 Pi 1.2 宿主）
+- [OK] 隔离快照全量 548/549：唯一失败为既有 viewer unpreloaded SDK 子进程 SIGKILL，源仓与三个临时路径均可复现、原因未定位；显式 skip 该项后其余 548/548 通过，故不称为完整 PASS
+- [OK] 真实 Pi SDK 离线多会话验收 tests/active-session-host.test.mjs 1/1：会话关闭→新会话绑定同任务→恢复旧会话，严格校验 dir/id/source/state/stale 与他人指针/任务/运行时/设置字节保持
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 若需完整绿：单独定位 viewer unpreloaded SDK 子进程 SIGKILL（既有测试，非本任务引入）
