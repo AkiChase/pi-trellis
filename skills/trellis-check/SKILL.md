@@ -70,13 +70,17 @@ Run relevant focused checks, plus project lint, type-check and broader tests acc
 ### Task Material Boundaries
 
 - [ ] New `research/` files are research-agent findings, not implementation summaries, progress/authorization records, review reports, test logs, screenshots or temporary scripts?
-- [ ] Implement/check/main-session reports use `evidence/`, never `research/`?
-- [ ] Retained evidence has review value, without redundant reports, temporary execution files or sensitive data?
-- [ ] Planning artifacts link evidence instead of repeatedly copying whole reports? Short results may be recorded directly; separate reports are optional.
+- [ ] Raw logs, full events, bulk terminal text/ANSI, temporary drivers and debug fingerprints use this run's owned system temporary directory outside the repository, not task `evidence/` or repository `.tmp/`?
+- [ ] Results were checked before discarding diagnostic materials; failure facts, causes and rerun relationships remain honest even after a later PASS?
+- [ ] Children return concise results and needed temporary paths without copying raw output into the repository for handoff? Separate reports are optional, not required per role or stage.
+- [ ] Main selected only minimal, sanitized evidence with an explicit long-term purpose; only reports worth retaining use `evidence/`, never `research/`?
+- [ ] Final commands, environment, exit codes, results and limitations are preferably recorded in `implement.md` (or a lightweight PRD), without duplicate reports or reliance only on temporary links that will be deleted?
+- [ ] Before committing task-directory contents, tracked and untracked new materials have passed retention review rather than being included merely because they belong to the task?
 - [ ] Historical misclassification is reported without moving, deleting, renaming files or repairing references without separate approval?
 
 Collection format checks do not prove authorship or research semantics. Review the actual new materials;
-keep temporary files in temporary directories, and follow the project workflow's material classification.
+keep raw execution materials in repository-external owned temporary directories, and follow the source
+workflow's Task Material Boundaries for selection, authorized cleanup and honest retention reporting.
 
 ### Scope Discipline
 

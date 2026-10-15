@@ -25,6 +25,37 @@ test('workflow separates implementation from review and retains authorization bo
  }
 });
 
+test('retention separates temporary execution output from selected permanent evidence', () => {
+ const check = readFileSync('skills/trellis-check/SKILL.md', 'utf8');
+ const finish = readFileSync('skills/trellis-finish-work/SKILL.md', 'utf8');
+ const materials = workflow.slice(workflow.indexOf('### Task Material Boundaries'), workflow.indexOf('### Planning and Dispatch Context'));
+ for (const pattern of [/outside the repository in the system temporary directory/, /mktemp -d/, /Raw stdout\/stderr, full event streams/, /bulk terminal\s+text\/ANSI/, /temporary drivers\/launch scripts/, /debug fingerprints/, /not in task `evidence\/` or a repository `\.tmp\/`/, /until main has checked the failure and any rerun/, /concise results, unresolved issues and temporary paths/, /not copy raw output/, /not required per role or stage/, /failure causes and rerun relationships/, /a later PASS must not erase earlier failures/, /does not require permanent\s+retention of every raw output/, /self-contained/, /minimal, sanitized material/, /state its purpose/, /existing execution or wrap-up authorization/, /no active process still uses it/, /ownership\/authorization is uncertain/, /cleanup fails/, /report why and\s+where/, /Never broadly clean/, /historical tasks without\s+separate approval/]) assert.match(materials, pattern);
+ assert.match(materials, /Within existing execution or wrap-up authorization, remove only this run's owned temporary directory\s+once main has verified the materials and no active process still uses it/);
+ const dispatch = workflow.slice(workflow.indexOf('#### 2.1'), workflow.indexOf('#### 2.2'));
+ assert.match(dispatch, /including ordinary agents/);
+ assert.match(dispatch, /permission is not a request to persist every intermediate file/);
+ const commit = workflow.slice(workflow.indexOf('#### 3.4'), workflow.indexOf('#### 3.5'));
+ assert.match(commit, /Before any commit that includes a task directory/);
+ assert.match(commit, /tracked and\s+untracked new materials/);
+ assert.match(commit, /minimum useful retained set/);
+ const wrap = workflow.slice(workflow.indexOf('#### 3.5'), workflow.indexOf('## Breadcrumbs'));
+ assert.match(wrap, /retention review before\s+journal or archive, including untracked files/);
+ assert.match(check, /outside the repository, not task `evidence\/`/);
+ assert.match(check, /checked before discarding diagnostic materials/);
+ assert.match(check, /Separate reports are optional, not required per role or stage/);
+ assert.match(check, /only reports worth retaining use `evidence\/`, never `research\/`/);
+ assert.match(check, /without duplicate reports or reliance only on temporary links/);
+ assert.match(check, /tracked and untracked new materials have passed retention review/);
+ assert.match(finish, /Before journal or archive/);
+ assert.match(finish, /reports are optional/);
+ assert.match(finish, /Within existing execution or wrap-up authorization, clean only this run's owned repository-external temporary directory after main has checked the materials and confirmed no active process still uses it/);
+ assert.match(finish, /no active process still uses it/);
+ assert.match(finish, /another session's output or historical task materials/);
+ assert.match(finish, /diagnosis remains unresolved, ownership or authorization is uncertain, or cleanup fails/);
+ assert.match(finish, /report the reason and location/);
+ assert.match(finish, /not necessarily every raw file forever/);
+});
+
 test('associated skills do not restore mandatory paired dispatch or redundant plan approval', () => {
  for (const name of ['start', 'before-dev', 'brainstorm', 'continue', 'check', 'finish-work', 'update-spec', 'break-loop']) {
   const text = readFileSync(`skills/trellis-${name}/SKILL.md`, 'utf8');
