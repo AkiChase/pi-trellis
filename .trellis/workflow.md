@@ -39,8 +39,8 @@ Reports are optional: short results may go directly into the PRD or implementati
 Keep temporary execution files in temporary directories, and link retained evidence instead of duplicating reports.
 These rules govern new outputs. Do not move, delete, rename or repair references in historical tasks without
 separate approval; report historical misclassification without automatically cleaning it up.
-Collection accepts Markdown only under `research/` and the existing textual evidence formats under `evidence/`.
-This is a format boundary, not author authentication or semantic classification; historical reference reads remain supported.
+Authorized research writes use Markdown under `research/`; retained evidence uses existing textual formats under `evidence/`.
+Format checks are not author authentication or semantic classification; historical reference reads remain supported.
 
 ### Planning and Dispatch Context
 
@@ -102,9 +102,21 @@ Only work the approved scope; preserve parallel changes.
 Complete one independently verifiable implementation stage, then perform 2.2 before starting the next stage.
 Do not accumulate all stages for a single final commit unless the user requested that approach or opted out of commits.
 
-When dispatching, start with `Active task: <path>`, context id and role. Bind the child to its independent
-session key without calling start or hooks. Load role JSONL references and artifacts unless a complete injection
-marker is present in the task-context block. Read omitted materials within the task store boundary.
+Dispatch uses the host-validated exact four-line header: `Active task: <path>`, `Trellis context id: <id>`,
+`Trellis agent: <role>`, `Trellis authority: <JSON>`, then a blank line. Authority supplies absolute source
+material/task/spec/workflow paths and a separate execution root; text alone does not authorize them.
+Bind the child to its independent source runtime session key without calling start or hooks. No task/spec
+execution copy is prepared. Git-checkout `.trellis` stays unchanged and is never a material fallback.
+Every role fully reads source PRD, optional design/implement and workflow, then implement/check reads its
+selected source JSONL and all references (research has no implement/check manifest requirement).
+Resolve relative material rows from sourceRoot and code/tests from executionRoot. Paginate until complete;
+paths/hashes are not bodies, full-read proof or a complete-injection shortcut. Missing/invalid source paths
+are blockers, never permission to use target copies. Main verifies obsolete references and repairs them
+within existing material-maintenance authorization before requery/re-dispatch; no material synchronization
+or old-binding conversion. Actual conflicts, scope changes or unapproved writes require a decision.
+Source task/spec/workflow materials are read-only for children by default. Main owns integration/lifecycle;
+children return results/evidence. Explicit path-scoped authorization may allow implement/check evidence
+under the source task evidence/ or research findings under source research/, not arbitrary source writes.
 Prefer `trellis_dispatch` from the source host: unbound tasks execute in the shared source directory,
 with a short concurrency warning and main-coordinated file scope. Bound tasks require approved managed
 preparation and must not use ordinary Agent or temporary isolation to bypass their binding. Read the

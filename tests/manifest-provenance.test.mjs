@@ -157,6 +157,34 @@ for (const attack of ['preserved manifest output', 'arbitrary template output', 
  });
 }
 
+test('directly maintained role/skill/template hashes preserve historical provenance and dynamic resource counts', () => {
+ const agents = JSON.parse(readFileSync('resources/agent-baseline.json', 'utf8'));
+ const historical = {
+  implement: '73b56b3047c0e852382c4630aa181fb847d1e5ea1f63459dac4bf728f43fd097',
+  check: '9e48342243f311d55386f8fb42933945e87aba73d5ade547133aa98345a06128',
+  research: 'add4aa4259ded425b04ec992802c646490352bb4eb3730a7ab450beea87d4faa',
+ };
+ assert.equal(agents.version, '0.6.17'); assert.equal(agents.platform, 'claude'); assert.equal(agents.adapted, '2026-10-12');
+ for (const [role, source] of Object.entries(historical)) {
+  assert.equal(agents.files[role].source, source);
+  assert.equal(agents.files[role].adapted, digest(readFileSync(`agents/trellis-${role}.md`)));
+ }
+ const skills = JSON.parse(readFileSync('resources/skill-baseline.json', 'utf8'));
+ for (const [path, source] of [['trellis-start/SKILL.md', '79a5ba7a2aff3c72e06d7f4cd6942dc4f4f4092dd40f9c8e94f1838024a81e4d'], ['trellis-continue/SKILL.md', '2b948434883636a1f1e2a4ad5b8a3d7dc2edc93ed05da6bca82882e8c024e22b']]) {
+  assert.equal(skills.files[path].sourceSha256, source);
+  assert.equal(skills.files[path].sha256, digest(readFileSync(`skills/${path}`)));
+  assert.equal(skills.files[path].license, 'AGPL-3.0-only');
+ }
+ const templates = JSON.parse(readFileSync('resources/template-baseline.json', 'utf8'));
+ assert.equal(templates.files['workflow.md'].sha256, digest(readFileSync('resources/templates/workflow.md')));
+ assert.equal(templates.files['workflow.md'].license, 'AGPL-3.0-only');
+ assert.match(templates.files['workflow.md'].origin, /no exact upstream template revision asserted/);
+ const baseline = runtimeBaseline();
+ assert.ok(Object.keys(baseline.files).length > 0);
+ assert.equal(Object.keys(agents.files).length, 3);
+ for (const [path, record] of Object.entries(baseline.files)) assert.equal(record.sha256, digest(readFileSync(`runtime/${path}`)), path);
+});
+
 test('native diagnostics is MIT package source with an exact release hash',()=>{
  const baseline=JSON.parse(readFileSync('resources/runtime-baseline.json','utf8'));
  const path='pi_trellis_worktree/diagnostics.py', record=baseline.files[path];

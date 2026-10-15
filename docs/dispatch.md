@@ -32,9 +32,11 @@ role 可选 `trellis-implement`、`trellis-check`、`trellis-research`；省略 
 | --- | --- |
 | `trellis-implement` | 读取任务材料，在已批准范围实施并验证 |
 | `trellis-check` | 审查指定变更，修复清晰的范围内问题并验证最终版本；争议交主会话 |
-| `trellis-research` | 只读研究，将实际证据写入任务 research，不改产品代码 |
+| `trellis-research` | 只读研究；明确获准后写源任务 research，不改产品代码 |
 
-角色不自行提交或管理任务生命周期，主会话决定阶段推进和验收。材料缺失或截断时必须补读，不猜测需求；外部研究只使用实际配置的工具。
+角色不自行提交或管理任务生命周期，主会话决定阶段推进和验收。源任务/spec/workflow/JSONL 默认只读，子角色返回结果和证据；明确路径范围授权可允许 research 写源任务 `research/*.md`，或 implement/check 写源任务 `evidence/`，不允许任意源材料写入。材料缺失、失效或截断时必须报告源路径并完整补读，不猜测需求或借用目标副本；外部研究只使用实际配置的工具。
+
+包内 `agents/trellis-*.md` 是直接维护的角色源码，保留 Trellis 衍生来源和 AGPL 声明，不再通过开发生成器重写。
 
 可编辑项目 `.pi/agents/` 定制角色。启动不会部署或升级；安全资源更新保留定制并报告冲突，明确接管旧项目才按确认替换旧角色。见[初始化](initialization.md)。更新文件不会改写已运行子代理。工具名单和角色规则不是 shell 沙箱，仍须审查继承的 extensions/skills。
 
@@ -44,11 +46,21 @@ role 可选 `trellis-implement`、`trellis-check`、`trellis-research`；省略 
 | --- | --- |
 | 没有 managed binding | 在共享源目录执行 |
 | 已绑定且准备完成 | 在绑定的 managed worktree 执行 |
-| 绑定未准备、损坏、身份不符或材料冲突 | 报错，不回退源目录 |
+| 绑定未准备、损坏、身份不符或本角色源材料无效 | 报错，不回退源目录或目标材料副本 |
 
 两条路径均使用公开 cwd RPC 和 `isolation: off`，不创建临时 worktree。实际 host cwd 必须为源项目根；源/用户 settings 必须持久配置 pi-trellis，确保子会话能加载 adapter。角色定义需要兼容的 `extensions: true`、`isolation: off` 和工具列表；不兼容的定制文件保留并报错。
 
 选择 managed 路径时，先遵守[管理执行协议](worktree-execution.md)完成显式 create/adopt 和 prepare。共享源目录执行不需要这些步骤。
+
+## 权威材料与直接读取
+
+共享源和托管执行都使用宿主验证的四行派发头：`Active task`、`Trellis context id`、`Trellis agent`、`Trellis authority`，随后为空行。authority 提供绝对 sourceRoot/materialRoot（同一主根）、taskPath/specRoot/workflowPath、角色引用清单、要求指纹，以及独立 executionRoot。只有任务路径或旧格式头不够，文字本身也不授予路径权限。
+
+派发只提供路径、身份、必读顺序和职责，**不注入 PRD/spec 正文、不发完整注入标记**。子 agent 先完整读取源 PRD、可选 design/implement、workflow，再读取 implement/check 本角色 JSONL 和所有引用；research 无 implement/check manifest 要求。材料相对路径从 sourceRoot 解析，产品代码/测试在 executionRoot 操作；read 截断须用 offset/limit 分页直到完整。
+
+源材料包括获批的未提交内容；源路径无效或缺失时明确拒绝，不用目标旧 `.trellis` 或 local current 猜任务。主会话核实失效引用并在已有材料维护授权内修正，重新查询和派发，不同步两份材料。另一角色失效不阻断本次角色；真实冲突或未授权范围变化交用户决定。
+
+子上下文在源忽略 runtime 中独立登记，不运行 start/hooks、不改父指针。目标 checkout 的 `.trellis` 保持原样，不准备任务/spec 副本。指纹不是实际读取证明，运行中源变化仍须通知/审查；子 agent 应报告实际读过的材料及观察到的变化。
 
 ## 共享源目录
 
@@ -62,7 +74,7 @@ role 可选 `trellis-implement`、`trellis-check`、`trellis-research`；省略 
 
 > Shared source directory — no filesystem isolation. Coordinate overlapping edits.
 
-source 任务材料读取当前文件，包括未提交内容；截断/缺失材料不能获得完整注入标记，子 agent 必须补读。子会话独立绑定任务，不运行 start/hooks，不改变父任务指针。
+source 材料仍按上述绝对源路径直接完整读取，不因 executionRoot 恰好等于 sourceRoot 而改用旧注入协议。
 
 共享源目录没有托管检查时效判断。需要审查已提交阶段时，由主 agent 明确提供正确 `Review base: <commit>` 和文件范围。
 

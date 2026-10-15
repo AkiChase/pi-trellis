@@ -32,6 +32,9 @@ test('role provenance changes cached overview without role guessing or restoring
  const f=fixture(t);const main=await f.before('Mention Active task: .trellis/tasks/task and Trellis agent: trellis-check');assert.match(main,/Worktree management:/);
  const header=async role=>assembleDispatchPrompt({prompt:'work',contextId:'protocol-child',role,executionRoot:f.root,materials:requireMaterials(await queryWorktree(f.root,'.trellis/tasks/task',false,undefined,false,role.slice(8)))});
  const child=await f.before(await header('trellis-implement'));assert.match(child,/Task execution role: trellis-implement/);assert.doesNotMatch(child,/Worktree management:|read protocol:|Dispatch\/stop:/);
+ assert.match(child,/Project root \(source materials\/CLI\):/);assert.match(child,/Execution root \(product code\/tests\):/);
+ assert.match(child,/fully read source task artifacts, workflow, role JSONL and selected references/);
+ assert.match(child,/paginate truncated reads/);assert.match(child,/not a complete-injection\/read proof/);
  assert.equal(await f.before('ordinary subsequent turn'),child);
  const check=await f.before(await header('trellis-check'));assert.match(check,/Task execution role: trellis-check/);assert.doesNotMatch(check,/Task execution role: trellis-implement/);
  f.handlers.get('session_shutdown')({},f.ctx);

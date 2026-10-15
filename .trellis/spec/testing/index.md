@@ -27,17 +27,16 @@ Assert observables **and absence of forbidden side effects**: parent pointer rem
 
 | Changed boundary | Focused evidence |
 | --- | --- |
-| Context paths, references, budgets, marker ownership | `tests/task-context.test.mjs` |
+| Source authority headers/paths, references, no body/read claims | `tests/task-context.test.mjs` |
 | Root/session identity, CLI provenance, child lifecycle, subagent_run injection | `tests/agent-context-integration.test.mjs`, `tests/worktree-protocol.test.mjs` |
 | Initialization, updates, adoption, templates, provenance | `tests/initialization.test.mjs`, `tests/adopt-project.test.mjs`, `tests/apply-template.test.mjs`, `tests/manifest-provenance.test.mjs` |
 | Fixed runtime, raw task records, developer/journal/archive scope | `tests/runtime-contracts.test.mjs` |
 | Native config/Git/binding/preview/deployment | `tests/worktree.test.mjs`, `tests/worktree-cli.test.mjs`, `tests/python/test_worktree.py` |
-| Task-only preparation, target pointer, occupancy/recovery/removal | `tests/preparation.test.mjs` |
-| Material ancestry, overlays, explicit collection, partial failure | `tests/material-sync.test.mjs`, `tests/python/test_worktree.py` |
+| Source-only role preparation, zero target copies/start/hooks, occupancy/recovery/removal | `tests/preparation.test.mjs` |
 | RPC cwd/IDs, readiness/fingerprint rechecks, early terminal/shutdown | `tests/dispatch.test.mjs`, `tests/source-executions.test.mjs` |
 | Viewer read-only containment, hierarchy/archives, selection, Markdown/fallback | `tests/task-browser-reader.test.mjs`, `tests/task-browser-ui.test.mjs` |
 | Persistent count, theme/error degradation, terminal-column bounds | `tests/task-display.test.mjs` |
-| Role hashes/attribution, protocols and source drift | `tests/agent-documents.test.mjs` |
+| Direct role hashes/attribution, source/execution protocols and read/write scope | `tests/agent-documents.test.mjs` |
 | Workflow phase/policy and resource ownership | `tests/workflow-policy.test.mjs`, `tests/skill-resources.test.mjs` |
 | Project activation, command/tool registration, skill filters and real SDK reload | `tests/project-activation.test.mjs`, `tests/project-activation-host.test.mjs`; use isolated agent/project dirs and public SDK without network/install. Test command parser init/repair, disabled sources, trust, explicit resources, and no runtime state/UI in ordinary projects. |
 | Historical patch/installer read-only behavior and mode preservation | `tests/trellis-patches.test.mjs` |
@@ -46,29 +45,17 @@ Inspect actual filenames/test coverage before selecting this matrix. Cross-langu
 
 ## Role Source Maintenance
 
-Role generation is development work requiring explicit dependency-fetch/regeneration authorization. Prefer already verified fixed-version source; do not upgrade global Trellis or copy generated platform/config/runtime trees into the package. Source is generated Claude roles from `@mindfoldhq/trellis@0.6.17`; fixed npm artifact integrity from the original source verification is:
+Maintain the three bundled `agents/trellis-*.md` files directly, review source/execution reading and write-scope contracts, then update their adapted SHA-256 values in `resources/agent-baseline.json`. Preserve historical source hashes, version/platform, adaptation date and AGPL attribution; do not imply these files were newly generated or are wholly original. Deployed/custom `.pi/agents/` must stay byte-identical unless its own explicit publication is approved. Runtime count assertions use `Object.keys(runtimeBaseline().files).length + 3` roles, not a fixed resource count.
+
+Historical source was generated Claude roles from `@mindfoldhq/trellis@0.6.17`; fixed npm artifact integrity from the original verification remains:
 
 ```text
 sha512-u65OJbzR3OBzFWybX/uzBXaZdzn+71Afaknodu0GUcFIrTyp3ZegK9rHNeTX0guHow35WXkqDVuyrhn8vVzSQg==
 ```
 
-npm gitHead was unavailable; this is not a verified upstream commit claim. Version/platform/source/output hashes remain in `resources/agent-baseline.json`. Verify artifact integrity independently before trusting stamped metadata. An authorized isolated generation may use:
+npm gitHead was unavailable; this is not a verified upstream commit or current regeneration claim. Source hashes without retrieved source are historical provenance, not independent current integrity proof. No dependency fetch, generator or personal-resource synchronization is needed for role maintenance.
 
-```bash
-SYNC_ROOT="$(mktemp -d /tmp/pi-trellis-doc-sync.XXXXXX)"
-mkdir -p "$SYNC_ROOT/runtime" "$SYNC_ROOT/project"
-npm install --prefix "$SYNC_ROOT/runtime" --no-audit --no-fund --ignore-scripts @mindfoldhq/trellis@0.6.17
-(
-  cd "$SYNC_ROOT/project"
-  git init -q
-  "$SYNC_ROOT/runtime/node_modules/.bin/trellis" init --pi --claude --no-monorepo --yes --user pi-trellis-sync
-)
-node scripts/sync-agents.mjs "$SYNC_ROOT/project/.claude/agents"
-node scripts/sync-agents.mjs "$SYNC_ROOT/project/.claude/agents" --check
-env -u TRELLIS_CONTEXT_ID npm test
-```
-
-Only the three bundled roles and `resources/agent-baseline.json` are synchronization outputs. `--check` is read-only but does not authenticate arbitrary source; unavailable verified input means NOT_RUN, not a fabricated pass. Inspect the whole set after sequential-write failures. Retain version/platform/source/output hashes and AGPL attribution.
+Focused role/workflow/provenance checks and source-authority regressions cover exact four-line headers, absolute source reads, pagination rules, no target fallback/copy/start/hooks, per-role invalid-reference isolation and explicit source-write authorization. Fixture assertions cannot prove an agent actually read all materials. Source fingerprints plus execution checkout snapshots are freshness evidence, not acceptance or an ABA-free transaction.
 
 ## Optional Installed-Host/Provider Probe
 
@@ -83,7 +70,7 @@ The modes are mutually exclusive. `--preset` loads this package's Trellis adapte
 
 Repeat `--provider` to test independent native implementations in separate subprocesses using their existing result/message tools; these are test-only native contracts, not product old-name aliases or new-preset evidence. Do not install conflicting providers in one live session. Record actual package versions, not historical log labels. The probe loads provider source as an explicit test dependency, not permission for product runtime to import provider internals.
 
-It creates temporary config/project/target, complete runtime and scripted offline responses without model network or personal credentials. It exercises actual parser/runner/loader, role tools, write/edit/scoped self-fixes, late registered fixture search, target cwd/materials, real IDs/result/steering, public RPC error/timeout paths and shared-source dispatch. Read exit status, assertions and each case; cleanup success cannot convert failure to PASS. Verify actual sessions and owned subprocesses exit rather than assuming a finally block proves all third-party cleanup.
+It creates temporary config/project/target, complete runtime and scripted offline responses without model network or personal credentials. It exercises actual parser/runner/loader, role tools, write/edit/scoped self-fixes, late registered fixture search, target code cwd with native-validated absolute source paths and scripted read tool results, real IDs/result/steering, public RPC error/timeout paths and shared-source dispatch. Source bodies must be absent before read and appear only through real read results; never assert target task bodies as authoritative. The disposable managed fixture establishes native binding identity before invoking the runner; this is not a real project worktree. Read exit status, assertions and each case; cleanup success cannot convert failure to PASS. Verify actual sessions and owned subprocesses exit rather than assuming a finally block proves all third-party cleanup.
 
 This is mechanism evidence, not full managed lifecycle, real-model compliance, terminal appearance or an OS sandbox. Missing/unapproved dependencies are NOT_RUN; no installation to fill coverage. Real terminal steps are in [tmux testing](tmux.md).
 

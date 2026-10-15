@@ -43,6 +43,9 @@ Phase 2：用户已审阅并批准实施，正常 start 为 in_progress。主 wo
 | `scripts/sync-agents.mjs` | 删除上游字符串适配/再生成脚本；不保留生成模式或替代生成入口。 |
 | `agents/trellis-implement.md`、`agents/trellis-check.md`、`agents/trellis-research.md` | 直接维护的包内权威角色源码；注明source材料root/execution root、完整分页读、默认只读管理材料与研究显式写源research。保留现有上游衍生来源、版权和AGPL声明；不修改第三方agent产品。 |
 | `skills/trellis-start/SKILL.md`、`skills/trellis-continue/SKILL.md` | 主子根明确、只读直接源材料、主负责恢复与生命周期，无旧绑定迁移流程。 |
+| 其余 `skills/trellis-{before-dev,check,break-loop,finish-work,brainstorm,update-spec,spec-bootstrap}/SKILL.md` 与 `skills/trellis-meta/SKILL.md` | 最小修正尾部/入口的“材料从execution根解析”歧义：主用source，子用verified绝对source材料，代码仍execution；不改技能主体或增加写授权。 |
+| `skills/trellis-meta/references/{customize-local/change-context-loading,platform-files/hooks-and-settings}.md` | 删除旧正文budget/complete-injection要求，改为source path-only/native bounds/完整read验证；`.pi`配置仍按其原执行项目/个人根，不随材料root迁移。 |
+| `extensions/trellis.ts` | S3仅修文件头失效license说明链接到现存README/license；无行为改动，S2逻辑不改。 |
 | `resources/templates/workflow.md`、`.trellis/workflow.md` | 不准备目标任务副本；每角色完整读source；主维护引用、子返回结果；现有权限与提交政策保留。 |
 | `docs/worktree-execution.md`、`docs/dispatch.md` | 中文重写prepare/source authority/参数；删除refresh/collect同步教程；不承诺目标没有Git跟踪.trellis。 |
 | `.trellis/spec/development/index.md` | 英文更新source-only材料、零执行副本、直接读/非完整注入、无旧绑定兼容、指纹证据约束；删除“adaptAgent精确anchor是角色改动唯一入口”的旧约束，改为直接维护包内角色并保留来源/hash、custom发布保护；不新增功能spec。 |

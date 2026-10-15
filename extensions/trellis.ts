@@ -9,7 +9,7 @@
  *   M5  conditional skills discovered through Pi's public package resolver
  *
  * No Trellis runtime implementation is copied into this TypeScript extension.
- * Bundled agent documents retain their upstream license; see docs/trellis-agent-sync.md.
+ * Bundled agent documents retain their upstream license; see README.md#license and licenses/trellis-AGPL-3.0.txt.
  * It talks to Trellis through documented surfaces only: the `task.py` / `get_context.py` CLIs, the
  * TRELLIS_CONTEXT_ID environment variable, and on-disk paths under `.trellis/`.
  * Optional UI/context discovery degrades rather than taking a session down.

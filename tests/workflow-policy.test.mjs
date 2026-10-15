@@ -28,7 +28,7 @@ test('workflow separates implementation from review and retains authorization bo
 test('associated skills do not restore mandatory paired dispatch or redundant plan approval', () => {
  for (const name of ['start', 'before-dev', 'brainstorm', 'continue', 'check', 'finish-work', 'update-spec', 'break-loop']) {
   const text = readFileSync(`skills/trellis-${name}/SKILL.md`, 'utf8');
-  assert.match(text, /Follow the project workflow for execution and review routing/);
+  assert.match(text, /Follow the (?:source )?project workflow for execution and review routing/);
   assert.doesNotMatch(text, /Main dispatches implementation\/check roles|must each contain at least one|fresh implementation approval|Only a subsequent user message/);
  }
  const brainstorm = readFileSync('skills/trellis-brainstorm/SKILL.md', 'utf8');
@@ -95,6 +95,54 @@ test('finish-work authorization includes configured wrap-up commits without sepa
  const completed = workflow.split('[workflow-state:completed]')[1].split('[/workflow-state:completed]')[0];
  assert.match(completed, /Finish-work authorization covers applicable/);
  assert.doesNotMatch(completed, /Archive\/journal need authorization/);
+});
+
+test('workflow and entry skills keep source authority separate from execution and child write approval', () => {
+ const project = readFileSync('.trellis/workflow.md', 'utf8');
+ for (const text of [workflow, project]) {
+  assert.match(text, /host-validated exact four-line header/);
+  assert.match(text, /Trellis authority: <JSON>/);
+  assert.match(text, /then a blank line/);
+  assert.match(text, /No task\/spec\nexecution copy is prepared/);
+  assert.match(text, /Git-checkout `.trellis` stays unchanged/);
+  assert.match(text, /selected source JSONL and all references/);
+  assert.match(text, /research has no implement\/check manifest requirement/);
+  assert.match(text, /Resolve relative material rows from sourceRoot and code\/tests from executionRoot/);
+  assert.match(text, /Paginate until complete/);
+  assert.match(text, /read-only for children by default/);
+  assert.match(text, /Explicit path-scoped authorization/);
+  assert.match(text, /Main verifies obsolete references and repairs them/);
+  assert.doesNotMatch(text, /unless a complete injection|marker is present in the task-context block|Read omitted materials|refresh --task|collect --task/);
+ }
+ for (const name of ['start', 'continue']) {
+  const text = readFileSync(`skills/trellis-${name}/SKILL.md`, 'utf8');
+  assert.match(text, /exact four-line header/);
+  assert.match(text, /absolute sourceRoot\/materialRoot/);
+  assert.match(text, /no local `task.py current`/);
+  assert.match(text, /paginate read offset\/limit until complete/);
+  assert.match(text, /Main owns integration, reference repair and lifecycle/);
+  assert.match(text, /source evidence\/research writes require explicit path-scoped authorization/);
+  assert.match(text, /never dispatch recursively, start\/hooks, commit or finish/);
+  assert.match(text, /No target material synchronization, binding migration/);
+ }
+});
+
+test('all bundled skills use source materials and separate product execution roots', () => {
+ const baseline = JSON.parse(readFileSync('resources/skill-baseline.json', 'utf8'));
+ const entries = Object.keys(baseline.files).filter(path => path.endsWith('/SKILL.md'));
+ assert.ok(entries.length > 0);
+ for (const path of entries) {
+  const text = readFileSync(`skills/${path}`, 'utf8');
+  // Most skills have a boundary footer; meta and spec-bootstrap put their
+  // source/execution rules in existing prose rather than creating new sections.
+  const boundaries = text.split('## Pi Execution Boundary');
+  assert.ok(boundaries.length <= 2, path);
+  const boundary = boundaries.at(-1);
+  assert.match(boundary, /(?:Main-session `\.trellis\/\.\.\.` paths are relative to the source project|In the main session, `\.trellis(?:\/\.\.\.)?` material paths resolve from the source project root)/, path);
+  assert.match(boundary, /Dispatched roles (?:use verified (?:absolute source material paths|authority to read absolute source material paths)|read absolute source material paths from verified authority)/, path);
+  assert.match(boundary, /(?:separate executionRoot for code\/tests|code\/tests and their execution cwd (?:stay at|at) `executionRoot`|code and tests stay at `executionRoot`)/, path);
+  assert.doesNotMatch(text, /All `\.trellis(?:\/\.\.\.)?`(?:\/`\.pi` project)? paths (?:are relative to the execution project|resolve from the execution root)/, path);
+ }
 });
 
 test('real phase parser extracts every template step without neighboring bodies', t => {

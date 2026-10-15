@@ -48,7 +48,7 @@ node --import ./tests/host-tui.mjs --test tests/dispatch.test.mjs tests/source-e
 
 ## S2 主验收记录（2026-10-15）
 
-独立77d213af自修immutable binding/ancestor sourcepath/CLI绝对路径与cwd/metadata边界/missing marker隔离；主核实际3owner修复与报告，11files指纹匹配独立最终版本。主b6jss9uuq focused104/104自然exit0，独立附加54/54。独立全量468/469唯一initialization literal35（S1新增诊断模块36）仍FAIL，S3明确修此fixture，未称最终fullPASS。S2通过，准备精确stage提交；并行init提交5d3b4e4已含runtimeDiagnostic一行，不在S2重复收录。真实agent/provider行为NOT_RUN。
+独立77d213af自修immutable binding/ancestor sourcepath/CLI绝对路径与cwd/metadata边界/missing marker隔离；主核实际3owner修复与报告，11files指纹匹配独立最终版本。主b6jss9uuq focused104/104自然exit0，独立附加54/54。独立全量468/469唯一initialization literal35（S1新增诊断模块36）仍FAIL，S3明确修此fixture，未称最终fullPASS。S2通过，已提交精确15files checkpoint `176619d`（feat(dispatch): route task roles to source authority paths），未夹带logs/并行workflow/项目manifest/其他task；并行init提交5d3b4e4已含runtimeDiagnostic一行，不在S2重复收录。真实agent/provider行为NOT_RUN。S3普通实现Agent `16d02823-fcf1-47a` 已派仅角色/技能/文档/spec/模板/对应测试和hash，无部署或生命周期权限。
 
 ## S3 角色指引、项目政策与文档
 
@@ -67,6 +67,14 @@ npm test
 ```
 
 独立审查：无生成器残余调用/失效规范要求；包内角色是权威源、项目部署副本未改；仍有旧target任务/完整注入提示否；材料root/执行root一致；历史来源保留；role读授权不等于任意写；docs/spec职责与语言正确。
+
+## S3 一致性补查（2026-10-15）
+
+实现16d02823返回candidate，focused94/94/full478/478自检自然0，主全文核包roles/docs/spec/template/startcontinue/对应tests及optional provider工具。独立review edbd88ed-f67a-47c后台。旧generic技能尾句execution材料根与meta两引用budget/complete规则会误导新角色，按既定R7一致性补最小措辞，c25a0330-15c7-457仅这些md/skillhash；主只修extension头坏license链接一行，不加行为。design列出，待冻结后独立复查/full主复测，不将candidate全量当最终验收。部署/真实probe仍NOT_RUN。
+
+## S3 主验收记录（2026-10-15）
+
+独立edbd88ed完成role授权句/路由断言/generic10skill根测试，focused95/95/full本次485/485（并行viewer漂移限制如实保留）。主核报告/实际修复/32filehash；主最终 `env -u TRELLIS_CONTEXT_ID PI_TRELLIS_TEST_HOST=/Users/jyxc-dz-0101322/.pi/agent/install/releases/1.2.0/node_modules npm test`，bagajovo0自然exit0，486/486；全量期间记录verification inputs结束hash无漂移。S3源码/角色/技能/spec/docs合同通过，准备精确stage提交。Optional provider仅syntax/static审查，真实provider/模型遵从/分页/终端/部署NOT_RUN；不以静态或fixture宣称真实行为验收。
 
 ## 最终验收
 

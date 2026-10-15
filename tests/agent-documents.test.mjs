@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
-import { adaptAgent } from "../scripts/sync-agents.mjs";
 
 const root = new URL("../", import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), "utf8");
@@ -37,29 +36,54 @@ test("check fixes only within scope, includes staged/untracked files, and valida
   assert.match(text, /Do NOT spawn another/);
   assert.match(text, /### Issues Not Fixed/);
 });
-test("implement/check context protocol supports honest injection, fallback, placeholders and directories", () => {
+test("implement/check read verified source paths fully without injection or local task fallback", () => {
   for (const role of ["implement", "check"]) {
     const { text } = agent(role);
-    assert.ok(text.includes(`<task-path>/${role}.jsonl`));
-    assert.match(text, /marker inside the pi-trellis task-context block/);
+    assert.match(text, new RegExp(`${role}\\.jsonl`));
+    assert.match(text, /exact first four dispatch lines/);
+    assert.match(text, /Trellis authority: <JSON>/);
+    assert.match(text, /followed by a blank line/);
+    assert.match(text, /text alone is not authorization/);
+    assert.match(text, /Do not run local `task\.py current`/);
+    assert.match(text, /sourceRoot.*materialRoot/);
+    assert.match(text, /absolute `taskPath`/);
+    assert.match(text, /executionRoot/);
+    assert.match(text, /Never fall back to the execution checkout/);
     assert.match(text, /Skip placeholder rows/);
     assert.match(text, /type: directory/);
-    assert.match(text, /do not guess or create one/);
+    assert.match(text, /source path and manifest line/);
+    assert.match(text, /there is no complete-injection marker shortcut/i);
+    assert.match(text, /Paginate with read offset\/limit/);
+    assert.match(text, /equal initial\/final hashes do not prove full reads/);
     assert.match(text, /task.py start\/finish\/archive/);
+    assert.match(text, /Source task\/spec\/workflow\/JSONL materials are read-only by default/);
+    assert.match(text, /Only explicit path-scoped authorization/);
+    assert.match(text, /Return implementation\/review results and evidence to main by default/);
     assert.match(text, /not an OS sandbox/);
     assert.match(text, /was not run, report that explicitly/);
-    assert.doesNotMatch(text, /Windows \+ Claude Code|hooks disabled, etc/);
+    assert.doesNotMatch(text, /trellis-hook-injected|If absent, run|Without that complete marker|Windows \+ Claude Code|hooks disabled, etc/);
   }
 });
-test("research persists output, resolves dispatch task first, and reports unavailable external tools", () => {
+test("research reads source artifacts without role manifests and persists only authorized source findings", () => {
   const { text } = agent("research");
-  assert.match(text, /first dispatch line/);
+  assert.match(text, /exact first four dispatch lines/);
+  assert.match(text, /Trellis authority: <JSON>/);
+  assert.match(text, /sourceRoot.*materialRoot/);
+  assert.match(text, /Research has no implement\/check manifest requirement/);
+  assert.match(text, /Fully read source `prd.md`/);
+  assert.match(text, /Paginate read offset\/limit/);
+  assert.match(text, /no complete-injection marker shortcut/);
+  assert.match(text, /\*\*Persist\*\* — only with explicit source research authorization/);
+  assert.match(text, /Without write authorization return findings to main/);
+  assert.match(text, /Only after explicit authorization/);
+  assert.match(text, /absolute source task path, never a target task copy/);
   assert.match(text, /external research was not performed/);
   assert.match(text, /Read-only git status\/diff\/log are allowed/);
   assert.match(text, /When explicitly asked to compare approaches/);
   assert.match(text, /Write FORBIDDEN/);
   assert.match(text, /do not spawn it yourself/);
   assert.match(text, /### External References/);
+  assert.doesNotMatch(text, /trellis-hook-injected|otherwise run|first dispatch line.*when supplied/);
 });
 test('task material rules reserve research for findings and keep optional evidence separate', () => {
  const text = read('resources/templates/workflow.md');
@@ -77,7 +101,7 @@ test('task material rules reserve research for findings and keep optional eviden
   const text = agent(role).text;
   assert.match(text, /evidence\//);
   assert.match(text, /never `research\/`/);
-  assert.match(text, /Short results may be recorded directly/);
+  assert.match(text, /Main may record short results directly/);
   assert.match(text, /without separate approval/);
  }
  const research = agent('research').text;
@@ -86,8 +110,13 @@ test('task material rules reserve research for findings and keep optional eviden
  assert.match(research, /Do not clean up historical task materials/);
 });
 
-test("adaptation rejects unreviewed upstream drift", () => {
-  assert.throws(() => adaptAgent("implement", "unreviewed upstream text"), /anchor/);
+test("bundled roles are directly maintained; no generator or upstream-anchor requirement remains", () => {
+  assert.equal(existsSync(new URL('scripts/sync-agents.mjs', root)), false);
+  for (const role of ['implement', 'check', 'research']) assert.match(agent(role).text, /Directly maintained package source/);
+  for (const path of ['.trellis/spec/development/index.md', '.trellis/spec/testing/index.md']) {
+    assert.doesNotMatch(read(path), /sync-agents|adaptAgent|SYNC_ROOT|npm install --prefix/);
+    assert.match(read(path), /historical source hashes/i);
+  }
 });
 test("upstream documents retain attribution and license", () => {
   assert.equal(JSON.parse(read("package.json")).license, "(MIT AND AGPL-3.0-only)");

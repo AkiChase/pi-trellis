@@ -75,8 +75,8 @@ async function probe() {
   console.log(`Loaded entry SHA-256=${JSON.stringify(entries.map(path => ({ path, sha256: createHash("sha256").update(readFileSync(path)).digest("hex") })))}`);
   const workspace = realpathSync(mkdtempSync(join(tmpdir(), "pi-trellis-real-probe-")));
   console.log(`Disposable workspace=${workspace}`);
-  const agentDir = join(workspace, "config"), root = join(workspace, "project"), target = join(root, "target");
-  mkdirSync(agentDir); mkdirSync(target, { recursive: true });
+  const agentDir = join(workspace, "config"), root = join(workspace, "project"), target = join(workspace, "target");
+  mkdirSync(agentDir); mkdirSync(root);
   const previousEnv = { ...process.env }, originalCwd = process.cwd();
   const sessions = new Set(), cleanups = new Set(), holds = new Set();
   let main, mainShutdown = false, hook, probeFailure;
@@ -114,7 +114,8 @@ async function probe() {
     const jiti = createJiti(import.meta.url, { alias: aliases, moduleCache: true });
     const sdk = await import(pathToFileURL(aliases["@earendil-works/pi-coding-agent"]));
     const { fauxProvider, fauxAssistantMessage, fauxToolCall } = await import(pathToFileURL(join(hostRoot, "@earendil-works/pi-ai/dist/providers/faux.js")));
-    const { assembleDispatchPrompt, buildTaskContext } = await import("../lib/task-context.ts");
+    const { assembleDispatchPrompt, parseDispatchFacts } = await import("../lib/task-context.ts");
+    const { queryWorktree, requireMaterials } = await import("../lib/worktree-query.ts");
     const { installRuntimeFixture } = await import("./runtime-fixture.mjs");
     const runtime = await sdk.ModelRuntime.create({ authPath: join(agentDir, "auth.json"), modelsPath: null, refreshOnCreate: false, allowModelNetwork: false });
     const faux = fauxProvider({ provider: "trellis-offline", api: "trellis-offline", models: [{ id: "test", reasoning: false }] });
@@ -128,13 +129,57 @@ async function probe() {
     }
     execFileSync("git", ["init", "-q", root], { env: gitEnv });
     const taskDir = ".trellis/tasks/test";
-    for (const dir of [root, target]) {
-      installRuntimeFixture(dir);
-      put(dir, `${taskDir}/task.json`, '{"status":"in_progress"}');
-      put(dir, `${taskDir}/prd.md`, dir === target ? "TARGET material" : "SOURCE material");
-      for (const role of ["implement", "check"]) put(dir, `${taskDir}/${role}.jsonl`, JSON.stringify({ file: `${taskDir}/prd.md` }));
+    installRuntimeFixture(root);
+    put(root, ".gitignore", "/.trellis/.runtime/\n/.pi/\n");
+    put(root, `${taskDir}/task.json`, '{"status":"in_progress"}');
+    put(root, `${taskDir}/prd.md`, "SOURCE material");
+    for (const role of ["implement", "check"]) put(root, `${taskDir}/${role}.jsonl`, JSON.stringify({ file: `${taskDir}/prd.md` }));
+    // Disposable native-authority fixture, not a real project worktree/probe authorization.
+    execFileSync("git", ["-C", root, "add", "."], { env: gitEnv });
+    execFileSync("git", ["-C", root, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "commit", "-qm", "offline fixture"], { env: gitEnv });
+    execFileSync("git", ["-C", root, "worktree", "add", "-b", "probe-target", "--", target, "HEAD"], { env: gitEnv });
+    const nativeManage = (action, extra = []) => JSON.parse(execFileSync(process.env.TRELLIS_PYTHON || "python3", ["-B", join(repository, "runtime/worktree.py"), action, "--cwd", root, "--task", taskDir, ...extra, "--confirm", "--json"], { env: gitEnv, encoding: "utf8" }));
+    const binding = nativeManage("adopt", ["--path", target]).binding;
+    nativeManage("prepare", ["--role", "implement"]);
+    put(target, `${taskDir}/prd.md`, "STALE execution-checkout body");
+    put(target, ".pi/settings.json", JSON.stringify(settings));
+    const materialFacts = async role => requireMaterials(await queryWorktree(root, taskDir, false, undefined, false, role));
+    const rolePrompt = (materials, workingDir = target) => {
+      const prompt = assembleDispatchPrompt({ prompt: "Work only on code.txt; research is explicitly authorized to write the source task research/topic.md. Read all required source materials first.", contextId: workingDir === target ? binding.contextId : "source-probe", role: `trellis-${materials.role}`, materials, executionRoot: workingDir });
+      const facts = parseDispatchFacts(prompt);
+      assert.equal(facts.sourceRoot, root); assert.equal(facts.materialRoot, root);
+      assert.equal(facts.taskPath, join(root, taskDir)); assert.equal(facts.executionRoot, workingDir);
+      assert.equal(facts.requirementsFingerprint, materials.sourceFingerprint);
+      assert.ok(!prompt.includes("SOURCE material") && !prompt.includes("STALE execution-checkout body"));
+      assert.ok(!prompt.includes("<!-- trellis-hook-injected -->"));
+      return prompt;
+    };
+    const sourceReadCalls = materials => {
+      const paths = [...new Set([
+        ...["prd.md", "design.md", "implement.md"].map(name => join(materials.taskPath, name)).filter(path => materials.artifacts.includes(path)),
+        materials.workflowPath, ...(materials.manifest ? [materials.manifest] : []), ...materials.references.map(ref => ref.path),
+      ])];
+      return paths.map((path, index) => index ? fauxAssistantMessage(fauxToolCall("read", { path })) : context => {
+        const initial = JSON.stringify(context);
+        assert.ok(initial.includes(materials.taskPath));
+        assert.ok(!initial.includes("SOURCE material") && !initial.includes("STALE execution-checkout body"), "source body must only arrive through actual read results");
+        return fauxAssistantMessage(fauxToolCall("read", { path }));
+      });
+    };
+    const assertSourceReads = (session, materials) => {
+      const results = session.messages.filter(message => message.role === "toolResult" && message.toolName === "read");
+      assert.equal(results.length, sourceReadCalls(materials).length);
+      assert.ok(results.every(message => !message.isError));
+      assert.ok(JSON.stringify(results).includes("SOURCE material"));
+      assert.ok(!JSON.stringify(results).includes("STALE execution-checkout body"));
+    };
+    // .pi is ignored in the committed checkout; seed the three exact published roles
+    // in both disposable configs so target runtime validation is genuinely supported.
+    for (const role of ["implement", "check", "research"]) {
+      const definition = readFileSync(join(repository, `agents/trellis-${role}.md`), "utf8");
+      put(root, `.pi/agents/trellis-${role}.md`, definition);
+      put(target, `.pi/agents/trellis-${role}.md`, definition);
     }
-    for (const role of ["implement", "check", "research"]) put(root, `.pi/agents/trellis-${role}.md`, readFileSync(join(repository, `agents/trellis-${role}.md`), "utf8"));
     put(root, ".pi/settings.json", JSON.stringify(settings));
     put(root, ".pi/extensions/probe.ts", 'import { Type } from "typebox"; export default function(pi) { pi.on("session_start",()=>pi.registerTool({name:"probe_search",description:"Offline search fixture",parameters:Type.Object({}),execute:async()=>({content:[{type:"text",text:"fixture search"}],details:undefined})})); }');
     // Factories discover process.cwd(): the actual host is opened at this disposable source root.
@@ -153,18 +198,19 @@ async function probe() {
     const pi = { getAllTools: () => [], getActiveTools: () => [] };
     for (const role of ["implement", "check", "research"]) {
       const content = role === "research" ? "persisted findings" : "final code";
-      const path = role === "research" ? `${taskDir}/research/topic.md` : "code.txt";
+      const path = role === "research" ? join(root, taskDir, "research/topic.md") : "code.txt";
+      const materials = await materialFacts(role);
       let observed;
-      const responses = [context => { observed = context; return fauxAssistantMessage(fauxToolCall("write", { path, content })); }];
+      const responses = [...sourceReadCalls(materials), context => { observed = context; return fauxAssistantMessage(fauxToolCall("write", { path, content })); }];
       if (role === "check") {
         responses.push(fauxAssistantMessage(fauxToolCall("edit", { path, oldText: content, newText: "fixed final code" })));
         responses.push(fauxAssistantMessage(fauxToolCall("bash", { command: "test \"$(head -1 code.txt)\" = 'fixed final code'" })));
       }
       if (role === "research") responses.push(fauxAssistantMessage(fauxToolCall("probe_search", {})));
       responses.push(fauxAssistantMessage("done")); faux.setResponses(responses);
-      const prompt = assembleDispatchPrompt({ prompt: "work", taskDir, contextId: "probe-session", role: `trellis-${role}`, context: buildTaskContext({ executionRoot: target, taskDir, role: `trellis-${role}` }) });
+      const prompt = rolePrompt(materials);
       const result = await bounded(runner.runAgent(parent, `trellis-${role}`, prompt, {
-        pi, cwd: target, configCwd: root, model, maxTurns: 8,
+        pi, cwd: target, configCwd: root, model, maxTurns: 16,
         onSessionOwned: session => sessions.add(session),
         onSessionCreated: session => {
           sessions.add(session);
@@ -176,14 +222,21 @@ async function probe() {
         },
       }), `runner ${role}`);
       assert.equal(result.failure, undefined);
-      assert.equal(readFileSync(join(target, path), "utf8"), role === "check" ? "fixed final code" : content);
+      assert.equal(readFileSync(role === "research" ? path : join(target, path), "utf8"), role === "check" ? "fixed final code" : content);
       for (const message of result.session.messages.filter(message => message.role === "toolResult")) assert.ok(!message.isError, `${role}: ${message.toolName}: ${JSON.stringify(message.content)}`);
-      assert.ok(JSON.stringify(observed).includes("TARGET material"));
-      assert.ok(!JSON.stringify(observed).includes("SOURCE material"));
+      assertSourceReads(result.session, materials);
+      assert.ok(JSON.stringify(observed).includes("SOURCE material"));
+      assert.ok(!JSON.stringify(observed).includes("STALE execution-checkout body"));
       await bounded(result.session.extensionRunner.emit({ type: "session_shutdown", reason: "quit" }), `runner ${role} shutdown`);
       result.session.dispose(); sessions.delete(result.session);
     }
-    log("real parser/runner + target cwd/material + write/edit + late external search + child shutdown");
+    log("real parser/runner + native source authority + absolute source read results + target code cwd/write/edit + authorized source research + late external search + child shutdown");
+    // Shared-source checks use a distinct unbound source task, not this target binding.
+    const sourceTask = ".trellis/tasks/source";
+    put(root, `${sourceTask}/task.json`, '{"status":"in_progress"}');
+    put(root, `${sourceTask}/prd.md`, "SOURCE material");
+    for (const role of ["implement", "check"]) put(root, `${sourceTask}/${role}.jsonl`, JSON.stringify({ file: `${sourceTask}/prd.md` }));
+    const sharedMaterials = requireMaterials(await queryWorktree(root, sourceTask, false, undefined, false, "implement"));
     const bus = sdk.createEventBus();
     const settingsManager = sdk.SettingsManager.create(root, agentDir, { projectTrusted: true });
     const loader = new sdk.DefaultResourceLoader({ cwd: root, agentDir, eventBus: bus, additionalExtensionPaths: entries, noSkills: true, noContextFiles: true, settingsManager });
@@ -219,15 +272,17 @@ async function probe() {
       const wait = deferred(); terminalWaiters.set(id, wait);
       return bounded(wait.promise, `terminal ${id}`).finally(() => terminalWaiters.delete(id));
     };
-    const prompt = assembleDispatchPrompt({ prompt: "work", taskDir, contextId: "rpc-probe", role: "trellis-check", context: buildTaskContext({ executionRoot: target, taskDir, role: "trellis-check" }) });
+    const checkMaterials = await materialFacts("check");
+    const prompt = rolePrompt(checkMaterials);
     const spawnHeld = async (response, role = "trellis-check", workingDir = target) => {
-      faux.appendResponses([response.response]);
+      faux.appendResponses([...sourceReadCalls(checkMaterials), response.response]);
       const started = await rpc("spawn", { type: role, prompt, options: { cwd: workingDir, isolation: "off" } });
       assert.equal(started.success, true, JSON.stringify(started));
       assert.deepEqual(Object.keys(started.data), ["id"]);
       assert.equal(typeof started.data.id, "string"); assert.ok(started.data.id);
       const observed = await bounded(response.seen, "child request");
-      assert.ok(JSON.stringify(observed).includes("TARGET material"));
+      assert.ok(JSON.stringify(observed).includes("SOURCE material"));
+      assert.ok(!JSON.stringify(observed).includes("STALE execution-checkout body"));
       assert.ok(!terminalEvents.has(started.data.id), "spawn reply is startup, not terminal evidence");
       return started.data.id;
     };
@@ -317,7 +372,7 @@ async function probe() {
       faux.appendResponses([context => { notificationContext = context; return fauxAssistantMessage("notification observed by real parent"); }]);
       parentHeld.release(fauxAssistantMessage("parent observation done"));
       await bounded(parentRun, "parent completion");
-      assert.equal(faux.state.callCount - baselineCalls, 6, "five child requests plus exactly one unread-result parent turn");
+      assert.equal(faux.state.callCount - baselineCalls, 4 * sourceReadCalls(checkMaterials).length + 6, "four children's source reads, five child requests (including the steering turn), and exactly one unread-result parent turn");
       const notices = main.messages.filter(message => message.role === "custom" && message.customType === "subagent-notification");
       assert.deepEqual(notices.map(message => message.details.id), [unreadId], "wait/output/consume suppress only their results; list/status do not consume");
       assert.ok(JSON.stringify(notificationContext).includes("unread notification positive control"));
@@ -330,7 +385,7 @@ async function probe() {
       // Resume the RPC-spawned ID through the public launcher: reject an actual previous run, not just invented input.
       const resumedChild = heldResponse(); faux.setResponses([resumedChild.response]);
       terminalEvents.delete(id);
-      const resumed = await execute("subagent_run", { prompt: "Continue the completed RPC run", description: "Probe real run resume", subagent_type: "trellis-check", resume: id, run_in_background: true });
+      const resumed = await execute("subagent_run", { prompt: "Continue the completed RPC run", description: "Probe real run resume", resume: id, run_in_background: true });
       assert.equal(resumed.details.runtimeLaunch.task_id, id);
       await bounded(resumedChild.seen, "resumed child request");
       const newRun = metadata(await manage({ action: "status", task_id: id })).run_id;
@@ -355,8 +410,8 @@ async function probe() {
       log("six public tool execute paths including background bash, workflow return and monitor XOR rejection without network");
       // A real source dispatch uses its returned provider ID directly, not a probe-generated mapping.
       let sourceObserved;
-      faux.setResponses([context => { sourceObserved = context; return fauxAssistantMessage(fauxToolCall("write", { path: "shared-source.txt", content: "shared source execution" })); }, fauxAssistantMessage("source done: full answer")]);
-      const source = await execute("trellis_dispatch", { task: taskDir, agent: "trellis-implement", prompt: "Write the scoped source output" });
+      faux.setResponses([...sourceReadCalls(sharedMaterials), context => { sourceObserved = context; return fauxAssistantMessage(fauxToolCall("write", { path: "shared-source.txt", content: "shared source execution" })); }, fauxAssistantMessage("source done: full answer")]);
+      const source = await execute("trellis_dispatch", { task: sourceTask, agent: "trellis-implement", prompt: "Write the scoped source output" });
       assert.equal(source.details.mode, "source"); assert.equal(source.details.cwd, root); assert.ok(source.details.agentId);
       const sourceAnswer = await manage({ action: "wait", task_id: source.details.agentId });
       assert.equal(metadata(sourceAnswer).task_id, source.details.agentId); assert.equal(sourceAnswer.details.runtimeTask.wait_outcome, "completed");
@@ -364,7 +419,7 @@ async function probe() {
       assert.equal(readFileSync(join(root, "shared-source.txt"), "utf8"), "shared source execution");
       assert.ok(JSON.stringify(sourceObserved).includes("SOURCE material"));
       assert.ok(JSON.stringify(sourceObserved).includes("Shared directory: Other agents may be working here."));
-      assert.ok(!JSON.stringify(sourceObserved).includes("TARGET material"));
+      assert.ok(!JSON.stringify(sourceObserved).includes("STALE execution-checkout body"));
       log("source trellis_dispatch real child write/cwd/material/ID + public task_manage full wait");
       // Stop acknowledgement is not Trellis terminal publication/lease release; regression owners cover that race.
       const stopped = heldResponse(); faux.setResponses([]);
@@ -386,14 +441,14 @@ async function probe() {
       const retrieved = await execute("get_subagent_result", { agent_id: id, wait: true });
       assert.ok(text(retrieved).includes("rpc done"));
       let sourceObserved;
-      faux.setResponses([context => { sourceObserved = context; return fauxAssistantMessage(fauxToolCall("write", { path: "shared-source.txt", content: "shared source execution" })); }, fauxAssistantMessage("source done")]);
-      const source = await execute("trellis_dispatch", { task: taskDir, agent: "trellis-implement", prompt: "Write the scoped source output" });
+      faux.setResponses([...sourceReadCalls(sharedMaterials), context => { sourceObserved = context; return fauxAssistantMessage(fauxToolCall("write", { path: "shared-source.txt", content: "shared source execution" })); }, fauxAssistantMessage("source done")]);
+      const source = await execute("trellis_dispatch", { task: sourceTask, agent: "trellis-implement", prompt: "Write the scoped source output" });
       assert.equal(source.details.mode, "source"); assert.equal(source.details.cwd, root);
       assert.ok(text(await execute("get_subagent_result", { agent_id: source.details.agentId, wait: true })).includes("source done"));
       assert.equal(readFileSync(join(root, "shared-source.txt"), "utf8"), "shared source execution");
       assert.ok(JSON.stringify(sourceObserved).includes("SOURCE material"));
       assert.ok(JSON.stringify(sourceObserved).includes("Shared directory: Other agents may be working here."));
-      assert.ok(!JSON.stringify(sourceObserved).includes("TARGET material"));
+      assert.ok(!JSON.stringify(sourceObserved).includes("STALE execution-checkout body"));
       log("native public RPC real id/result/steering + shared source dispatch (not preset new-tool evidence)");
     }
     await bounded(main.extensionRunner.emit({ type: "session_shutdown", reason: "quit" }), "main shutdown"); mainShutdown = true;
