@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { join,dirname } from 'node:path';
 import test from 'node:test';
 import trellis from '../extensions/trellis.ts';
-import { adoptPlan,applyAdoptPlan,adoptionSummary } from '../lib/initialization/adoption.ts';
+import { adoptPlan,applyAdoptPlan,adoptionSummary,adoptionDialog } from '../lib/initialization/adoption.ts';
 import { inspect,verifyRuntime,digest } from '../lib/initialization/engine.ts';
 function fixture(t) {
  const root=mkdtempSync(join(tmpdir(),'pi-adopt-'));t.after(()=>rmSync(root,{recursive:true,force:true}));
@@ -74,3 +74,17 @@ test('forged/stale plans and symlink targets reject without modifying legacy run
  rmSync(join(f.root,'.trellis/scripts/task.py'));symlinkSync('/tmp/missing-adopt-victim',join(f.root,'.trellis/scripts/task.py'));assert.throws(()=>adoptPlan(f.root),/symlink/);
 });
 test('concurrent preserved-template edit during publication leaves manifest unpublished',t=>{const f=fixture(t);assert.throws(()=>applyAdoptPlan(adoptPlan(f.root),{afterWrite:()=>f.put('.trellis/workflow.md','concurrent')}),/Concurrent change/);assert.ok(!existsSync(join(f.root,'.trellis/.pi-trellis.json')));assert.equal(readFileSync(join(f.root,'.trellis/workflow.md'),'utf8'),'concurrent');});
+
+test('counted adoption confirmation retains scope/preservation/destructive warnings without a full-list Check promise',t=>{
+ const f=fixture(t),value=adoptPlan(f.root),dialog=adoptionDialog(value);
+ assert.match(dialog,/Project:/);assert.match(dialog,/Scope: package runtime, roles, managed root blocks/);assert.match(dialog,/Replace: \d+/);assert.match(dialog,/Preserve: \d+/);
+ assert.match(dialog,/without backups/);assert.match(dialog,/Nothing is deleted/);assert.match(dialog,/workflow, config, spec, tasks, journals and identity are preserved/);assert.match(dialog,/No automatic rollback/);
+ assert.doesNotMatch(dialog,/--check|Full per-path list/);assert.ok(dialog.split('\n').length<=14);
+ const large=adoptionDialog({...value,rows:Array.from({length:1000},(_,i)=>({state:i%2?'Replace':'Install',path:`path-${i}`})),legacy:Array.from({length:300},(_,i)=>`legacy-${i}`)});
+ assert.match(large,/Install: 500.*Replace: 500/);assert.match(large,/Legacy — left in place: 300 paths/);assert.match(large,/without backups/);assert.ok(large.split('\n').length<=14);
+});
+
+test('adoption dialog renders multiline/control roots on one line without hiding no-backup warning',t=>{
+ const f=fixture(t),value=adoptPlan(f.root);value.root+="\n".repeat(40)+'\x1b[31m';const dialog=adoptionDialog(value);
+ assert.ok(dialog.split('\n').length<=14);assert.match(dialog,/without backups/);assert.match(dialog,/workflow, config, spec, tasks, journals and identity are preserved/);assert.doesNotMatch(dialog,/\x1b/);
+});

@@ -1,0 +1,36 @@
+{
+  "id": "pi-command-unification",
+  "name": "pi-command-unification",
+  "title": "统一 Pi 指令为菜单式交互入口",
+  "description": "梳理 Trellis Pi 指令，统一参数与菜单交互，先于诊断能力任务完成入口调整",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "akichase",
+  "assignee": "akichase",
+  "createdAt": "2026-10-15",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "lib/initialization/command.ts",
+    "lib/initialization/adoption.ts",
+    "lib/task-browser/command.ts",
+    "extensions/trellis.ts",
+    "docs/initialization.md",
+    "tests/init-command.test.mjs"
+  ],
+  "notes": "用户已批准纯菜单方案实施；当前会话已start，source main。实施与独立审查范围内局部提交，不部署/reload/push/archive。",
+  "meta": {
+    "related_task": "10-15-init-check-diagnostics",
+    "implementation_approved": true
+  }
+}

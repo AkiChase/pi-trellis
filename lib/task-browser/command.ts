@@ -16,7 +16,7 @@ export function registerTaskBrowserCommand(pi: ExtensionAPI, dependencies: {
 			if (ctx.mode !== "tui") { notice("/trellis-task-viewer requires interactive terminal mode. Custom task browsing is unavailable in RPC, print, and JSON modes."); return; }
 			let root: string | undefined;
 			try { root = dependencies.findRoot(ctx.cwd, ctx); }
-			catch (error) { notice(`Trellis browsing unavailable: ${String(error)}. Run /trellis-init --check or /reload.`); return; }
+			catch (error) { notice(`Trellis browsing unavailable: ${String(error)}. Run /trellis-init and choose Check, or /reload.`); return; }
 			if (!root) { notice("No Trellis project found. Open /trellis-task-viewer inside a project with .trellis/tasks."); return; }
 			await ctx.ui.custom<void>((tui, _theme, _keys, done) => new TaskBrowser(
 				root, tui, () => ctx.ui.theme, () => done(), () => dependencies.currentTask(root, ctx),

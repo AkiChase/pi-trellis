@@ -1,0 +1,5 @@
+{"file":".trellis/spec/development/index.md","reason":"初始化确认/来源与只读边界"}
+{"file":".trellis/spec/testing/index.md","reason":"独立复核实际diff与负例保存"}
+{"file":".trellis/tasks/10-15-pi-command-unification/prd.md","reason":"纯菜单/no旧参数兼容/先于diagnostics"}
+{"file":".trellis/tasks/10-15-pi-command-unification/design.md","reason":"菜单无Python/警告摘要固定/公开RPC原生交互"}
+{"file":".trellis/tasks/10-15-pi-command-unification/implement.md","reason":"实现及实际验证范围"}

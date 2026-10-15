@@ -1,7 +1,7 @@
 <!-- TRELLIS:START -->
 # Pi Trellis
 
-Use `/trellis-init --check` to inspect the project and `/skill:trellis-start` to orient.
+Use `/trellis-init` and choose `Check` to inspect the project; use `/skill:trellis-start` to orient.
 Read `.trellis/workflow.md` and relevant `.trellis/spec/` indexes before approved changes.
 Skills load from the pi-trellis package; project roles live in `.pi/agents/`.
 Use project `.trellis/scripts/` Python commands, with the session context supplied by Pi.

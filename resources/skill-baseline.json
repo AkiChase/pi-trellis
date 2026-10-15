@@ -171,7 +171,7 @@
       "adapted": true
     },
     "trellis-meta/references/local-architecture/overview.md": {
-      "sha256": "4fcb40cf54b43b5e7fc41a99b56fac5b41a7506458460d761a4563d14872ec38",
+      "sha256": "e7868a8a95c517004380caafdd04f2fe8ffa7d8db1af6369995d261ad1260fbe",
       "sourcePath": ".agents/skills/trellis-meta/references/local-architecture/overview.md",
       "sourceSha256": "50638fd9eaaba2e0edf2f2a84d920578d5b2fb7934031b174e417d3dc510b2a6",
       "license": "AGPL-3.0-only",

@@ -1,0 +1,6 @@
+{"file":".trellis/spec/development/index.md","reason":"项目来源/无写与初始化确认约束"}
+{"file":".trellis/spec/testing/index.md","reason":"隔离fixture与无副作用/最终检查证据"}
+{"file":".trellis/spec/guides/index.md","reason":"共享思考与完整owner读取"}
+{"file":".trellis/tasks/10-15-pi-command-unification/prd.md","reason":"已批准纯菜单功能范围"}
+{"file":".trellis/tasks/10-15-pi-command-unification/design.md","reason":"静态菜单与后选原确认链"}
+{"file":".trellis/tasks/10-15-pi-command-unification/implement.md","reason":"单stage验证与禁止部署边界"}

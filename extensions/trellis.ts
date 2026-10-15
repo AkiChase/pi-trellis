@@ -170,7 +170,7 @@ function requireRuntime(root: string): void {
 }
 
 function runtimeDiagnostic(error: unknown): string {
-	return `Trellis runtime execution is blocked: ${String(error)}. Run /trellis-init --check to inspect this project; explicit initialization or reconciliation is required (no automatic migration).`;
+	return `Trellis runtime execution is blocked: ${String(error)}. Run /trellis-init and choose Check to inspect this project; explicit initialization or reconciliation is required (no automatic migration).`;
 }
 
 /** Recognize known runtime invocations, not arbitrary shell behavior or file reads. */

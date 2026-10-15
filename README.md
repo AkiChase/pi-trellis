@@ -57,10 +57,7 @@ pi install @tintinweb/pi-subagents
 
 已有 Trellis 项目也从这个命令进入，根据项目状态设置本地身份、接管旧项目或更新资源。**接管旧项目可能替换旧运行时和角色，请先查看计划再确认。**
 
-```text
-/trellis-init --check
-/trellis-init --help
-```
+打开 `/trellis-init` 后选择 `Check` 查看资源状态，或选择 `Help` 查看帮助；指令不接受参数。
 
 完整操作与更新规则见 [项目初始化](docs/initialization.md)。无需安装全局 Trellis CLI。
 
@@ -114,7 +111,7 @@ README 提供入门入口，各功能的操作、配置和限制放在 `docs/`�
 
 ## 注意事项
 
-- **安装不等于初始化。** 启动不会自动部署或修复项目资源；运行时异常时先用 `/trellis-init --check` 查看。
+- **安装不等于初始化。** 启动不会自动部署或修复项目资源；运行时异常时先打开 `/trellis-init` 并选择 `Check` 查看。
 - **项目数据由你维护。** 不要忽略 `.trellis/.pi-trellis.json`，也不要用上游 `trellis update` 替换本包管理的固定运行时。
 - **自动协作不等于自动授权。** 派发不自动推进阶段、提交或合并代码；worktree 和角色指令也不是系统级沙箱。
 - **卸载保留项目文件。** 使用 `pi remove git:github.com/AkiChase/pi-trellis` 卸载用户级扩展；项目级卸载加 `-l`。运行时、配置与任务历史不会被删除。

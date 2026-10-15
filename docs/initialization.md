@@ -4,12 +4,13 @@
 
 ```text
 /trellis-init
-/trellis-init --user "Your Name"
-/trellis-init --check
-/trellis-init --help
 ```
 
-安装包后即可使用，推荐用户级安装一次：`pi install --approve git:github.com/AkiChase/pi-trellis`；显式项目级安装加 `-l`，安装脚本使用 `--local`。项目不需要已有 `.trellis/` 或全局 Trellis CLI。普通项目启动无需 Python，真正初始化和运行时执行需要 Python 3.10+。菜单、帮助和通知为英文；`--user` 跳过名字选择，不跳过最终确认。只有原生 UI 确认才写入；无 UI 时只返回状态与指引。`--check` 只读，不安装或执行模型回合。
+安装包后即可使用，推荐用户级安装一次：`pi install --approve git:github.com/AkiChase/pi-trellis`；显式项目级安装加 `-l`，安装脚本使用 `--local`。项目不需要已有 `.trellis/` 或全局 Trellis CLI。普通项目启动无需 Python，真正初始化和运行时执行需要 Python 3.10+。
+
+指令不接受参数，直接打开英文原生菜单；用户名在初始化或身份设置流程中选择。菜单包含 `Check`、`Help`、`Cancel`，以及当前状态可用的初始化、接管、资源更新或模板操作。旧参数只返回迁移提示，不保留隐藏兼容。
+
+打开菜单、查看帮助与取消不运行 Python。没有原生交互 UI 时仅返回使用指引；支持原生选择/确认的 RPC UI 仍可使用。只有最终原生确认才写入。`Check` 只读，不安装或执行模型回合；当前检查的是资源状态，不代表完整本地链路诊断已经通过。
 
 ## 项目激活与目标目录
 
@@ -31,7 +32,7 @@ Skills 动态来源仍在安装包，不复制到项目；用包 entry 的普通
 
 ## 更新项目资源
 
-已初始化项目提供 `Update project resources`、`View project status` 和 `Cancel`。状态可查看已安装与可用版本，以及各文件的缺失、修改、当前或保留状态。Skills 从安装包加载，不复制到项目。
+已初始化项目提供 `Update project resources`、`Check`、`Help` 和 `Cancel`。选择 `Check` 可查看已安装与可用版本，以及各文件的缺失、修改、当前或保留状态；检查不会自动修复。Skills 从安装包加载，不复制到项目。
 
 安全更新可更新未修改的托管文件或恢复缺失文件；修改过的运行时或角色会阻止更新，不强制覆盖。定制的 workflow/spec 等文档保留，不重建身份、任务和日志。未知或不兼容项目需先明确处理。
 
@@ -39,7 +40,7 @@ Skills 动态来源仍在安装包，不复制到项目；用包 entry 的普通
 
 ## 接管无 manifest 的旧项目
 
-已有 `.trellis/` 但无支持的托管 manifest 时，可选择 `Adopt existing project`。确认摘要显示安装、替换、创建、保留等分类数量与旧路径概况；完整逐文件列表先用 `/trellis-init --check` 查看。
+已有 `.trellis/` 但无支持的托管 manifest 时，可选择 `Adopt existing project`。确认摘要显示安装、替换、创建、保留等分类数量与旧路径概况，并保留破坏性操作警告；大量路径以摘要展示，`Check` 不作为完整写入清单的另一种查看模式。
 
 **接管会无备份替换旧运行时、角色，以及 AGENTS/gitignore 的托管区域。** 区域外内容、已有 workflow/config/spec、身份、任务和日志保留；不会创建 onboarding 或删旧文件。重复或不完整标记、危险路径、不支持的运行环境会拒绝接管。
 
@@ -59,4 +60,4 @@ Skills 动态来源仍在安装包，不复制到项目；用包 entry 的普通
 
 初始化必须在源项目而非 HOME 或托管 worktree 执行。危险 symlink、非普通文件、未知碰撞和定制托管标记会报错，不覆盖。文件级原子发布不等于全项目事务或 OS 沙箱。
 
-运行时缺失、畸形、不完整或版本不匹配时不启用完整能力，相关执行被阻止，请用 `/trellis-init --check` 查看。已有效激活项目中的坏任务指针仍报 task_error；不能把错误当作 No active task。普通读取/搜索不受影响，但 viewer 指令本身需要有效项目。宿主识别常见 Trellis 命令并非完整 shell 沙箱，外部独立进程仍需调用者负责。
+运行时缺失、畸形、不完整或版本不匹配时不启用完整能力，相关执行被阻止，请打开 `/trellis-init` 并选择 `Check` 查看。已有效激活项目中的坏任务指针仍报 task_error；不能把错误当作 No active task。普通读取/搜索不受影响，但 viewer 指令本身需要有效项目。宿主识别常见 Trellis 命令并非完整 shell 沙箱，外部独立进程仍需调用者负责。
