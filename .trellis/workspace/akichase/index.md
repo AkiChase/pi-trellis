@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 20
+- **Total Sessions**: 21
 - **Last Active**: 2026-10-15
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~570 | Active |
+| `journal-1.md` | ~605 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 21 | 2026-10-15 | Task Viewer 原生滚动完成与证据精简 | `fbc2988`, `b1f9f06` | `main` |
 | 20 | 2026-10-15 | Pi 指令菜单统一完成 | `5d3b4e4` | `main` |
 | 19 | 2026-10-15 | Runtime工具名适配与preset组合验收 | `56e8b9c`, `94e54cf`, `5f58f4e` | `main` |
 | 18 | 2026-10-15 | 明确研究产物与任务证据边界 | `60a1c04` | `main` |

@@ -568,3 +568,38 @@ viewer 区分归档隐藏与真正缺失；归档父子不展示，合法引用�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 21: Task Viewer 原生滚动完成与证据精简
+<!-- trellis-session: v=2 fp=04a47fe73bd5c17b -->
+
+**Date**: 2026-10-15
+**Task**: Task Viewer 原生滚动完成与证据精简
+**Branch**: `main`
+
+### Summary
+
+原生ScrollView、常驻滚动条及Fullscreen滚轮完成；独立focused91/91、主全量486/486。隔离tmux验证后用户验收；删除397个中间证据仅留2KB摘要，归档并清除本会话绑定。
+
+### Main Changes
+
+- 只清理本任务；其他任务与并行代码保持不动
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fbc2988` | feat: add native task viewer scrollbars and mouse scrolling |
+| `b1f9f06` | chore(task): archive 10-15-task-viewer-mouse-scroll |
+
+### Testing
+
+- [OK] tmux最终限定对照6/6；首轮fixture失败与后续超时已如实写入摘要；物理鼠标未测
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 只读讨论pi-trellis证据留存策略，尚未授权修改工作流或创建新任务
