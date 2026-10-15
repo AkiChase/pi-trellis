@@ -215,13 +215,10 @@
   },
   "templates": {
     ".trellis/workflow.md": {
-      "origin": "preserved-project",
-      "sha256": "dc0d7868806fb291d3b025e4d0d519652fd5c4ada4bea931f3caa51f3f10cd63",
+      "origin": "package-default",
+      "sha256": "bc3a7468b50ca56a002462a30ea7c699583a5f59008dfd4005646ba096510e20",
       "mode": 420,
-      "source": {
-        "kind": "project-snapshot",
-        "revision": null
-      }
+      "source": "resources/templates/workflow.md"
     },
     ".trellis/config.yaml": {
       "origin": "preserved-project",
