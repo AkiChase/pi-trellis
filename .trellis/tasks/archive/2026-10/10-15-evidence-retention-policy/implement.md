@@ -13,7 +13,7 @@
 - [x] 仅在 `tests/workflow-policy.test.mjs` 补一组契约回归，不改其他test源文件。
 - [x] 仅更新 template-baseline 的workflow输出hash及skill-baseline的check/finish输出hash；其余指纹/来源/许可不变。
 - [x] 主直接实施，独立只读review认可三文件契约与权限边界；提出低优先级测试补强，已增加正向“仅本次自有目录/主核验后”清理断言，非合同换行改为空白容忍。review无文件写入或报告附件。
-- [ ] 主核最终diff及检查结果，通过后提交六个发布文件的单stage（任务规划记录按实际scope另纳入），不改其他并行内容。
+- [x] 主核最终diff及检查结果，提交 `8fce55f`：六个发布文件加六个本任务记录（空role JSONL按直接执行策略），不含原始日志、其他项目规则或并行修改。
 
 ## 精确产品白名单
 
@@ -52,4 +52,4 @@ Node v24.14.1 / 已有Pi1.2.0。子进程 `env -u TRELLIS_CONTEXT_ID PI_TRELLIS_
 
 最终摘要记实际环境/命令/退出/失败及复测关系/未运行范围，不永久链接会删除的临时输出。确认测试进程结束、材料已核验且目录是本次自有后清理；仍需诊断或清理受阻就报告保留原因和位置。只读review无需单独持久化报告；必要发现整合这里。
 
-验证后等待用户验收，不自动archive/journal；授权实施包含scoped本地stage commit，不包含push、历史改写、install/sync/reload或真实项目apply。
+用户已验收并授权“收尾”。stage `8fce55f` 保持不变；按授权归档本任务、清除本会话绑定并记录简明journal，不执行push/当前项目apply。测试进程及独立review均终态，原始日志已核验；本次自有仓库外临时目录已清理，未产生持久化报告附件。
