@@ -922,6 +922,18 @@ export default function (pi: ExtensionAPI): void {
 		contextCache.clear(); taskCache.clear(); taskErrors.clear(); workflowCache.delete(root);
 		sectionCache.clear(); lastStateSent.clear();
 		await refreshProjectDisplay(ctx);
+	}, (ctx, root) => {
+		// Diagnosis needs the real memoized child key without running startup or
+		// requiring a healthy runtime. Cached authority is only a source hint;
+		// the collector must validate its current binding before reading it.
+		const identity = sessionIdentity(root, ctx);
+		if (authorityErrors.has(identity)) throw new Error(authorityErrors.get(identity));
+		return {
+			authorityRoot: authorityBySession.get(identity)?.sourceRoot ?? sourceRootBySession.get(identity) ?? root,
+			contextId: contextKey(root, ctx),
+			sessionId: ctx.sessionManager.getSessionId(),
+			isProjectTrusted: typeof ctx.isProjectTrusted === "function" && ctx.isProjectTrusted(),
+		};
 	});
 	let registeredRoot: string | undefined;
 	let startupCwd: string | undefined;

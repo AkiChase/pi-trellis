@@ -1,0 +1,8 @@
+{"file": ".trellis/spec/development/index.md", "reason": "审查只读、来源围栏、Python owner、会话与 worktree 约束"}
+{"file": ".trellis/spec/testing/index.md", "reason": "核对隔离 fixture、无写/越范围读取、运行证据和平台边界"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "审查 root/key/task/binding 与源目标 runtime 数据流"}
+{"file": ".trellis/tasks/10-15-init-check-diagnostics/prd.md", "reason": "按 R1–R7 与 A1–A8 审查单报告、本地链路和授权范围"}
+{"file": ".trellis/tasks/10-15-init-check-diagnostics/design.md", "reason": "核对安全静态采集、窄运行协议、预算与兼容边界"}
+{"file": ".trellis/tasks/10-15-init-check-diagnostics/implement.md", "reason": "审查独立阶段、提交检查点及实际验证计划"}
+{"file": ".trellis/tasks/10-15-init-check-diagnostics/research/local-diagnostics.md", "reason": "查阅实际消费者与既有只读陷阱；verbose 建议已被 PRD 覆盖"}
+{"file": ".trellis/tasks/10-15-init-check-diagnostics/research/planning-contracts.md", "reason": "loader/共享consumer/targeted identity技术证据；target pointer范围以design最终合同为准"}

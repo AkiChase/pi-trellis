@@ -1,0 +1,50 @@
+{
+  "id": "init-check-diagnostics",
+  "name": "init-check-diagnostics",
+  "title": "将菜单 Check 改为有效的只读诊断",
+  "description": "补充 Trellis 异常检查能力，输出可操作的诊断结论而非资源清单",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "akichase",
+  "assignee": "akichase",
+  "createdAt": "2026-10-15",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "lib/initialization/command.ts",
+    "lib/initialization/engine.ts",
+    "extensions/trellis.ts",
+    "runtime/common/config.py",
+    "runtime/common/trellis_config.py",
+    "runtime/common/active_task.py",
+    "runtime/common/session_context.py",
+    "runtime/pi_trellis_worktree/records.py",
+    "resources/runtime-baseline.json",
+    "tests/init-command.test.mjs",
+    "tests/runtime-contracts.test.mjs",
+    "docs/initialization.md"
+  ],
+  "notes": "2026-10-15：用户批准最终三阶段方案实施，当前会话正常 start；stage 验证与独立审查后局部提交，不部署/安装/reload/push/archive。",
+  "meta": {
+    "planning_artifacts": [
+      "prd.md",
+      "design.md",
+      "implement.md"
+    ],
+    "implementation_executor": "delegated-s1-main-coordinated",
+    "review_executor": "independent-readonly-agent-planned",
+    "implementation_approved": true,
+    "planning_predecessor": "10-15-pi-command-unification",
+    "entry": "/trellis-init menu Check"
+  }
+}

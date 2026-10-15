@@ -1,0 +1,7 @@
+{"file":".trellis/spec/development/index.md","reason":"只读、来源、session与source-authority安全约束"}
+{"file":".trellis/spec/testing/index.md","reason":"fixture/负例/实际证据与无部署边界"}
+{"file":".trellis/spec/guides/index.md","reason":"复用owner和跨层数据流"}
+{"file":".trellis/tasks/10-15-init-check-diagnostics/prd.md","reason":"R1-R7/A1-A8，已授权最终范围"}
+{"file":".trellis/tasks/10-15-init-check-diagnostics/design.md","reason":"唯一菜单报告，安全读取与窄运行合同"}
+{"file":".trellis/tasks/10-15-init-check-diagnostics/implement.md","reason":"只实施S1，独立审查提交后进入S2"}
+{"file":".trellis/tasks/10-15-init-check-diagnostics/research/planning-contracts.md","reason":"reader/loader/consumer证据；source-authority更新以design为准"}

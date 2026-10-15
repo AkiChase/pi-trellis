@@ -1,13 +1,14 @@
 import { lstatSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
-import { adoptPlan, applyAdoptPlan, adoptionSummary, adoptionDialog } from "./adoption.ts";
+import { adoptPlan, applyAdoptPlan, adoptionDialog } from "./adoption.ts";
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
-import { applyResourcePlan, read, resourcePlan, resourceStatus, templatePlan, applyTemplatePlan, type TemplateScope } from "./resources.ts";
+import { applyResourcePlan, read, resourcePlan, templatePlan, applyTemplatePlan, type TemplateScope } from "./resources.ts";
 import { initializationRoot } from "../project-state.ts";
 import { inspect, plan, apply, checkedPath, packageResources, defaultTemplates, verifyRuntime, validateUsername, type Inspection, type InitPlan } from "./engine.ts";
+import { collectDiagnostics, diagnosticExecutionRoot, formatDiagnostics, type DiagnosticScope } from "./diagnostics.ts";
 
-export const INIT_HELP = "Usage: /trellis-init — no arguments. Choose an operation, Check, Help or Cancel in the native menu.\nInitializes a new project, adopts an existing manifest-less project, or sets up identity on a supported clone. Usernames are selected or entered in the native UI.\nCheck currently reports resource and adoption facts only, not full project or runtime health.\nAll writes require native UI confirmation. Managed resources can be updated without resetting user data. Apply template explicitly replaces selected Workflow/Spec documents with backups. No force, active task selection, hooks, model turn, installation or Git changes.";
+export const INIT_HELP = "Usage: /trellis-init — no arguments. Choose an operation, Check, Help or Cancel in the native menu.\nInitializes a new project, adopts an existing manifest-less project, or sets up identity on a supported clone. Usernames are selected or entered in the native UI.\nCheck reports bounded static project, provenance, initialization, configuration-file, identity and current-session facts in one read-only report. Runtime/effective configuration/worktree probes are explicitly not completed in this static stage.\nAll writes require native UI confirmation. Managed resources can be updated without resetting user data. Apply template explicitly replaces selected Workflow/Spec documents with backups. No force, active task selection, hooks, model turn, installation or Git changes.";
 const MIGRATION_NOTICE = "/trellis-init no longer accepts arguments (including --user, --check and --help). Run /trellis-init without arguments, then choose an operation, Check or Help. Select or enter the username in the native UI. No inspection or changes were performed.";
 const INTERACTION_GUIDE = "/trellis-init requires native interaction. Open /trellis-init without arguments in interactive mode or an RPC client supporting native dialogs, then choose an operation, Check or Help. No inspection or changes were performed.";
 const DIALOG_LINES = 14;
@@ -104,16 +105,9 @@ function menuSnapshot(cwd: string): MenuSnapshot {
 	}
 }
 
-/** Single read-only Check owner, to be replaced by the diagnostics collector in its own task. */
-export function checkProject(cwd: string): string {
-	const snapshot = menuSnapshot(cwd), state = snapshot.state;
-	const scope = "Check · Resource facts only\nScope: managed resources, template provenance and adoption availability; not full project health. Python/runtime execution, task/worktree readiness and end-to-end diagnostics are not validated by this Check.";
-	let facts: string;
-	if (state.state === "unsupported") {
-		try { facts = adoptionSummary(adoptPlan(state.root)); }
-		catch (error) { facts = `Adoption is not available: ${String(error)}`; }
-	} else facts = resourceStatus(state.root);
-	return `${scope}\n${statusSummary(state)}\n${facts}\nRead-only: no files changed, active task selection, hooks, model turn, refresh or reload.`;
+/** Compatibility for callers needing the single static report, not a publication plan. */
+export function checkProject(cwd: string, scope: Omit<DiagnosticScope, "cwd"> = {}): string {
+	return formatDiagnostics(collectDiagnostics({ ...scope, cwd }));
 }
 
 async function chooseUsername(state: Inspection, ctx: ExtensionCommandContext): Promise<string | undefined> {
@@ -147,9 +141,10 @@ async function applyTemplates(ctx: ExtensionCommandContext, root: string, notify
 	notify(`Template applied.${backup ? `\nBackup: ${backup}` : " No files changed."}`);
 	return true;
 }
-export function registerInitCommand(pi: ExtensionAPI, refresh: (ctx: ExtensionCommandContext, root: string) => Promise<void>): void {
+export type GetDiagnosticScope = (ctx: ExtensionCommandContext, root: string) => Omit<DiagnosticScope, "cwd">;
+export function registerInitCommand(pi: ExtensionAPI, refresh: (ctx: ExtensionCommandContext, root: string) => Promise<void>, getDiagnosticScope?: GetDiagnosticScope): void {
 	pi.registerCommand("trellis-init", {
-		description: "Open Pi Trellis initialization, resource Check and Help menu (no arguments)",
+		description: "Open Pi Trellis initialization, read-only Check and Help menu (no arguments)",
 		handler: async (args, ctx) => {
 			const notify = (text: string, type: "info" | "error" = "info") => {
 				if (ctx.hasUI) ctx.ui.notify(text, type);
@@ -161,7 +156,15 @@ export function registerInitCommand(pi: ExtensionAPI, refresh: (ctx: ExtensionCo
 				const snapshot = menuSnapshot(ctx.cwd);
 				const choice = await ctx.ui.select(boundedDialog(statusSummary(snapshot.state)), [...snapshot.operations, "Check", "Help", "Cancel"]);
 				if (choice === "Help") { notify(INIT_HELP); return; }
-				if (choice === "Check") { notify(checkProject(ctx.cwd)); return; }
+				if (choice === "Check") {
+					let scope: DiagnosticScope = { cwd: ctx.cwd }, scopeError: string | undefined;
+					try { if (getDiagnosticScope) scope = { ...getDiagnosticScope(ctx, diagnosticExecutionRoot(ctx.cwd)), cwd: ctx.cwd }; }
+					catch (error) {
+						// Preserve the cause, but never borrow a key/root after resolver failure.
+						scopeError = error instanceof Error ? error.message : "Current-session resolver failed";
+					}
+					notify(formatDiagnostics(collectDiagnostics(scope, { scopeError }))); return;
+				}
 				if (!choice || !snapshot.operations.includes(choice)) return;
 				// A menu snapshot cannot authorize publication: inspect and each plan/apply recheck current state.
 				const state = inspect(snapshot.state.root);

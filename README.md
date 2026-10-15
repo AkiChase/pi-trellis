@@ -57,7 +57,7 @@ pi install @tintinweb/pi-subagents
 
 已有 Trellis 项目也从这个命令进入，根据项目状态设置本地身份、接管旧项目或更新资源。**接管旧项目可能替换旧运行时和角色，请先查看计划再确认。**
 
-打开 `/trellis-init` 后选择 `Check` 查看资源状态，或选择 `Help` 查看帮助；指令不接受参数。
+打开 `/trellis-init` 后选择 `Check` 查看只读诊断报告，或选择 `Help` 查看帮助；指令不接受参数。
 
 完整操作与更新规则见 [项目初始化](docs/initialization.md)。无需安装全局 Trellis CLI。
 

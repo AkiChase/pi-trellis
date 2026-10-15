@@ -87,17 +87,17 @@ for(const kind of ['ready','manifest-less','empty manifest','incomplete','manage
  if(kind==='incomplete'){const p=plan(f.root,'Fixture');assert.throws(()=>apply(p,{afterWrite:()=>{throw Error('interrupted');}}));}
  if(kind==='managed target')f.put('.trellis/.runtime/pi-trellis/binding.json','{}');
  if(kind==='symlink marker')symlinkSync('missing',join(f.root,'.trellis'));
- const before=snapshot(f.root);f.put('.git/index',Buffer.from([0,255,4,3]));if(kind!=='symlink marker')f.put('.trellis/.runtime/sessions/own.json','{"current_task":".trellis/tasks/keep"}');const guarded=snapshot(f.root);f.selections.push('Check');await f.run('');
- const report=f.notices.at(-1).text;assert.match(report,/Check · Resource facts only/);assert.match(report,/not full project health/);assert.match(report,/Read-only: no files changed/);
- if(kind==='empty manifest')assert.match(report,/manifest is empty/);
+ const calls=spySubprocesses(t),before=snapshot(f.root);f.put('.git/index',Buffer.from([0,255,4,3]));if(kind!=='symlink marker')f.put('.trellis/.runtime/sessions/own.json','{"current_task":".trellis/tasks/keep"}');const guarded=snapshot(f.root);f.selections.push('Check');await f.run('');
+ const report=f.notices.at(-1).text;assert.match(report,/Trellis Check ·/);assert.match(report,/runtime probe not performed/);assert.match(report,/Read-only: no files changed/);
+ if(kind==='empty manifest')assert.match(report,/File is empty; expected JSON/);
  if(kind==='incomplete')assert.match(report,/incomplete/);
- if(kind==='managed target')assert.match(report,/source project/);
+ if(kind==='managed target')assert.match(report,/pointer check blocked/);
  if(kind==='symlink marker')assert.match(report,/symlinked/);
- assert.deepEqual(snapshot(f.root),guarded);assert.ok(Object.keys(before).every(path=>JSON.stringify(guarded[path])===JSON.stringify(before[path])));assert.equal(f.refreshes,0);assert.equal(f.reloads,0);assert.equal(f.messages.length,0);
+ assert.deepEqual(calls,[]);assert.deepEqual(snapshot(f.root),guarded);assert.ok(Object.keys(before).every(path=>JSON.stringify(guarded[path])===JSON.stringify(before[path])));assert.equal(f.refreshes,0);assert.equal(f.reloads,0);assert.equal(f.messages.length,0);
 });
 
-test('Check adoption probe failure remains visible rather than reporting healthy or retrying/writing',async t=>{
- const f=fixture(t);f.put('.trellis/workflow.md','legacy');const before=snapshot(f.root),calls=spySubprocesses(t);
- f.selections.push('Check');await f.run('');assert.match(f.notices.at(-1).text,/Adoption is not available:/);assert.match(f.notices.at(-1).text,/subprocess must not run/);assert.match(f.notices.at(-1).text,/not full project health/);
- assert.ok(calls.some(c=>c[0]==='execFileSync'));assert.deepEqual(snapshot(f.root),before);assert.equal(f.refreshes,0);assert.equal(f.reloads,0);
+test('manifest-less Check never runs adoption/Python/Git and preserves independent failures',async t=>{
+ const f=fixture(t);f.put('.trellis/workflow.md','legacy');f.put('.pi/settings.json','{broken');const before=snapshot(f.root),calls=spySubprocesses(t);
+ f.selections.push('Check');await f.run('');assert.match(f.notices.at(-1).text,/No managed project manifest/);assert.match(f.notices.at(-1).text,/Invalid configuration JSON/);assert.match(f.notices.at(-1).text,/runtime probe not performed/);
+ assert.deepEqual(calls,[]);assert.equal(f.notices.length,1);assert.deepEqual(snapshot(f.root),before);assert.equal(f.refreshes,0);assert.equal(f.reloads,0);
 });

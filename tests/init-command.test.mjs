@@ -82,7 +82,7 @@ test('Apply template is available without developer identity and hidden for unhe
 
 test('update restores missing resources with confirmation and status contains per-file health',async t=>{
  const f=fixture(t);apply(plan(f.root,'Dev'));rmSync(join(f.root,'.trellis/scripts/task.py'));
- f.selections.push('Check');await f.run('');assert.match(f.notices.at(-1).text,/Missing — will restore/);
+ f.selections.push('Check');await f.run('');assert.match(f.notices.at(-1).text,/Missing: \.trellis\/scripts\/task\.py/);
  assert.ok(f.dialogs.at(-1).options.includes('Update project resources'));assert.ok(!f.dialogs.at(-1).options.includes('Repair missing resources'));
  f.selections.push('Update project resources');f.finalConfirm.value=false;await f.run('');assert.equal(existsSync(join(f.root,'.trellis/scripts/task.py')),false);
  f.selections.push('Update project resources');f.finalConfirm.value=true;await f.run('');assert.ok(existsSync(join(f.root,'.trellis/scripts/task.py')));assert.equal(f.notices.at(-1).text,'Project resources updated.');
@@ -91,18 +91,18 @@ test('update restores missing resources with confirmation and status contains pe
 
  test('Adopt native menu confirms once, cancels read-only, then reloads with supported runtime',async t=>{
  const f=fixture(t);mkdirSync(join(f.root,'.trellis'));writeFileSync(join(f.root,'.trellis/workflow.md'),'legacy workflow');
- f.selections.push('Check');await f.run('');assert.match(f.notices.at(-1).text,/Adopt existing project/);assert.match(f.notices.at(-1).text,/Preserve  \.trellis\/workflow\.md/);assert.equal(f.dialogs.length,1);assert.deepEqual(readdirSync(join(f.root,'.trellis')),['workflow.md']);
+ f.selections.push('Check');await f.run('');assert.match(f.notices.at(-1).text,/Adopt existing project/);assert.doesNotMatch(f.notices.at(-1).text,/Preserve  |legacy paths/);assert.equal(f.dialogs.length,1);assert.deepEqual(readdirSync(join(f.root,'.trellis')),['workflow.md']);
  f.selections.push('Adopt existing project','Cancel');await f.run('');assert.ok(!existsSync(join(f.root,'.trellis/.pi-trellis.json')));assert.deepEqual(f.dialogs.at(-1).options,['Cancel','Adopt existing project']);assert.match(f.dialogs.at(-1).title,/without backups/);assert.ok(f.dialogs.at(-1).title.split('\n').length<=14,'adoption confirmation must stay bounded');assert.equal(f.reloads,0);assert.equal(f.refreshes,0);
  f.selections.push('Adopt existing project','Adopt existing project');await f.run('');assert.equal(inspect(f.root).state,'supported');assert.equal(f.reloads,1);assert.equal(f.refreshes,1);assert.match(f.notices.at(-1).text,/Project adopted/);assert.equal(readFileSync(join(f.root,'.trellis/workflow.md'),'utf8'),'legacy workflow');
  });
 
-test('dialog core warnings stay bounded before path examples; Check explicitly describes resource-only scope',async t=>{
+test('dialog core warnings stay bounded before path examples; Check is one bounded static diagnostic report',async t=>{
  const f=fixture(t);mkdirSync(join(f.root,'.trellis/scripts/hooks'),{recursive:true});
  for(let i=0;i<300;i++)writeFileSync(join(f.root,`.trellis/scripts/legacy-${i}.py`),'legacy');
- f.selections.push('Check');await f.run('');const report=f.notices.at(-1).text;assert.ok(report.split('\n').length>300);assert.match(report,/legacy-299.py/);
+ f.selections.push('Check');await f.run('');const report=f.notices.at(-1).text;assert.ok(Buffer.byteLength(report)<=16*1024);assert.doesNotMatch(report,/legacy-299.py/);assert.match(report,/Trellis Check · Issues found/);
  f.selections.push('Adopt existing project','Cancel');await f.run('');
  for(const dialog of f.dialogs){const lines=(dialog.title??'').split('\n');assert.ok(lines.length<=14,`dialog title too tall: ${lines.length}`);}
- assert.match(f.dialogs.at(-1).title,/Legacy — left in place: 30[0-9] paths/);assert.doesNotMatch(f.dialogs.at(-1).title,/--check|Full per-path list/);assert.match(report,/Scope: managed resources/);assert.match(report,/not full project health/);
+ assert.match(f.dialogs.at(-1).title,/Legacy — left in place: 30[0-9] paths/);assert.doesNotMatch(f.dialogs.at(-1).title,/--check|Full per-path list/);assert.match(report,/Scope: current session/);assert.match(report,/runtime probe not performed/);assert.match(report,/Effective configuration/);assert.match(report,/worktree identity\/runtime not probed/);
  assert.ok(!existsSync(join(f.root,'.trellis/.pi-trellis.json')));
  const g=fixture(t,{selections:['Initialize project','Enter a different username'],inputs:['Dev'],confirm:true});await g.run('');
  const message=g.dialogs.find(d=>d.message).message;assert.ok(message.split('\n').length<=14,'initialization confirmation must stay bounded');assert.match(message,/additional path examples omitted/);assert.match(message,/No backups or automatic rollback/);assert.match(message,/Create: \d+/);
