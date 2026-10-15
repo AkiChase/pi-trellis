@@ -31,7 +31,7 @@ node --import ./tests/host-tui.mjs --test tests/python-worktree.test.mjs tests/p
 
 ## S2 派发路径与子会话双根接线
 
-文件：`lib/{worktree-query,task-context,subagent-rpc}.ts`、`extensions/trellis.ts`；`tests/{dispatch,source-executions,task-context,agent-context-integration,runtime-contracts,worktree-protocol}.test.mjs`。common三个模块已完整核对，复用显式repo_root参数，默认不改，见evidence/s2-root-routing.md；不得以材料共享为由全局改Git根。
+文件：`lib/{worktree-query,task-context,subagent-rpc}.ts`、`extensions/trellis.ts`；`tests/{dispatch,source-executions,task-context,agent-context-integration,runtime-contracts,worktree-protocol}.test.mjs`。common三个模块已完整核对，复用显式repo_root参数，默认不改，见evidence/report.md；不得以材料共享为由全局改Git根。
 
 1. source/managed统一路径身份prompt，无正文complete marker；真实source root来自可信binding而非caller prompt。
 2. native结果TS真实验证；两次role query比源要求hash；spawn reserve/unknown仍保守不重复。
@@ -84,9 +84,8 @@ npm test
 
 不push/安装/外部包sync/部署/reload/归档/清理；这些不由planning或产品测试自动授权。
 
-## 启动前
+## 完成与收尾（2026-10-15）
 
-- [x] 新三份规划已最终审阅且实施授权明确。
-- [x] 双根接线相关common完整读与消费者证据补齐，最小文件清单复核。
-- [ ] 源runtime兼容与目标执行环境策略有负例，不依赖目标task副本。
-- [ ] 并行hunks与审查执行目录确定，实际派发角色context准备。
+S1 `9ec131f`、S2 `176619d`、S3 `3d12127` 已审查、主复测并提交。tmux 真实离线最小派发/源缺失拒绝/正常退出通过；自主模型、分页、其他角色与恢复/停止等未覆盖项仍如实保留。用户接受当前结果，授权将证据合并为一份报告并归档收尾，覆盖此前不自动归档的边界；不授权push/安装/部署/sync/reload。
+
+最终结论、阶段修复、测试与限制统一见 [完成报告](evidence/report.md)。本文件前面的阶段记录为历史过程，不将其中“待审查/准备提交/NOT_RUN”描述当作最终状态。原始日志与夹具已移出仓库；重复阶段报告已合并。

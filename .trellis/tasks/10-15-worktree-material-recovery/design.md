@@ -34,7 +34,7 @@ Phase 2：用户已审阅并批准实施，正常 start 为 in_progress。主 wo
 | `lib/task-context.ts` | dispatch新增authority路径契约与必读清单构造；所有Trellis角色派发改为路径/范围而非材料正文，去除该路径的complete injection语义；parser只接受新的权威路径契约，不保留旧完整正文header模式，不让caller伪造权威路径；必要role manifest验证复用native事实，不另复制Python policy。 |
 | `lib/subagent-rpc.ts` | source/managed统一权威路径派发；managed两次query按role验证源要求hash；cwd仍子根；reserve/spawn/stop/unknown保持；不copy/start/sync，不提供旧模式转换。 |
 | `extensions/trellis.ts` | inheritDispatchTask区分source任务root与execution cwd；子context/pointer登记在忽略的源runtime独立身份，不在目标task start；source workflow/spec/task解析与目标执行身份分开；普通角色Agent入口同样使用路径契约；子bash上下文显式根，禁止因本地旧.trellis推断另task；更新overview短协议提示。 |
-| `runtime/common/paths.py`、`runtime/common/session_context.py`、`runtime/common/active_task.py` | 已全文核对，现有显式repo_root参数足够，S2默认不改这些公共模块。扩展在source cwd用独立child key调用source CLI；target Git/代码事实单独取，不全局重定向get_repo_root或新增任意env根覆盖。详见evidence/s2-root-routing.md。 |
+| `runtime/common/paths.py`、`runtime/common/session_context.py`、`runtime/common/active_task.py` | 已全文核对，现有显式repo_root参数足够，S2默认不改这些公共模块。扩展在source cwd用独立child key调用source CLI；target Git/代码事实单独取，不全局重定向get_repo_root或新增任意env根覆盖。详见evidence/report.md。 |
 
 ### 执行指引与文档
 
