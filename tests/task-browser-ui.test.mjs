@@ -6,14 +6,18 @@ import { join } from "node:path";
 import { stripVTControlCharacters as plain } from "node:util";
 import test from "node:test";
 import { getMarkdownTheme, initTheme } from "@earendil-works/pi-coding-agent";
+import * as hostTui from "@earendil-works/pi-tui";
 import { Markdown, compositeTuiLine, visibleWidth } from "@earendil-works/pi-tui";
 import { __internals } from "../extensions/trellis.ts";
 import { registerTaskBrowserCommand } from "../lib/task-browser/command.ts";
 import { readCurrentTaskIdentity } from "../lib/task-browser/reader.ts";
+import { loadNativeLayout } from "../lib/task-browser/native-layout.ts";
 import { TaskBrowser, readableMarkdown } from "../lib/task-browser/component.ts";
 
 const hostTheme = await import(new URL("./modes/interactive/theme/theme.js", import.meta.resolve("@earendil-works/pi-coding-agent")));
 initTheme("dark", false);
+const nativeLayout = await loadNativeLayout();
+const wheel = (browser, delta, x = 1, y = 4) => browser.handleMouse({ type: "wheel", button: "none", x, y, screenX: x, screenY: y, width: 80, height: 12, shift: false, alt: false, ctrl: false, wheelDelta: delta });
 const keys = { up: "\x1b[A", down: "\x1b[B", left: "\x1b[D", right: "\x1b[C", pageUp: "\x1b[5~", pageDown: "\x1b[6~", enter: "\r", escape: "\x1b" };
 function fixture(t, total = 1) {
   const root = mkdtempSync(join(tmpdir(), "pi-browser-ui-"));
@@ -24,7 +28,7 @@ function fixture(t, total = 1) {
   if (!total) mkdirSync(join(root, ".trellis/tasks"), { recursive: true });
   let closeCount = 0, renderCount = 0, current;
   const tui = { terminal: { rows: 12 }, requestRender: () => renderCount++ };
-  const browser = new TaskBrowser(root, tui, () => hostTheme.theme, () => closeCount++, () => current);
+  const browser = new TaskBrowser(root, tui, () => hostTheme.theme, () => closeCount++, () => current, nativeLayout);
   const render = (width = 80) => {
     const lines = browser.render(width);
     assert.ok(lines.length <= tui.terminal.rows);
@@ -150,12 +154,12 @@ test("list columns align statuses, Unicode names and titles with independent ell
   assert.ok(lines.some(line => line.includes("   └─ t-grandchild")));
   assert.ok(lines.some(line => line.includes("组合👨‍👩‍👧‍👦👍🏽标题")));
   const long = lines.find(line => line.includes("x-long"));
-  assert.match(long, /…\s+· TITLE .*…$/);
+  assert.match(long, /…\s+· TITLE .*…\s*[┃│]?$/);
   assert.match(lines.find(line => line.includes("v-custom")), /\[custom-.*…/);
   assert.equal(lines.find(line => line.includes("w-same")).split("w-same").length - 1, 1);
-  assert.match(body(39).find(line => line.includes("x-long")), /…$/);
+  assert.match(body(39).find(line => line.includes("x-long")), /…\s*[┃│]?$/);
   assert.ok(body(51).every(line => !line.includes(" · ")));
-  assert.ok(body(52).some(line => line.includes(" · ")));
+  assert.ok(body(53).some(line => line.includes(" · ")));
   const raw = f.browser.render(100).slice(3, 3 + records.length);
   for (const [name, status] of records.filter(([, status]) => ["planning", "in_progress", "completed"].includes(status))) {
     const index = f.browser.snapshot.rows.findIndex(row => row.task.dir.endsWith(`/${name}`));
@@ -193,7 +197,7 @@ test("list layout stays stable across scrolling and recomputes on resize and ref
   assert.ok(titleColumn(100) < wide, "refresh releases the removed name's column budget");
   const exact = "n".repeat(10);
   f.put(`.trellis/tasks/${exact}/task.json`, JSON.stringify({ title: "TITLE", status: "planning" }));
-  f.press("r", 100); f.browser.listOffset = 0; f.browser.selected = 0;
+  f.press("r", 100); f.browser.listScroll.scrollToStart(); f.browser.selected = 0;
   assert.ok(f.render(100).some(line => line.includes(`${exact} · TITLE`)), "exact-fit name has no ellipsis");
 });
 
@@ -208,13 +212,13 @@ test("long directory identifiers precede titles and remain fully scrollable in d
   let previousOffset = -1;
   for (let i = 0; i < 100; i++) {
     const body = f.render(20).slice(3, -1);
-    const offset = f.browser.offsets[0];
-    if (offset === previousOffset) { seen.push(...body.slice(1)); break; }
-    seen.push(body[0]); previousOffset = offset;
+    const offset = f.browser.detailScrolls[0].scrollTop;
+    if (offset === previousOffset) { seen.push(...body.slice(1).map(line => line.slice(0, -1))); break; }
+    seen.push(body[0].slice(0, -1)); previousOffset = offset;
     f.press("down", 20);
   }
-  assert.ok(seen.join("").includes(dir));
-  assert.ok(seen.join("").includes("中文标题"));
+  assert.ok(seen.join("").replace(/[┃│]/g, "").includes(dir));
+  assert.ok(seen.join("").replace(/[┃│]/g, "").includes("中文标题"));
 });
 
 test("real host Markdown renders required syntax and readable rich-content fallbacks", t => {
@@ -225,12 +229,12 @@ test("real host Markdown renders required syntax and readable rich-content fallb
   for (const width of [100, 40, 16, 8, 1]) {
     f.press("right", width); // rotate sections, then return to PRD below
     while (f.browser.section !== 1) f.press("right", width);
-    f.browser.offsets[1] = 0;
+    f.browser.detailScrolls[1].scrollToStart();
     const all = f.render(width).join("\n");
     if (width >= 16) {
       for (const text of ["Heading", "Subheading", "bold text", "emphasis", "inline code", "parent list", "nested item", "deeper item", "checked task", "unchecked", "ordered item", "quoted", "Documentation", "const", "greeting", "Description", "example.invalid", "diagram.png", "ref.png", "HTML literal", "never execute", "mermaid", "A-->B"]) {
         const flattened = all.replace(/[\s│┃|]/g, "");
-        const tableHeader = text === "Description" && width === 16 && all.includes("Descri") && all.includes("ption");
+        const tableHeader = text === "Description" && width === 16 && all.split("\n").map(line => (line.split("│")[2] ?? "").replace(/\s/g, "")).join("").includes("Description");
         assert.ok(tableHeader || all.includes(text) || flattened.includes(text.replace(/\s/g, "")), `${width}: missing ${text}`);
       }
       assert.match(all, /\[x\]/);
@@ -247,7 +251,7 @@ test("real host Markdown renders required syntax and readable rich-content fallb
 
 test("full-width native overlay hides transcript remnants and stays within resized terminal rows", t => {
   const f = fixture(t);
-  for (const rows of [3, 12, 28]) {
+  for (const rows of [1, 2, 3, 12, 28]) {
     f.tui.terminal.rows = rows;
     for (const width of [8, 40, 90]) {
       const lines = f.browser.render(width);
@@ -300,12 +304,12 @@ test("valid bounded large Markdown and overview remain scrollable without argume
   const f = fixture(t);
   f.record(0, { description: "line\n".repeat(70000) + "METADATA END" }); f.press("r");
   f.press("enter"); f.render(10);
-  f.browser.offsets[0] = Number.MAX_SAFE_INTEGER;
-  assert.match(f.render(10).join("\n").replace(/\s/g, ""), /METADATAEND/);
+  f.browser.detailScrolls[0].scrollToEnd();
+  assert.match(f.render(10).join("\n").replace(/[\s│┃]/g, ""), /METADATAEND/);
   f.put(".trellis/tasks/00/prd.md", "line\n\n".repeat(70000) + "DOCUMENT END");
   f.press("right", 10);
-  f.browser.offsets[1] = Number.MAX_SAFE_INTEGER;
-  assert.match(f.render(10).join("\n").replace(/\s/g, ""), /DOCUMENTEND/);
+  f.browser.detailScrolls[1].scrollToEnd();
+  assert.match(f.render(10).join("\n").replace(/[\s│┃]/g, ""), /DOCUMENTEND/);
 });
 
 test("host Markdown parser errors show scrollable original source and recover on refresh", t => {
@@ -318,10 +322,10 @@ test("host Markdown parser errors show scrollable original source and recover on
     const first = f.press("right");
     assert.match(first.join("\n"), /Unable to render Markdown/);
     assert.match(first.join("\n"), /# 中文 source/);
-    f.browser.offsets[1] = Number.MAX_SAFE_INTEGER;
+    f.browser.detailScrolls[1].scrollToEnd();
     assert.match(f.render().join("\n"), /SOURCE END/);
   } finally { Markdown.prototype.render = original; }
-  f.browser.offsets[1] = 0;
+  f.browser.detailScrolls[1].scrollToStart();
   assert.doesNotMatch(f.press("r").join("\n"), /Unable to render Markdown/);
 });
 
@@ -329,7 +333,7 @@ test("long list navigation, Escape return and close preserve selection and viewp
   const f = fixture(t, 40);
   f.render();
   for (let i = 0; i < 23; i++) f.press("down");
-  const before = f.render(), selected = f.browser.selected, offset = f.browser.listOffset;
+  const before = f.render(), selected = f.browser.selected, offset = f.browser.listScroll.scrollTop;
   assert.equal(selected, 23);
   assert.ok(offset > 0);
   const detail = f.press("enter");
@@ -337,7 +341,7 @@ test("long list navigation, Escape return and close preserve selection and viewp
   assert.equal(f.browser.mode, "detail");
   assert.deepEqual(f.press("escape"), before);
   assert.equal(f.browser.selected, selected);
-  assert.equal(f.browser.listOffset, offset);
+  assert.equal(f.browser.listScroll.scrollTop, offset);
   f.press("escape"); f.press("escape");
   assert.equal(f.closed(), 1);
   assert.ok(f.requested() >= 25);
@@ -360,17 +364,20 @@ test("detail scrolling keeps fixed header/footer, full long title and per-sectio
   }
   assert.match(seen.join(""), /TITLE END/);
   assert.match(seen.join("\n"), /prd END/);
-  const prdOffset = f.browser.offsets[1];
+  const prdOffset = f.browser.detailScrolls[1].scrollTop;
   f.press("right", 40);
-  assert.equal(f.browser.offsets[2], 0);
+  assert.equal(f.browser.detailScrolls[2].scrollTop, 0);
+  f.press("down", 40);
+  assert.equal(f.browser.detailScrolls[2].scrollTop, 1);
   f.press("pageDown", 40);
-  assert.equal(f.browser.offsets[2], f.browser.bodyHeight);
+  assert.equal(f.browser.detailScrolls[2].scrollTop, 1, "PageDown is no longer a viewer key");
   f.press("left", 40);
-  assert.equal(f.browser.offsets[1], prdOffset);
+  assert.equal(f.browser.detailScrolls[1].scrollTop, prdOffset);
   f.press("pageUp", 40);
-  assert.equal(f.browser.offsets[1], prdOffset - f.browser.bodyHeight);
+  assert.equal(f.browser.detailScrolls[1].scrollTop, prdOffset, "PageUp is no longer a viewer key");
+  assert.doesNotMatch(f.render(100).at(-1), /PgUp|PgDn|Page/);
   f.press("left", 40);
-  assert.equal(f.browser.offsets[0], 0);
+  assert.equal(f.browser.detailScrolls[0].scrollTop, 0);
 });
 
 test("refresh rereads title, current identity and documents; removal does not jump to a different task", t => {
@@ -407,7 +414,7 @@ test("refresh preserves canonical identity through alias changes and clamps afte
   rmSync(join(f.root, ".trellis/tasks/00"), { recursive: true });
   f.press("r");
   assert.ok(f.browser.selected < 14);
-  assert.ok(f.browser.listOffset <= f.browser.selected);
+  assert.ok(f.browser.listScroll.scrollTop <= f.browser.selected);
 });
 
 test("empty and invalid stores differ, and every bounded diagnostic is scrollable", t => {
@@ -436,9 +443,9 @@ test("narrow Unicode/control widths, resize clamping and actual host theme inval
   f.press("enter"); f.press("right");
   for (const height of [1, 2, 3, 4, 8, 30]) {
     f.tui.terminal.rows = height;
-    for (const width of [1, 2, 4, 8, 20, 34, 80]) { f.render(width); f.press("pageDown", width); }
+    for (const width of [1, 2, 4, 8, 20, 34, 80]) { f.render(width); f.press("down", width); }
   }
-  f.tui.terminal.rows = 50; f.browser.offsets[1] = 0;
+  f.tui.terminal.rows = 50; f.browser.detailScrolls[1].scrollToStart();
   hostTheme.setTheme("dark", false); f.browser.invalidate(); const dark = f.browser.render(70);
   hostTheme.setTheme("light", false); f.browser.invalidate(); const light = f.browser.render(70);
   assert.notDeepEqual(light, dark);
@@ -602,11 +609,342 @@ test("browser navigation/refresh/close preserve all files, session pointers, Git
   await harness.commands.get("trellis-task-viewer").handler("", harness.ctx);
   const browser = harness.component();
   browser.render(60); browser.handleInput(keys.down); browser.handleInput(keys.down); browser.handleInput(keys.enter); browser.handleInput(keys.right); browser.render(60);
-  for (let i = 0; i < 20; i++) { browser.handleInput(keys.pageDown); browser.render(30); }
+  for (let i = 0; i < 20; i++) { wheel(browser, 7); browser.handleInput(keys.down); browser.render(30); }
   browser.handleInput("r"); browser.render(80); browser.handleInput(keys.escape); browser.handleInput(keys.down); browser.handleInput(keys.enter); browser.render(40); browser.handleInput(keys.escape); browser.handleInput(keys.escape);
   assert.deepEqual(capture(f.root), before);
   assert.deepEqual(git(["status", "--porcelain=v1"]), status);
   assert.equal(harness.messages.length, 0);
   assert.equal(harness.notices.length, 0);
   assert.equal(harness.completed(), 1);
+});
+
+test("clamped list arrows reveal the selected edge after wheeling away", t => {
+  const f = fixture(t, 40);
+  f.render(); wheel(f.browser, 12); f.render();
+  assert.equal(f.browser.selected, 0);
+  f.press("up");
+  assert.equal(f.browser.listScroll.scrollTop, 0, "Up at first item still reveals keyboard selection");
+  for (let i = 0; i < 39; i++) f.press("down");
+  wheel(f.browser, -1000); f.render();
+  f.press("down");
+  assert.equal(f.browser.selected, 39);
+  assert.equal(f.browser.listScroll.scrollTop, 32, "Down at last item still reveals keyboard selection");
+});
+
+test("queued keys, view switches and resize do not discard subsequent wheel input", t => {
+  const f = fixture(t, 40);
+  f.render();
+  f.browser.handleInput(keys.pageDown);
+  wheel(f.browser, 5); f.render();
+  assert.equal(f.browser.listScroll.scrollTop, 5, "ignored PageDown must not swallow the next wheel");
+  f.browser.handleInput(keys.down);
+  wheel(f.browser, 6); f.render();
+  assert.equal(f.browser.selected, 1);
+  assert.equal(f.browser.listScroll.scrollTop, 7, "keyboard reveal precedes the later wheel, without render pullback");
+  f.put(".trellis/tasks/38/prd.md", "line\n".repeat(60) + "END");
+  f.browser.handleInput(keys.enter); f.browser.handleInput(keys.right);
+  wheel(f.browser, 9); f.render();
+  assert.equal(f.browser.detailScrolls[1].scrollTop, 9, "new detail viewport can receive wheel before the next paint");
+  f.browser.handleInput(keys.left); f.browser.handleInput(keys.right);
+  wheel(f.browser, 4); wheel(f.browser, 3); f.render();
+  assert.equal(f.browser.detailScrolls[1].scrollTop, 16, "rapid wheel events accumulate in native state");
+  f.put(".trellis/tasks/38/design.md", "design\n".repeat(60) + "DESIGN END");
+  f.browser.handleInput(keys.right); f.browser.handleInput(keys.down); f.render();
+  assert.equal(f.browser.detailScrolls[2].scrollTop, 1, "new unpainted section must not discard its first keyboard scroll");
+  f.browser.handleInput(keys.left); f.render();
+  f.tui.terminal.rows = 6;
+  wheel(f.browser, 8, 1, 4); f.render();
+  assert.equal(f.browser.detailScrolls[1].scrollTop, 24);
+  assert.equal(f.browser.detailScrolls[1].viewportHeight, 2, "resized native geometry is allocated before wheel routing");
+  f.browser.handleInput("r"); wheel(f.browser, 2); f.render();
+  assert.equal(f.browser.detailScrolls[1].scrollTop, 26, "refresh plus wheel preserves native position");
+});
+
+test("native adapter rejects malformed bounded ScrollView geometry", async t => {
+  const layout = await import(new URL("./layout.js", import.meta.resolve("@earendil-works/pi-tui")));
+  for (const corrupt of [box => { box.clip.x = -1; }, box => { box.rect.width = -1; }, box => { box.clip.height = 99; }, box => { box.children[0].rect.height = -2; }, box => { box.rect.y = 0.5; }]) {
+    const f = fixture(t, 40); f.render();
+    const box = layout.getScrollViewBox(f.browser.frame, f.browser.listScroll);
+    corrupt(box);
+    assert.throws(() => nativeLayout.scrollBox(f.browser.frame, f.browser.listScroll), /incompatible/);
+  }
+});
+
+test("late native scroll failures on keyboard and wheel close without escaping host input", t => {
+  for (const input of ["keyboard", "wheel"]) {
+    const f = fixture(t), notices = [];
+    let closed = 0;
+    const browser = new TaskBrowser(f.root, f.tui, () => hostTheme.theme, () => closed++, () => undefined, nativeLayout, error => notices.push(error.message));
+    browser.handleInput(keys.enter); browser.render(80);
+    browser.activeScroll.scrollBy = () => { throw new Error("late public scroll capability changed"); };
+    assert.doesNotThrow(() => input === "keyboard" ? browser.handleInput(keys.down) : wheel(browser, 1));
+    assert.equal(closed, 1); assert.equal(notices.length, 1); assert.match(notices[0], /incompatible/);
+    browser.handleInput(keys.down); wheel(browser, 1); assert.equal(closed, 1);
+  }
+});
+
+test("wheel changes only the native list viewport; keyboard selection alone reveals selection", t => {
+  const f = fixture(t, 40);
+  f.render();
+  assert.equal(f.browser.listScroll.viewportHeight, 8);
+  const first = f.render();
+  assert.deepEqual(wheel(f.browser, 12), { handled: true });
+  const moved = f.render();
+  assert.equal(f.browser.selected, 0);
+  assert.equal(f.browser.listScroll.scrollTop, 12);
+  assert.equal(moved[0], first[0]); assert.equal(moved.at(-1), first.at(-1));
+  f.render(); assert.equal(f.browser.listScroll.scrollTop, 12, "render does not pull wheel back");
+  f.press("pageUp"); f.press("pageDown");
+  assert.equal(f.browser.selected, 0); assert.equal(f.browser.listScroll.scrollTop, 12);
+  for (const y of [0, 1, 2, 11]) { wheel(f.browser, 4, 1, y); f.render(); }
+  assert.equal(f.browser.listScroll.scrollTop, 12, "fixed regions swallow wheel without scrolling");
+  f.press("enter"); assert.match(f.render().join("\n"), /任务 39/, "Enter opens selected not visible row");
+  f.press("escape"); assert.equal(f.browser.listScroll.scrollTop, 12);
+  f.press("down"); assert.equal(f.browser.selected, 1); assert.equal(f.browser.listScroll.scrollTop, 1);
+  wheel(f.browser, 1000); f.render(); assert.equal(f.browser.listScroll.scrollTop, 32);
+  assert.deepEqual(wheel(f.browser, 1000), { handled: true }); f.render();
+  assert.equal(f.browser.listScroll.scrollTop, 32);
+  wheel(f.browser, -1000); f.render(); assert.equal(f.browser.listScroll.scrollTop, 0);
+  assert.deepEqual(wheel(f.browser, -1000), { handled: true });
+  assert.equal(f.browser.handleMouse({ type: "click" }), undefined, "no custom click behavior");
+});
+
+test("wheel reaches every diagnostic and every independent native detail viewport", t => {
+  const f = fixture(t);
+  f.record(0, { description: "overview line\n".repeat(60) + "OVERVIEW END" });
+  for (const section of ["prd", "design", "implement"]) f.put(`.trellis/tasks/00/${section}.md`, `# ${section}\n${"line\n".repeat(70)}${section.toUpperCase()} END`);
+  f.press("r"); f.press("enter");
+  const positions = [];
+  for (let section = 0; section < 4; section++) {
+    f.render(); wheel(f.browser, 9); f.render(); positions.push(f.browser.activeScroll.scrollTop);
+    wheel(f.browser, 10000); assert.match(f.render().join("\n"), new RegExp(`${["OVERVIEW", "PRD", "DESIGN", "IMPLEMENT"][section]} END`));
+    wheel(f.browser, -10000); f.render(); assert.equal(f.browser.activeScroll.scrollTop, 0);
+    wheel(f.browser, positions[section]); f.render(); f.press("right");
+  }
+  for (let section = 0; section < 4; section++) { assert.equal(f.browser.activeScroll.scrollTop, positions[section]); f.press("right"); }
+  f.press("escape"); rmSync(join(f.root, ".trellis/tasks/00"), { recursive: true });
+  for (let i = 0; i < 45; i++) f.put(`.trellis/tasks/${i}/task.json`, "null");
+  f.press("r"); wheel(f.browser, 10000);
+  assert.match(f.render().join("\n"), /Further diagnostics omitted/);
+});
+
+test("actual mounted overlay consumes host normalized wheel at native scrollbar edges without scrolling transcript", async t => {
+  const interactive = await import(new URL("./modes/interactive/interactive-mode.js", import.meta.resolve("@earendil-works/pi-coding-agent")));
+  const layout = await import(new URL("./layout.js", import.meta.resolve("@earendil-works/pi-tui")));
+  for (const tuiMode of ["regular", "fullscreen"]) {
+    const f = fixture(t, 40), harness = commandFixture(f);
+    let writes = 0;
+    const terminal = { columns: 80, rows: 12, hideCursor() {}, showCursor() {}, write() { writes++; }, stop() {} };
+    const tui = interactive.createInteractiveTui({ terminal, tuiMode }); tui.stopped = true;
+    const editor = { getText: () => "preserved input", render: () => [], invalidate() {} };
+    tui.setFocus(editor);
+    const transcript = new hostTui.ScrollView({ render: () => Array.from({ length: 100 }, (_, i) => `TRANSCRIPT ${i}`), invalidate() {} }, { follow: "none", primary: true });
+    const mainRoot = new hostTui.VStack([{ component: transcript, basis: 0, grow: 1 }]);
+    const mainFrame = layout.renderLayoutFrame(mainRoot, 80, 12, () => {});
+    transcript.scrollTo(20);
+    // The fixture mounts the existing main frame, not a viewer replacement root.
+    if (tuiMode === "fullscreen") tui.currentLayout = layout.renderLayoutFrame(mainRoot, 80, 12, () => {});
+    harness.ctx.ui.custom = (factory, options) => interactive.InteractiveMode.prototype.showExtensionCustom.call({ editor, ui: tui }, factory, options);
+    const pending = harness.commands.get("trellis-task-viewer").handler("", harness.ctx);
+    await new Promise(resolve => setImmediate(resolve));
+    try {
+      const browser = tui.focusedComponent;
+      assert.ok(browser instanceof TaskBrowser);
+      const paint = () => {
+        const lines = tui.compositeOverlays(mainFrame.lines, terminal.columns, terminal.rows);
+        assert.equal(lines.length, terminal.rows);
+        assert.doesNotMatch(lines.map(plain).join("\n"), /TRANSCRIPT/);
+        return lines;
+      };
+      paint();
+      const topGeometry = layout.getScrollbarGeometry(layout.getScrollViewBox(browser.frame, browser.listScroll));
+      assert.deepEqual({ column: topGeometry.column, trackTop: topGeometry.trackTop, trackHeight: topGeometry.trackHeight, thumbTop: topGeometry.thumbTop }, { column: 79, trackTop: 3, trackHeight: 8, thumbTop: 3 });
+      const inputWheel = (down, x = 1, y = 4) => tui.handleTerminalInput(`\x1b[<${down ? 65 : 64};${x + 1};${y + 1}M`);
+      if (tuiMode === "fullscreen") {
+        let normalized;
+        const handle = browser.handleMouse.bind(browser);
+        browser.handleMouse = event => { normalized = event.wheelDelta; return handle(event); };
+        inputWheel(true); paint();
+        assert.ok(normalized > 0); assert.equal(browser.listScroll.scrollTop, normalized);
+        assert.equal(browser.selected, 0);
+        for (let i = 0; i < 80; i++) { inputWheel(true, 79); paint(); }
+        assert.equal(browser.listScroll.scrollTop, 32);
+        const bottomGeometry = layout.getScrollbarGeometry(layout.getScrollViewBox(browser.frame, browser.listScroll));
+        assert.equal(bottomGeometry.thumbTop + bottomGeometry.thumbHeight, 11);
+        assert.equal(plain(paint()[10]).at(-1), "┃");
+        inputWheel(true); paint(); assert.equal(browser.listScroll.scrollTop, 32);
+        for (const y of [0, 2, 11]) { inputWheel(false, 1, y); paint(); }
+        assert.equal(browser.listScroll.scrollTop, 32);
+        for (let i = 0; i < 80; i++) { inputWheel(false); paint(); }
+        assert.equal(browser.listScroll.scrollTop, 0);
+        inputWheel(false); paint(); assert.equal(browser.listScroll.scrollTop, 0);
+        for (const key of [keys.pageUp, keys.pageDown]) tui.handleTerminalInput(key);
+        assert.equal(browser.listScroll.scrollTop, 0); assert.equal(browser.selected, 0);
+      } else {
+        inputWheel(true); paint(); assert.equal(browser.listScroll.scrollTop, 0, "Regular leaves mouse to terminal");
+        for (let i = 0; i < 20; i++) tui.handleTerminalInput(keys.down);
+        paint(); assert.ok(browser.listScroll.scrollTop > 0);
+      }
+      assert.equal(transcript.scrollTop, 20);
+      assert.equal(transcript.isFollowingEnd, false);
+      tui.handleTerminalInput(keys.escape); await pending;
+      assert.equal(tui.hasOverlay(), false); assert.equal(tui.focusedComponent, editor); assert.equal(editor.getText(), "preserved input");
+      assert.equal(writes, 0, "no terminal start or physical input/output claimed");
+    } finally { tui.stop(); }
+  }
+});
+
+test("host SDK loader resolves the native adapter against its actual aliased TUI", async t => {
+  const loader = await import(new URL("./core/extensions/loader.js", import.meta.resolve("@earendil-works/pi-coding-agent")));
+  const f = fixture(t);
+  f.put("adapter-fixture.ts", `import { loadNativeLayout } from ${JSON.stringify(new URL("../lib/task-browser/native-layout.ts", import.meta.url).href)};\nexport default async function(pi) { const layout = await loadNativeLayout(); pi.registerCommand("native-ready", { description: "offline probe", handler: async () => {} }); }`);
+  const result = await loader.loadExtensions([join(f.root, "adapter-fixture.ts")], f.root);
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.extensions.length, 1);
+  assert.ok(result.extensions[0].commands.has("native-ready"));
+});
+
+test("native layout failure is visible and closes once instead of crashing the host renderer", t => {
+  const f = fixture(t), notices = [];
+  let closed = 0;
+  const browser = new TaskBrowser(f.root, f.tui, () => hostTheme.theme, () => closed++, () => undefined,
+    { render() { throw new Error("internal API changed"); }, scrollBox() { throw new Error("not reached"); } }, error => notices.push(error.message));
+  assert.doesNotThrow(() => browser.render(80));
+  assert.equal(closed, 1); assert.match(notices[0], /incompatible/);
+  browser.render(80); assert.equal(closed, 1); assert.equal(notices.length, 1);
+});
+
+test("mounted host restores editor focus when a late layout frame refuses", async t => {
+  const interactive = await import(new URL("./modes/interactive/interactive-mode.js", import.meta.resolve("@earendil-works/pi-coding-agent")));
+  for (const tuiMode of ["regular", "fullscreen"]) {
+    const f = fixture(t, 40), notices = [];
+    let writes = 0, fail = false;
+    const terminal = { rows: 12, columns: 80, hideCursor() {}, showCursor() {}, write() { writes++; }, stop() {} };
+    const tui = interactive.createInteractiveTui({ terminal, tuiMode }); tui.stopped = true;
+    const editor = { getText: () => "preserved failure input", render: () => [], invalidate() {} }; tui.setFocus(editor);
+    const compatible = { render(...args) { if (fail) throw new Error("late frame capability failed"); return nativeLayout.render(...args); }, scrollBox: (...args) => nativeLayout.scrollBox(...args) };
+    const pending = interactive.InteractiveMode.prototype.showExtensionCustom.call({ editor, ui: tui },
+      (host, _theme, _keys, done) => new TaskBrowser(f.root, host, () => hostTheme.theme, done, () => undefined, compatible, error => notices.push(error.message)),
+      { overlay: true, overlayOptions: { width: "100%", maxHeight: "100%", anchor: "top-left", margin: 0 } });
+    await new Promise(resolve => setImmediate(resolve));
+    try {
+      tui.compositeOverlays([], 80, 12); assert.equal(tui.hasOverlay(), true);
+      fail = true;
+      assert.doesNotThrow(() => tui.compositeOverlays([], 80, 12));
+      await pending; assert.equal(tui.hasOverlay(), false); assert.equal(tui.focusedComponent, editor);
+      assert.equal(editor.getText(), "preserved failure input"); assert.equal(notices.length, 1); assert.match(notices[0], /incompatible/);
+      assert.equal(writes, 0);
+    } finally { tui.stop(); }
+  }
+});
+
+test("native scrollbar theme callbacks are live and both mode viewports clamp on resize and refresh", t => {
+  const f = fixture(t, 40);
+  f.record(0, { description: "long\n".repeat(70) + "OLD END" });
+  f.put(".trellis/tasks/00/prd.md", "body\n".repeat(80) + "PRD END");
+  f.press("r"); wheel(f.browser, 15); f.render();
+  assert.equal(f.browser.listScroll.scrollTop, 15);
+  f.press("r"); assert.equal(f.browser.listScroll.scrollTop, 15, "unchanged refresh preserves wheel position");
+  f.tui.terminal.rows = 30; f.render(); assert.equal(f.browser.listScroll.scrollTop, 14, "native resize clamps to end");
+  for (let i = 1; i < 40; i++) rmSync(join(f.root, `.trellis/tasks/${String(i).padStart(2, "0")}`), { recursive: true });
+  f.press("r"); assert.equal(f.browser.listScroll.scrollTop, 0);
+  f.tui.terminal.rows = 12; f.press("enter"); f.press("right");
+  wheel(f.browser, 10000); f.render(); assert.ok(f.browser.activeScroll.scrollTop > 0);
+  f.put(".trellis/tasks/00/prd.md", "SHORT END"); f.press("r");
+  assert.equal(f.browser.activeScroll.scrollTop, 0); assert.match(f.render().join("\n"), /SHORT END/);
+  hostTheme.setTheme("dark", false); f.browser.invalidate();
+  const dark = f.browser.render(80), darkTrack = f.browser.activeScroll.scrollbarTrackStyle("│");
+  const darkThumb = f.browser.activeScroll.scrollbarThumbStyle("┃");
+  hostTheme.setTheme("light", false); f.browser.invalidate();
+  const light = f.browser.render(80);
+  assert.notEqual(f.browser.activeScroll.scrollbarTrackStyle("│"), darkTrack);
+  assert.notEqual(f.browser.activeScroll.scrollbarThumbStyle("┃"), darkThumb);
+  assert.notDeepEqual(dark, light); assert.deepEqual(dark.map(plain), light.map(plain));
+  for (const height of [1, 2, 3, 4, 12]) {
+    f.tui.terminal.rows = height;
+    for (let width = 1; width <= 125; width++) { f.render(width); assert.equal(f.closed(), 0, `${width}×${height}: valid native frame must not refuse`); }
+  }
+  hostTheme.setTheme("dark", false); f.browser.invalidate();
+});
+
+test("unpreloaded SDK mounts the viewer with its own TUI identity in both modes", async t => {
+  const f = fixture(t, 40);
+  const extension = join(f.root, "sdk-viewer.ts");
+  writeFileSync(extension, `import { registerTaskBrowserCommand } from ${JSON.stringify(new URL("../lib/task-browser/command.ts", import.meta.url).href)};
+export default function(pi) { registerTaskBrowserCommand(pi, { findRoot: cwd => cwd, currentTask: () => undefined }); }`);
+  const hostEntry = import.meta.resolve("@earendil-works/pi-coding-agent");
+  const script = `import assert from "node:assert/strict";
+import { loadExtensions } from ${JSON.stringify(new URL("./core/extensions/loader.js", hostEntry).href)};
+import { createInteractiveTui, InteractiveMode } from ${JSON.stringify(new URL("./modes/interactive/interactive-mode.js", hostEntry).href)};
+import { initTheme, theme } from ${JSON.stringify(new URL("./modes/interactive/theme/theme.js", hostEntry).href)};
+initTheme("dark", false);
+const loaded = await loadExtensions([process.argv[1]], process.argv[2]);
+assert.deepEqual(loaded.errors, []);
+for (const tuiMode of ["regular", "fullscreen"]) {
+ let writes = 0;
+ const terminal = { rows: 12, columns: 80, hideCursor() {}, showCursor() {}, write() { writes++; }, stop() {} };
+ const tui = createInteractiveTui({ terminal, tuiMode }); tui.stopped = true;
+ const editor = { getText: () => "SDK preserved input", render: () => [], invalidate() {} }; tui.setFocus(editor);
+ const notices = [];
+ const ctx = { cwd: process.argv[2], mode: "tui", hasUI: true, ui: { theme, notify: text => notices.push(text), custom: (factory, options) => InteractiveMode.prototype.showExtensionCustom.call({ editor, ui: tui }, factory, options) } };
+ const pending = loaded.extensions[0].commands.get("trellis-task-viewer").handler("", ctx);
+ await new Promise(resolve => setImmediate(resolve));
+ const browser = tui.focusedComponent;
+ assert.notEqual(browser, editor); assert.ok(tui.hasOverlay());
+ assert.equal(tui.compositeOverlays([], 80, 12).slice(-12).length, 12);
+ for (let i = 0; i < 20; i++) tui.handleTerminalInput("\\x1b[B");
+ tui.compositeOverlays([], 80, 12);
+ assert.ok(browser.listScroll.scrollTop > 0); assert.equal(browser.listScroll.viewportHeight, 8);
+ tui.handleTerminalInput("\\x1b"); await pending;
+ assert.equal(tui.focusedComponent, editor); assert.equal(editor.getText(), "SDK preserved input"); assert.equal(tui.hasOverlay(), false);
+ assert.deepEqual(notices, []); assert.equal(writes, 0); tui.stop();
+}
+console.log("Unpreloaded SDK viewer identity / both mounted modes: PASS");`;
+  const output = execFileSync(process.execPath, ["--input-type=module", "-e", script, extension, f.root], { env: process.env, timeout: 15000 });
+  assert.match(output.toString(), /both mounted modes: PASS/);
+});
+
+test("late malformed native frames and geometry refuse safely after mounting", t => {
+  const actualLayout = new URL("./layout.js", import.meta.resolve("@earendil-works/pi-tui")).href;
+  for (const changed of ["frame", "geometry", "throw"]) {
+    const f = fixture(t), preload = join(f.root, "late-layout.mjs");
+    const replacement = `import * as actual from ${JSON.stringify(actualLayout)};
+let calls = 0;
+export function renderLayoutFrame(...args) { const frame = actual.renderLayoutFrame(...args); calls++; ${changed === "frame" ? "if (calls > 2) frame.root.clip.width = -1;" : changed === "throw" ? "if (calls > 2) throw new Error('late renderer change');" : ""} return frame; }
+export function getScrollViewBox(...args) { const box = actual.getScrollViewBox(...args); ${changed === "geometry" ? "if (calls > 2) box.clip.height = 999;" : ""} return box; }`;
+    writeFileSync(preload, `import { registerHooks } from "node:module";
+registerHooks({ resolve(specifier, context, next) {
+ if (specifier === ${JSON.stringify(actualLayout)} && context.parentURL.endsWith("/task-browser/native-layout.ts")) return { url: ${JSON.stringify("data:text/javascript," + encodeURIComponent(replacement))}, shortCircuit: true };
+ return next(specifier, context);
+} });`);
+    const script = `import assert from "node:assert/strict";
+import { registerTaskBrowserCommand } from ${JSON.stringify(new URL("../lib/task-browser/command.ts", import.meta.url).href)};
+import { initTheme } from "@earendil-works/pi-coding-agent";
+import { theme } from ${JSON.stringify(new URL("./modes/interactive/theme/theme.js", import.meta.resolve("@earendil-works/pi-coding-agent")).href)};
+initTheme("dark", false);
+let command, opened = 0, closed = 0; const notices = [];
+registerTaskBrowserCommand({ registerCommand(_name, value) { command = value; } }, { findRoot: () => process.argv[1], currentTask: () => undefined });
+await command.handler("", { mode: "tui", hasUI: true, cwd: process.argv[1], ui: { theme, notify(text) { notices.push(text); }, custom(factory) {
+ opened++; const browser = factory({ terminal: { rows: 12, columns: 80 }, requestRender() {} }, theme, {}, () => closed++);
+ assert.doesNotThrow(() => browser.render(80)); assert.doesNotThrow(() => browser.handleInput("\\x1b[B"));
+} } });
+assert.equal(opened, 1); assert.equal(closed, 1); assert.equal(notices.length, 1); assert.match(notices[0], /incompatible/);`;
+    execFileSync(process.execPath, ["--import", new URL("./host-tui.mjs", import.meta.url).href, "--import", preload, "--input-type=module", "-e", script, f.root], { env: process.env, timeout: 15000 });
+  }
+});
+
+test("adapter capability loss refuses command before mounting, without breaking command registration", async t => {
+  const f = fixture(t), preload = join(f.root, "missing-layout.mjs");
+  writeFileSync(preload, `import { registerHooks } from "node:module";
+registerHooks({ resolve(specifier, context, next) {
+ if (specifier.endsWith("/pi-tui/dist/layout.js") && context.parentURL.endsWith("/task-browser/native-layout.ts")) return { url: "data:text/javascript,export const renderLayoutFrame = undefined; export const getScrollViewBox = undefined;", shortCircuit: true };
+ return next(specifier, context);
+} });`);
+  const script = `import assert from "node:assert/strict";
+import { registerTaskBrowserCommand } from ${JSON.stringify(new URL("../lib/task-browser/command.ts", import.meta.url).href)};
+let command, opened = 0; const notices = [];
+registerTaskBrowserCommand({ registerCommand(_name, value) { command = value; } }, { findRoot: () => process.argv[1], currentTask: () => undefined });
+await command.handler("", { mode: "tui", hasUI: true, cwd: process.argv[1], ui: { notify(text) { notices.push(text); }, custom() { opened++; } } });
+assert.equal(opened, 0); assert.equal(notices.length, 1); assert.match(notices[0], /native bounded ScrollView layout is incompatible/);`;
+  execFileSync(process.execPath, ["--import", new URL("./host-tui.mjs", import.meta.url).href, "--import", preload, "--input-type=module", "-e", script, f.root], { env: process.env, timeout: 15000 });
 });

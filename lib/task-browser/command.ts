@@ -1,5 +1,6 @@
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { TaskBrowser } from "./component.ts";
+import { loadNativeLayout, NativeLayoutError } from "./native-layout.ts";
 
 export function registerTaskBrowserCommand(pi: ExtensionAPI, dependencies: {
 	findRoot: (cwd: string, ctx: ExtensionCommandContext) => string | undefined;
@@ -18,9 +19,13 @@ export function registerTaskBrowserCommand(pi: ExtensionAPI, dependencies: {
 			try { root = dependencies.findRoot(ctx.cwd, ctx); }
 			catch (error) { notice(`Trellis browsing unavailable: ${String(error)}. Run /trellis-init and choose Check, or /reload.`); return; }
 			if (!root) { notice("No Trellis project found. Open /trellis-task-viewer inside a project with .trellis/tasks."); return; }
-			await ctx.ui.custom<void>((tui, _theme, _keys, done) => new TaskBrowser(
-				root, tui, () => ctx.ui.theme, () => done(), () => dependencies.currentTask(root, ctx),
-			), { overlay: true, overlayOptions: { width: "100%", maxHeight: "100%", anchor: "top-left", margin: 0 } });
+			try {
+				const nativeLayout = await loadNativeLayout();
+				await ctx.ui.custom<void>((tui, _theme, _keys, done) => new TaskBrowser(
+					root, tui, () => ctx.ui.theme, () => done(), () => dependencies.currentTask(root, ctx), nativeLayout,
+					error => notice(error.message),
+				), { overlay: true, overlayOptions: { width: "100%", maxHeight: "100%", anchor: "top-left", margin: 0 } });
+			} catch (error) { notice((error instanceof NativeLayoutError ? error : new NativeLayoutError(error)).message); }
 		},
 	});
 }

@@ -1,7 +1,11 @@
 import { basename } from "node:path";
 import { getMarkdownTheme, type Theme } from "@earendil-works/pi-coding-agent";
-import { Markdown, Text, matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi, type TUI } from "@earendil-works/pi-tui";
+import * as hostTui from "@earendil-works/pi-tui";
+import { Markdown, Text, matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi, type ScrollView, type TUI, type TuiMouseEvent, type TuiMouseEventResult } from "@earendil-works/pi-tui";
+import { type NativeFrame, type NativeLayout, NativeLayoutError } from "./native-layout.ts";
 import { displayValue, readDocument, readTasks, safeText, taskLabel, type BrowserTask, type TaskDocument, type TaskSnapshot } from "./reader.ts";
+
+const { ScrollView, VStack } = hostTui;
 
 type ListLayout = { name: number; title: number };
 
@@ -93,14 +97,15 @@ export class TaskBrowser {
 	private snapshot: TaskSnapshot;
 	private mode: "list" | "detail" = "list";
 	private selected = 0;
-	private listOffset = 0;
+	private listScroll: ScrollView;
+	private detailScrolls: ScrollView[];
+	private frame?: NativeFrame;
+	private ensureSelected = false;
 	private detailTask?: BrowserTask;
 	private section = 0;
-	private offsets = [0, 0, 0, 0];
 	private documents = new Map<number, TaskDocument>();
 	private cachedBody?: { key: string; lines: string[] };
 	private cachedListLayout?: { width: number; layout: ListLayout };
-	private bodyHeight = 1;
 	private current?: string;
 	private closed = false;
 
@@ -109,6 +114,8 @@ export class TaskBrowser {
 	private themeSource: Theme | (() => Theme);
 	private done: () => void;
 	private readCurrent: () => string | undefined;
+	private nativeLayout: NativeLayout;
+	private unavailable: (error: NativeLayoutError) => void;
 
 	constructor(
 		root: string,
@@ -116,8 +123,13 @@ export class TaskBrowser {
 		themeSource: Theme | (() => Theme),
 		done: () => void,
 		readCurrent: () => string | undefined,
+		nativeLayout: NativeLayout,
+		unavailable: (error: NativeLayoutError) => void = () => {},
 	) {
 		this.root = root; this.tui = tui; this.themeSource = themeSource; this.done = done; this.readCurrent = readCurrent;
+		this.nativeLayout = nativeLayout; this.unavailable = unavailable;
+		this.listScroll = this.scrollView(width => this.listBody(width));
+		this.detailScrolls = this.createDetailScrolls();
 		this.snapshot = readTasks(root);
 		this.refreshCurrent();
 	}
@@ -134,41 +146,74 @@ export class TaskBrowser {
 		while (end < rows.length && rows[end].prefix) end++;
 		if (start > 0) this.snapshot.rows = rows.slice(start, end).concat(rows.slice(0, start), rows.slice(end));
 	}
-	invalidate(): void { this.cachedBody = undefined; this.cachedListLayout = undefined; }
+	invalidate(): void { this.cachedBody = undefined; this.cachedListLayout = undefined; this.frame = undefined; }
 	private refresh(): void {
 		const identity = this.snapshot.rows[this.selected]?.task.identity;
+		// Reordering may move a visible selection. Keep it visible on refresh,
+		// but never pull back a viewport the user wheeled away from selection.
+		const selectedVisible = this.selected >= this.listScroll.scrollTop && this.selected < this.listScroll.scrollTop + this.listScroll.viewportHeight;
 		const next = readTasks(this.root);
 		this.snapshot = next;
 		this.refreshCurrent();
 		const index = next.rows.findIndex(row => row.task.identity === identity);
-		this.selected = index >= 0 ? index : Math.min(this.selected, Math.max(0, next.rows.length - 1));
+		if (selectedVisible && index !== this.selected) this.ensureSelected = true;
+		const total = next.rows.length + next.diagnostics.length;
+		this.selected = index >= 0 ? index : Math.min(this.selected, Math.max(0, total - 1));
 		if (this.detailTask) this.detailTask = next.tasks.find(task => task.identity === this.detailTask!.identity) ?? this.detailTask;
 		this.documents.clear(); this.invalidate();
 	}
+	private scrollView(render: (width: number) => string[]): ScrollView {
+		return new ScrollView({ render, invalidate: () => this.invalidate() }, {
+			follow: "none", overscroll: "contain", scrollbar: "always",
+			scrollbarTrackStyle: text => this.theme.fg("dim", text),
+			scrollbarThumbStyle: text => this.theme.fg("accent", text),
+		});
+	}
+	private createDetailScrolls(): ScrollView[] { return SECTIONS.map((_, section) => this.scrollView(width => this.detailBody(width, section))); }
+	private get activeScroll(): ScrollView { return this.mode === "list" ? this.listScroll : this.detailScrolls[this.section]; }
+	private ensureInputFrame(): NativeFrame {
+		const width = Math.max(1, Math.floor(this.tui.terminal.columns ?? this.frame?.width ?? 80));
+		const rows = Math.max(1, Math.floor(this.tui.terminal.rows || 24));
+		// Input is coalesced by the host. Allocate only stale geometry, applying
+		// earlier keyboard/refresh intents before later scrolling, not on every event.
+		if (!this.frame || (this.mode === "list" && this.ensureSelected) || this.frame.width !== width || this.frame.height !== rows) this.renderFrame(width, rows);
+		return this.frame!;
+	}
+	handleMouse(event: TuiMouseEvent): TuiMouseEventResult | undefined {
+		if (this.closed || event.type !== "wheel") return undefined;
+		// The host already normalizes/accelerates wheelDelta. Consume fixed regions
+		// and edges too: an unhandled overlay wheel can scroll the main transcript.
+		try {
+			const clip = this.nativeLayout.scrollBox(this.ensureInputFrame(), this.activeScroll).clip;
+			if (event.x >= clip.x && event.x < clip.x + clip.width && event.y >= clip.y && event.y < clip.y + clip.height) this.activeScroll.scrollBy(event.wheelDelta ?? 0);
+		} catch (cause) { this.refuse(cause); }
+		return { handled: true };
+	}
 	handleInput(data: string): void {
 		if (this.closed) return;
+		try { this.applyInput(data); } catch (cause) { this.refuse(cause); }
+	}
+	private applyInput(data: string): void {
 		if (matchesKey(data, "ctrl+c") || (matchesKey(data, "escape") && this.mode === "list")) {
 			this.closed = true; this.done(); return;
 		}
-		if (matchesKey(data, "escape")) this.mode = "list";
+		if (matchesKey(data, "escape")) { this.mode = "list"; this.frame = undefined; }
 		else if (matchesKey(data, "r")) this.refresh();
 		else if (this.mode === "list") {
 			const total = this.snapshot.rows.length + this.snapshot.diagnostics.length;
-			if (matchesKey(data, "up")) this.selected = Math.max(0, this.selected - 1);
-			else if (matchesKey(data, "down")) this.selected = Math.min(Math.max(0, total - 1), this.selected + 1);
-			else if (matchesKey(data, "pageUp")) this.selected = Math.max(0, this.selected - this.bodyHeight);
-			else if (matchesKey(data, "pageDown")) this.selected = Math.min(Math.max(0, total - 1), this.selected + this.bodyHeight);
+			if (matchesKey(data, "up")) { this.selected = Math.max(0, this.selected - 1); this.ensureSelected = true; }
+			else if (matchesKey(data, "down")) { this.selected = Math.min(Math.max(0, total - 1), this.selected + 1); this.ensureSelected = true; }
 			else if (matchesKey(data, "enter") && this.snapshot.rows[this.selected]) {
 				this.detailTask = this.snapshot.rows[this.selected].task;
-				this.mode = "detail"; this.section = 0; this.offsets = [0, 0, 0, 0]; this.documents.clear(); this.invalidate();
+				this.mode = "detail"; this.section = 0; this.detailScrolls = this.createDetailScrolls(); this.documents.clear(); this.invalidate();
 			}
 		} else {
-			if (matchesKey(data, "left")) this.section = (this.section + SECTIONS.length - 1) % SECTIONS.length;
-			else if (matchesKey(data, "right")) this.section = (this.section + 1) % SECTIONS.length;
-			else if (matchesKey(data, "up")) this.offsets[this.section] = Math.max(0, this.offsets[this.section] - 1);
-			else if (matchesKey(data, "down")) this.offsets[this.section]++;
-			else if (matchesKey(data, "pageUp")) this.offsets[this.section] = Math.max(0, this.offsets[this.section] - this.bodyHeight);
-			else if (matchesKey(data, "pageDown")) this.offsets[this.section] += this.bodyHeight;
+			if (matchesKey(data, "left")) { this.section = (this.section + SECTIONS.length - 1) % SECTIONS.length; this.frame = undefined; }
+			else if (matchesKey(data, "right")) { this.section = (this.section + 1) % SECTIONS.length; this.frame = undefined; }
+			else if (matchesKey(data, "up") || matchesKey(data, "down")) {
+				this.ensureInputFrame();
+				this.activeScroll.scrollBy(matchesKey(data, "up") ? -1 : 1);
+			}
 		}
 		this.tui.requestRender();
 	}
@@ -181,14 +226,14 @@ export class TaskBrowser {
 			...(this.isCurrent(task) ? [this.theme.fg("accent", "Current task")] : []),
 		].join("\n"), 0, 0).render(width);
 	}
-	private detailBody(width: number): string[] {
+	private detailBody(width: number, section: number): string[] {
 		const task = this.detailTask!;
-		const key = `${task.identity}:${this.section}:${width}`;
+		const key = `${task.identity}:${section}:${width}`;
 		if (this.cachedBody?.key === key) return this.cachedBody.lines;
 		let lines = this.metadata(task, width);
 		if (!this.snapshot.tasks.some(item => item.identity === task.identity)) {
 			lines = lines.concat(new Text("Task no longer available. Press Esc to return to the list.", 0, 0).render(width));
-		} else if (this.section === 0) {
+		} else if (section === 0) {
 			const fields: string[] = [];
 			for (const [field, label] of [["id", "ID"], ["name", "Name"], ["title", "Title"], ["description", "Description"], ["priority", "Priority"], ["assignee", "Assignee"], ["createdAt", "Created"], ["completedAt", "Completed"], ["branch", "Branch"], ["parent", "Parent"]]) {
 				const value = task.record[field];
@@ -197,8 +242,8 @@ export class TaskBrowser {
 			if (Array.isArray(task.record.children)) fields.push(`Children: ${task.record.children.map(value => safeText(displayValue(value))).join(", ") || "None"}`);
 			lines = lines.concat("", new Text(this.theme.fg("text", fields.join("\n") || "No additional metadata"), 0, 0).render(width));
 		} else {
-			let document = this.documents.get(this.section);
-			if (!document) { document = readDocument(this.root, task, DOCUMENT_SECTIONS[this.section - 1]); this.documents.set(this.section, document); }
+			let document = this.documents.get(section);
+			if (!document) { document = readDocument(this.root, task, DOCUMENT_SECTIONS[section - 1]); this.documents.set(section, document); }
 			lines.push("");
 			if (document.state === "ready") {
 				try {
@@ -254,44 +299,68 @@ export class TaskBrowser {
 		line = truncateToWidth(line, width, "…");
 		return index === this.selected ? this.theme.bg("userMessageBg", line + " ".repeat(Math.max(0, width - visibleWidth(line)))) : line;
 	}
+	private listBody(width: number): string[] {
+		const total = this.snapshot.rows.length + this.snapshot.diagnostics.length;
+		const layout = this.listLayout(width);
+		return total ? Array.from({ length: total }, (_, index) => this.listLine(index, width, layout)) : [this.theme.fg("muted", "No tasks found")];
+	}
+	private refuse(cause: unknown): NativeLayoutError {
+		const error = cause instanceof NativeLayoutError ? cause : new NativeLayoutError(cause);
+		if (!this.closed) {
+			this.closed = true; this.frame = undefined;
+			try { this.unavailable(error); } catch { /* Host notification may be unavailable. */ }
+			try { this.done(); } catch { /* Never throw through the host renderer. */ }
+		}
+		return error;
+	}
 	render(width: number): string[] {
 		if (width < 1) return [];
+		width = Math.floor(width);
 		const rows = Math.max(1, Math.floor(this.tui.terminal.rows || 24));
+		try { return this.renderFrame(width, rows); }
+		catch (cause) {
+			const error = this.refuse(cause);
+			// A failed frame must never throw through the host renderer.
+			return Array.from({ length: rows }, (_, index) => listCell(index === 0 ? error.message : "", width));
+		}
+	}
+	private renderFrame(width: number, rows: number): string[] {
 		const header = [this.theme.bold(this.theme.fg("accent", "Trellis Tasks"))];
 		if (this.mode === "list") header.push(this.theme.fg("muted", `${this.snapshot.tasks.length} tasks${this.snapshot.complete ? "" : " · Incomplete data"} · Directory descending · Current tree first · * Current task`));
 		else if (width < 38) header.push(this.theme.fg("accent", `${SECTIONS[this.section]} (${this.section + 1}/${SECTIONS.length}) · ←/→`));
 		else header.push(SECTIONS.map((label, index) => index === this.section ? this.theme.bold(this.theme.fg("accent", label)) : this.theme.fg("muted", label)).join(" | "));
 		header.push(this.theme.fg("dim", "─".repeat(width)));
 		const hints = width < 70
-			? this.mode === "list" ? "Esc Close · r Refresh · ↑/↓ · Enter" : "Esc Back · r Refresh · ←/→ · ↑/↓ · PgUp/PgDn"
-			: this.mode === "list" ? "↑/↓ Select · Enter Open · r Refresh · Esc Close" : "←/→ Section · ↑/↓ Scroll · PgUp/PgDn Page · r Refresh · Esc Back";
-		// Keep both boundary lines visible even on small terminals; collapse secondary header rows first.
+			? this.mode === "list" ? "Esc Close · r Refresh · ↑/↓ · Enter" : "Esc Back · r Refresh · ←/→ · ↑/↓"
+			: this.mode === "list" ? "↑/↓ Select · Enter Open · r Refresh · Esc Close" : "←/→ Section · ↑/↓ Scroll · r Refresh · Esc Back";
+		// Collapse secondary fixed rows on tiny terminals; native layout still owns
+		// the body allocation (including zero-height viewports).
 		while (header.length > Math.max(1, rows - 2)) header.splice(1, 1);
 		const footerRows = rows > 1 ? 1 : 0;
-		this.bodyHeight = Math.max(0, rows - header.length - footerRows);
-		let body: string[];
-		let position: string;
-		if (this.mode === "list") {
-			const total = this.snapshot.rows.length + this.snapshot.diagnostics.length;
-			this.selected = Math.max(0, Math.min(this.selected, Math.max(0, total - 1)));
-			this.listOffset = Math.max(0, Math.min(this.listOffset, Math.max(0, total - this.bodyHeight)));
-			if (this.selected < this.listOffset) this.listOffset = this.selected;
-			if (this.bodyHeight > 0 && this.selected >= this.listOffset + this.bodyHeight) this.listOffset = this.selected - this.bodyHeight + 1;
-			const layout = this.listLayout(width);
-			body = total ? Array.from({ length: Math.min(this.bodyHeight, total - this.listOffset) }, (_, index) => this.listLine(this.listOffset + index, width, layout)) : [this.theme.fg("muted", "No tasks found")].slice(0, this.bodyHeight);
-			position = total ? `${this.selected + 1}/${total}` : "0/0";
-		} else {
-			const lines = this.detailBody(width);
-			this.offsets[this.section] = Math.max(0, Math.min(this.offsets[this.section], Math.max(0, lines.length - this.bodyHeight)));
-			const offset = this.offsets[this.section];
-			body = lines.slice(offset, offset + this.bodyHeight);
-			position = `${Math.min(lines.length, offset + 1)}–${Math.min(lines.length, offset + this.bodyHeight)}/${lines.length}`;
+		const total = this.snapshot.rows.length + this.snapshot.diagnostics.length;
+		this.selected = Math.max(0, Math.min(this.selected, Math.max(0, total - 1)));
+		const scroll = this.activeScroll;
+		let frame: NativeFrame;
+		// Fixed-size footer is filled after native geometry has been allocated.
+		const footerText = new Text("", 0, 0);
+		const root = new VStack([
+			{ component: { render: () => header, invalidate() {} }, basis: header.length, shrink: 0 },
+			{ component: scroll, basis: 0, grow: 1, minSize: 0 },
+			{ component: footerText, basis: footerRows, shrink: 0 },
+		]);
+		frame = this.nativeLayout.render(root, width, rows, () => this.tui.requestRender());
+		if (this.mode === "list" && this.ensureSelected && scroll.viewportHeight > 0) {
+			if (this.selected < scroll.scrollTop) scroll.scrollTo(this.selected);
+			else if (this.selected >= scroll.scrollTop + scroll.viewportHeight) scroll.scrollTo(this.selected - scroll.viewportHeight + 1);
+			this.ensureSelected = false;
+			frame = this.nativeLayout.render(root, width, rows, () => this.tui.requestRender());
 		}
-		while (body.length < this.bodyHeight) body.push("");
-		const footer = this.theme.fg("dim", width < 40 ? `${hints} · ${position}` : `${position} · ${hints}`);
-		return [...header, ...body, ...(footerRows ? [footer] : [])].map(line => {
-			const clipped = truncateToWidth(line, width, "…");
-			return clipped + " ".repeat(Math.max(0, width - visibleWidth(clipped)));
-		});
+		const contentHeight = this.nativeLayout.scrollBox(frame, scroll).children[0].rect.height;
+		const position = this.mode === "list" ? total ? `${this.selected + 1}/${total}` : "0/0"
+			: `${Math.min(contentHeight, scroll.scrollTop + 1)}–${Math.min(contentHeight, scroll.scrollTop + scroll.viewportHeight)}/${contentHeight}`;
+		footerText.setText(this.theme.fg("dim", width < 40 ? `${hints} · ${position}` : `${position} · ${hints}`));
+		this.frame = this.nativeLayout.render(root, width, rows, () => this.tui.requestRender());
+		this.nativeLayout.scrollBox(this.frame, scroll);
+		return this.frame.lines.map(line => listCell(line, width));
 	}
 }
