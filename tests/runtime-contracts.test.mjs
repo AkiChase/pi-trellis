@@ -38,6 +38,57 @@ test('real runtime never infers foreign task, including explicit compatibility f
  const child=f.task('child');assert.equal(start(f,child).status,0);f.ok('task.py',['deactivate']);f.ok('task.py',['deactivate']);assert.notEqual(f.run('task.py',['current','--json']).status,0);assert.ok(existsSync(join(f.root,'.trellis/.runtime/sessions/parent.json')));
 });
 
+test('active binds only its session without lifecycle effects, shares tasks and is idempotent',t=>{
+ const f=fixture(t),path=f.task('shared'),other=f.task('other',{status:'in_progress'});
+ f.put(path+'/implement.jsonl','');f.put(path+'/check.jsonl','');
+ f.put('.trellis/config.yaml','hooks:\n  after_start:\n    - echo started >> hook-marker\n  after_deactivate:\n    - echo cleared >> hook-marker\n');
+ const record=readFileSync(join(f.root,path,'task.json')),otherRecord=readFileSync(join(f.root,other,'task.json')),git=f.git('status','--porcelain');
+ f.ok('task.py',['active',path],{TRELLIS_CONTEXT_ID:'foreign'});f.ok('task.py',['active',path],{TRELLIS_CONTEXT_ID:'pi-child-fixture'});
+ const foreign=readFileSync(join(f.root,'.trellis/.runtime/sessions/foreign.json')),child=readFileSync(join(f.root,'.trellis/.runtime/sessions/pi-child-fixture.json'));
+ f.ok('task.py',['active',path]);assert.equal(JSON.parse(f.ok('task.py',['current','--json']).stdout).current_task.dir,path);
+ const own=readFileSync(join(f.root,'.trellis/.runtime/sessions/own.json'));
+ assert.match(f.ok('task.py',['active','shared']).stdout,/Already active/);
+ assert.deepEqual(readFileSync(join(f.root,'.trellis/.runtime/sessions/own.json')),own);
+ f.ok('task.py',['active',join(f.root,other)]);
+ assert.equal(JSON.parse(f.ok('task.py',['current','--json']).stdout).current_task.dir,other);
+ assert.deepEqual(readFileSync(join(f.root,'.trellis/.runtime/sessions/foreign.json')),foreign);
+ assert.deepEqual(readFileSync(join(f.root,'.trellis/.runtime/sessions/pi-child-fixture.json')),child);
+ assert.deepEqual(readFileSync(join(f.root,path,'task.json')),record);assert.deepEqual(readFileSync(join(f.root,other,'task.json')),otherRecord);
+ assert.equal(f.git('status','--porcelain'),git);assert.ok(!existsSync(join(f.root,'hook-marker')));assert.ok(!existsSync(join(f.root,'.trellis/workspace')));
+ assert.deepEqual(readdirSync(join(f.root,'.trellis/.runtime')).sort(),['sessions']);
+ assert.deepEqual(readdirSync(join(f.root,'.trellis/.runtime/sessions')).sort(),['foreign.json','own.json','pi-child-fixture.json']);
+ assert.match(f.ok('task.py',['active','--help']).stdout,/Does not change task status or\s+branch,\s+run hooks, or affect other sessions/);
+ assert.equal(f.run('task.py',['active',path,'--takeover']).status,2);
+});
+
+test('active rejects invalid identity, task and caller pointer, preserving all existing bytes',t=>{
+ const f=fixture(t),path=f.task(),target=f.task('target');f.pointer('own',path);f.pointer('foreign',target);
+ const own=readFileSync(join(f.root,'.trellis/.runtime/sessions/own.json')),foreign=readFileSync(join(f.root,'.trellis/.runtime/sessions/foreign.json')),record=readFileSync(join(f.root,target,'task.json'));
+ for(const pin of ['', 'own!', 'own/../own', 'x'.repeat(129)])assert.notEqual(f.run('task.py',['active',target],{TRELLIS_CONTEXT_ID:pin}).status,0);
+ for(const ref of ['missing','../victim','.trellis/tasks/../../victim',f.root])assert.notEqual(f.run('task.py',['active',ref]).status,0);
+ assert.deepEqual(readFileSync(join(f.root,'.trellis/.runtime/sessions/own.json')),own);
+ for(const content of ['broken','[]','{"current_task":42}',JSON.stringify({current_task:'.trellis/tasks/missing'})]){
+  f.put('.trellis/.runtime/sessions/own.json',content);assert.notEqual(f.run('task.py',['active',target]).status,0);
+  assert.equal(readFileSync(join(f.root,'.trellis/.runtime/sessions/own.json'),'utf8'),content);
+ }
+ writeFileSync(join(f.root,'.trellis/.runtime/sessions/own.json'),own);
+ for(const content of ['broken','[]','{}','{"status":{}}']){
+  f.put(target+'/task.json',content);assert.notEqual(f.run('task.py',['active',target]).status,0);
+  assert.deepEqual(readFileSync(join(f.root,'.trellis/.runtime/sessions/own.json')),own);
+ }
+ writeFileSync(join(f.root,target,'task.json'),record);
+ const failed=f.probe(`from unittest.mock import patch\nimport argparse,task\nwith patch('common.active_task._write_json',return_value=False), patch.object(task,'run_task_hooks') as hooks:\n assert task.cmd_active(argparse.Namespace(dir='${target}')) == 1\n hooks.assert_not_called()`);
+ assert.equal(failed.status,0,failed.stderr);assert.deepEqual(readFileSync(join(f.root,'.trellis/.runtime/sessions/own.json')),own);
+ for(const fault of ['tempfile.mkstemp','os.replace']){
+  const result=f.probe(`from unittest.mock import patch\nimport argparse,task\nwith patch('common.io.${fault}',side_effect=OSError('injected')) as failure, patch.object(task,'run_task_hooks') as hooks:\n assert task.cmd_active(argparse.Namespace(dir='${target}')) == 1\n failure.assert_called_once()\n hooks.assert_not_called()`);
+  assert.equal(result.status,0,result.stderr);assert.deepEqual(readFileSync(join(f.root,'.trellis/.runtime/sessions/own.json')),own);
+  assert.deepEqual(readdirSync(join(f.root,'.trellis/.runtime/sessions')).sort(),['foreign.json','own.json']);
+ }
+ assert.deepEqual(readFileSync(join(f.root,'.trellis/.runtime/sessions/foreign.json')),foreign);assert.deepEqual(readFileSync(join(f.root,target,'task.json')),record);
+ const victim=join(f.root,'victim.json');writeFileSync(victim,own);rmSync(join(f.root,'.trellis/.runtime/sessions/own.json'));symlinkSync(victim,join(f.root,'.trellis/.runtime/sessions/own.json'));
+ assert.notEqual(f.run('task.py',['active',target]).status,0);assert.deepEqual(readFileSync(victim),own);
+});
+
 test('start without identity fails before status and hooks; invalid and nonexistent records refuse binding',t=>{
  const f=fixture(t), path=f.task();f.put('.trellis/config.yaml','hooks:\n  after_start:\n    - echo touched >> hook-marker\n');
  const before=readFileSync(join(f.root,path,'task.json'));assert.notEqual(f.run('task.py',['start',path,'--allow-empty-context'],{TRELLIS_CONTEXT_ID:''}).status,0);assert.deepEqual(readFileSync(join(f.root,path,'task.json')),before);assert.ok(!existsSync(join(f.root,'hook-marker')));
@@ -90,6 +141,7 @@ test('deactivate is the only unbind command; old command/hook do not mutate stat
 test('external source task-store parity and lexical/record escape refusals',t=>{
  const f=fixture(t),path=f.task();const store=mkdtempSync(join(tmpdir(),'pi-external-store-'));t.after(()=>rmSync(store,{recursive:true,force:true}));cpSync(join(f.root,'.trellis/tasks'),store,{recursive:true});rmSync(join(f.root,'.trellis/tasks'),{recursive:true});symlinkSync(store,join(f.root,'.trellis/tasks'));
  assert.equal(start(f,path).status,0);assert.equal(JSON.parse(f.ok('task.py',['current','--json']).stdout).current_task.dir,path);
+ f.ok('task.py',['deactivate']);f.ok('task.py',['active',path]);assert.equal(JSON.parse(f.ok('task.py',['current','--json']).stdout).current_task.dir,path);
  f.put('victim/task.json',{status:'in_progress'});symlinkSync(join(f.root,'victim'),join(store,'escape'));assert.notEqual(start(f,'.trellis/tasks/escape').status,0);
  const external=join(store,'..','record-'+Date.now()+'.json');writeFileSync(external,'{"status":"in_progress"}');t.after(()=>rmSync(external,{force:true}));rmSync(join(store,'own/task.json'));symlinkSync(external,join(store,'own/task.json'));assert.notEqual(f.run('task.py',['current','--json']).status,0);assert.notEqual(start(f,path).status,0);
 });
@@ -188,7 +240,7 @@ test('session directory and final pointer symlinks never authorize reads, deacti
  for(const route of ['.trellis/.runtime','.trellis/.runtime/sessions','.trellis/.runtime/sessions/own.json']){
   rmSync(join(f.root,'.trellis/.runtime'),{recursive:true,force:true});mkdirSync(join(f.root,route,'..'),{recursive:true});symlinkSync(route.endsWith('.json')?victim:external,join(f.root,route));
   const current=f.run('task.py',['current','--json']);assert.notEqual(current.status,0);assert.ok(JSON.parse(current.stdout).error);
-  assert.notEqual(start(f,path).status,0);assert.deepEqual(readFileSync(join(f.root,path,'task.json')),unchanged);
+  assert.notEqual(start(f,path).status,0);assert.notEqual(f.run('task.py',['active',path]).status,0);assert.deepEqual(readFileSync(join(f.root,path,'task.json')),unchanged);
   const finish=f.run('task.py',['deactivate']);if(route.endsWith('.json'))assert.equal(finish.status,0);else assert.notEqual(finish.status,0);
   assert.deepEqual(readFileSync(victim),before);assert.ok(!existsSync(join(f.root,'hook-marker')));
  }
