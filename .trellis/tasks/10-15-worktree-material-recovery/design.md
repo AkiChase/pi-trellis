@@ -59,6 +59,8 @@ Phase 2：用户已审阅并批准实施，正常 start 为 in_progress。主 wo
 | `tests/runtime-contracts.test.mjs`、`tests/worktree-protocol.test.mjs`、`tests/workflow-policy.test.mjs`、`tests/agent-documents.test.mjs` | source root/context/bash/技能/角色/模板合同一致与无start/递归/生命周期副作用。 |
 | `.trellis/spec/testing/index.md` | 最小删除已废弃的生成器测试方法和material-sync矩阵项，改为直接角色合同/hash验证与source-authority负例；保留上游来源证据，不执行旧依赖安装/生成教程。 |
 | `resources/runtime-baseline.json`、`resources/agent-baseline.json`、`resources/skill-baseline.json`、`resources/template-baseline.json` | 本任务最终hash；agent baseline保留历史source hash及来源，只更新直接维护角色的adapted hash，不伪称重新生成或纯原创；原生模块MIT、上游改造来源不改写。 |
+| `tests/provider-contracts.mjs` | 最终验证工具仍调用已删除buildTaskContext/旧renderer，需改用native source facts与path-only合同；只修测试接线，不改provider产品，不自动运行未授权真实probe。 |
+| `tests/initialization.test.mjs` | S1新增原生模块后资源数不再固定35，改为runtime baseline条目数+3角色；不改并行初始化菜单合同。 |
 | `tests/manifest-provenance.test.mjs` | 新native诊断来源、直接维护角色及技能模板hash的一致性；历史来源hash不作为再生成要求。 |
 
 ## 3. 明确不改/不做

@@ -25,7 +25,7 @@ function fixture(t) {
  put(task+'/task.json','{"status":"in_progress"}');put(task+'/prd.md','Task requirements');
  for(const role of ['implement','check'])put(task+'/'+role+'.jsonl','{"file":".trellis/spec/spec.md"}');
  for(const role of ['implement','check','research'])put('.pi/agents/trellis-'+role+'.md',`---\nname: trellis-${role}\ntools: read, write, edit, bash, find, grep\nextensions: true\nisolation: off\n---\nRole\n`);
- const run=(extra={})=>manageWorktree({cwd:root,task,action:'create',confirm:true,...extra});
+ const run=async(extra={})=>{const result=await manageWorktree({cwd:root,task,action:'create',confirm:true,...extra});if((extra.action??'create')==='create'&&result.binding){mkdirSync(join(result.binding.worktreePath,'.pi'),{recursive:true});writeFileSync(join(result.binding.worktreePath,'.pi/settings.json'),JSON.stringify({extensions:[new URL('../extensions/trellis.ts',import.meta.url).pathname]}));}return result;};
  const handlers=new Map(), events=new Map(), tools=new Map();
  const bus={on:(name,handler)=>{if(!events.has(name))events.set(name,new Set());events.get(name).add(handler);return()=>events.get(name).delete(handler);},emit:(name,data)=>{for(const handler of [...(events.get(name)||[])])handler(data);}};
  const pi={events:bus,on:(name,fn)=>handlers.set(name,fn),registerTool:tool=>tools.set(tool.name,tool)};
@@ -44,7 +44,7 @@ test('dispatch requires ready, uses target cwd/off, returns real id and prevents
  await assert.rejects(f.dispatch(),/ready worktree/);await f.run({action:'prepare'});
  const first=await f.dispatch();assert.equal(first.details.agentId,'agent-1');
  assert.equal(f.replies[0].options.cwd,c.binding.worktreePath);assert.equal(f.replies[0].options.isolation,'off');
- assert.match(f.replies[0].prompt,/Review base:/);assert.match(f.replies[0].prompt,/BASE target spec/);
+ assert.match(f.replies[0].prompt,/Review base:/);assert.doesNotMatch(f.replies[0].prompt,/BASE target spec|trellis-hook-injected/);assert.match(f.replies[0].prompt,/Source authority contract/);
  await assert.rejects(f.dispatch('trellis-check'),/running\/unknown/);
  f.bus.emit('subagents:completed',{id:'agent-1'});
  assert.equal(readExecution(c.binding).state,'completed');
@@ -73,13 +73,14 @@ test('shutdown retains unknown lease instead of claiming a running child stopped
  await assert.rejects(f.dispatch(),/shut down/);
 });
 
-test('changed target pointer or incompatible customized agent rejected without RPC spawn',async t=>{
+test('target pointer is not authoritative; incompatible custom role still rejects without spawn',async t=>{
  const f=fixture(t),c=await f.run();await f.run({action:'prepare'});
  f.put('.pi/agents/trellis-implement.md','---\nname: trellis-implement\nisolation: worktree\n---\n');
  await assert.rejects(f.dispatch(),/conflicts/);assert.equal(f.replies.length,0);
  f.put('.pi/agents/trellis-implement.md','---\nname: trellis-implement\ntools: read, write, edit, bash, find, grep\nextensions: true\nisolation: off\n---\nRole\n');
- writeFileSync(join(c.binding.worktreePath,'.trellis/.runtime/sessions',c.binding.contextId+'.json'),'{"current_task":".trellis/tasks/other"}');
- await assert.rejects(f.dispatch(),/does not match|Trellis CLI failed/);assert.equal(f.replies.length,0);
+ mkdirSync(join(c.binding.worktreePath,'.trellis/.runtime/sessions'),{recursive:true});
+ writeFileSync(join(c.binding.worktreePath,'.trellis/.runtime/sessions',c.binding.contextId+'.json'),'broken target pointer');
+ await f.dispatch();assert.equal(f.replies.length,1);
 });
 
 
@@ -97,10 +98,10 @@ test('dispatch old call shape/optional empty task works; stop requires no agent/
  for(const input of [{agent:'trellis-implement',prompt:''},{agent:'trellis-implement',prompt:'   '},{action:'invalid'},{task:' ',agent:'trellis-implement',prompt:'work'},{agent:''}])await assert.rejects(f.call(input));
 });
 
-test('host rechecks Python ready rules inside source lock after provider ping; no spawn/lease on changed pointer',async t=>{
+test('host rechecks selected source role after ping; invalid source spawns zero',async t=>{
  const f=fixture(t),c=await f.run();await f.run({action:'prepare'});
- f.bus.on('subagents:rpc:ping',()=>writeFileSync(join(c.binding.worktreePath,'.trellis/.runtime/sessions',c.binding.contextId+'.json'),'{"current_task":"wrong"}'));
- await assert.rejects(f.dispatch(),/does not match|Trellis CLI failed/);assert.equal(f.replies.length,0);assert.equal(readExecution(c.binding),undefined);
+ f.bus.on('subagents:rpc:ping',()=>f.put(f.task+'/implement.jsonl','{"file":"missing-source"}'));
+ await assert.rejects(f.dispatch(),/source|missing-source/);assert.equal(f.replies.length,0);assert.equal(readExecution(c.binding),undefined);
 });
 
 test('failed/unknown provider stop retains lease; source task and actual host cwd/config remain required',async t=>{
@@ -133,7 +134,7 @@ print(json.dumps({'current_task':json.loads(p.read_text()),'source':'session:'+o
 `);
  await assert.rejects(f.call({agent:'trellis-implement',prompt:'First line\n\tSecond line'}),/runtime is missing or modified/);
  assert.equal(f.replies.length,0);assert.equal(readExecution(c.binding),undefined);
- assert.equal(readFileSync(join(c.binding.worktreePath,f.task,'prd.md'),'utf8'),'Task requirements');
+ assert.equal(readFileSync(join(f.root,f.task,'prd.md'),'utf8'),'Task requirements');
 });
 
 test('shutdown while spawn reply is pending retains unknown with returned id, never revives running lease',async t=>{
@@ -143,16 +144,20 @@ test('shutdown while spawn reply is pending retains unknown with returned id, ne
  const record=readExecution(c.binding);assert.equal(record.state,'unknown');assert.equal(record.agentId,'agent-1');assert.equal(record.ownerPid,process.pid);
 });
 
-test('approved source drift rejects before spawn/lease; refresh permits a versioned dispatch',async t=>{
+test('live source changes dispatch directly without refresh or task copies',async t=>{
  const f=fixture(t),c=await f.run();await f.run({action:'prepare'});f.put(f.task+'/prd.md','approved update');
- await assert.rejects(f.dispatch(),/drift/);assert.equal(f.replies.length,0);assert.equal(readExecution(c.binding),undefined);
- await f.run({action:'refresh'});await f.dispatch();const record=readExecution(c.binding);assert.equal(record.materialRevision,readBinding(f.root,f.task).materials.revision);assert.match(f.replies[0].prompt,/approved update/);
+ await f.dispatch();const record=readExecution(c.binding);assert.equal(record.materialRevision,record.sourceFingerprint);assert.equal(record.targetFingerprint.length,64);
+ assert.doesNotMatch(f.replies[0].prompt,/approved update|trellis-hook-injected/);assert.match(f.replies[0].prompt,/Trellis authority:/);
 });
-
-test('target baseline change during locked query is rejected, not silently accepted as task output',async t=>{
+test('target stale spec and missing task are ignored, source paths remain authoritative and target Git is unchanged',async t=>{
  const f=fixture(t),c=await f.run();await f.run({action:'prepare'});
- f.bus.on('subagents:rpc:ping',()=>writeFileSync(join(c.binding.worktreePath,'.trellis/spec/spec.md'),'unapproved target baseline'));
- await assert.rejects(f.dispatch(),/baseline/);assert.equal(f.replies.length,0);assert.equal(readExecution(c.binding),undefined);
+ writeFileSync(join(c.binding.worktreePath,'.trellis/spec/spec.md'),'OLD target material');
+ rmSync(join(c.binding.worktreePath,f.task),{recursive:true,force:true});
+ const targetGit=()=>execFileSync('git',['-C',c.binding.worktreePath,'status','--porcelain'],{encoding:'utf8'});
+ const before=targetGit();await f.dispatch();assert.equal(targetGit(),before);
+ const {parseDispatchFacts}=await import('../lib/task-context.ts');const facts=parseDispatchFacts(f.replies[0].prompt);
+ assert.equal(facts.taskPath,join(f.root,f.task));assert.equal(facts.references[0].path,join(f.root,'.trellis/spec/spec.md'));
+ assert.equal(readFileSync(facts.references[0].path,'utf8'),'BASE target spec');assert.doesNotMatch(f.replies[0].prompt,/OLD target material/);
 });
 
 test('modified target task CLI cannot change material through a ready query',async t=>{
@@ -170,11 +175,11 @@ print(json.dumps({'current_task':json.loads(p.read_text()),'source':'session:'+o
  await assert.rejects(f.dispatch(),/runtime is missing or modified/);assert.equal(f.replies.length,0);assert.equal(readExecution(c.binding),undefined);
 });
 
-test('target-only task identity mismatch rejects all managed roles without a spawn or lease',async t=>{
+test('target-only task identity cannot override source for any managed role',async t=>{
  const f=fixture(t),c=await f.run();await f.run({action:'prepare'});
- writeFileSync(join(c.binding.worktreePath,f.task,'task.json'),JSON.stringify({status:'in_progress',branch:c.binding.branch,id:'another-task'}));
- for(const role of ['trellis-implement','trellis-check','trellis-research'])await assert.rejects(f.dispatch(role),/conflict/);
- assert.equal(f.replies.length,0);assert.equal(readExecution(c.binding),undefined);
+ mkdirSync(join(c.binding.worktreePath,f.task),{recursive:true});writeFileSync(join(c.binding.worktreePath,f.task,'task.json'),'{"status":"planning","id":"another-task"}');
+ for(const role of ['trellis-implement','trellis-check','trellis-research']){await f.dispatch(role);f.bus.emit('subagents:completed',{id:'agent-'+f.replies.length});}
+ assert.equal(f.replies.length,3);
 });
 
 test('supported source/target release mismatch rejects before provider ping/spawn or target CLI execution',async t=>{
@@ -192,7 +197,7 @@ test('unbound source dispatch uses shared cwd, current materials, no binding and
  const f=fixture(t);f.put(f.task+'/prd.md','UNCOMMITTED source material');
  const first=await f.dispatch();assert.equal(first.details.mode,'source');assert.equal(first.details.cwd,f.root);
  assert.equal(f.replies[0].options.cwd,f.root);assert.equal(f.replies[0].options.isolation,'off');
- assert.match(f.replies[0].prompt,/UNCOMMITTED source material/);assert.match(f.replies[0].prompt,/Shared directory: Other agents/);
+ assert.doesNotMatch(f.replies[0].prompt,/UNCOMMITTED source material|trellis-hook-injected/);assert.match(f.replies[0].prompt,/Trellis authority:/);assert.match(f.replies[0].prompt,/Shared directory: Other agents/);
  assert.doesNotMatch(f.replies[0].prompt,/Review base:|Trellis material revision:/);assert.equal(readBinding(f.root,f.task),undefined);
  await assert.rejects(f.dispatch(),/running\/unknown/);await assert.rejects(f.run(),/source execution/);
  const other='.trellis/tasks/other';f.put(other+'/task.json','{"status":"in_progress"}');f.put(other+'/prd.md','Other');f.put(other+'/implement.jsonl','{"file":".trellis/spec/spec.md"}');
@@ -286,4 +291,41 @@ test('Python source decoder matches UTF16 astral and escaped surrogate bounds',a
  for(const value of ['😀'.repeat(128),'\ud800'.repeat(256)]) {
   writeFileSync(file,JSON.stringify({...r,state:'completed',requestId:value}));assert.equal(readSourceExecution(r).state,'completed');assert.equal((await f.run({confirm:false})).preview,true);
  }
+});
+
+test('selected role isolation: broken check does not block implement/research, but invalid role source spawns zero',async t=>{
+ const f=fixture(t),c=await f.run();await f.run({action:'prepare'});f.put(f.task+'/check.jsonl','{"file":"source-missing"}');
+ await f.dispatch();f.bus.emit('subagents:completed',{id:'agent-1'});await assert.rejects(f.dispatch('trellis-check'),/source-missing/);assert.equal(f.replies.length,1);
+ await f.dispatch('trellis-research');assert.equal(f.replies.length,2);f.bus.emit('subagents:completed',{id:'agent-2'});
+ rmSync(join(f.root,f.task,'prd.md'));await assert.rejects(f.dispatch(),/Source material/);assert.equal(f.replies.length,2);assert.equal(readExecution(c.binding).state,'completed');
+});
+test('source/managed source requirements changed after first role query refuse spawn with no lease',async t=>{
+ const {mockPython}=await import('./runtime-fixture.mjs');
+ for(const managed of [false,true]) await t.test(managed?'managed drift':'source drift',async child=>{
+  const f=fixture(child);let binding;if(managed){binding=(await f.run()).binding;await f.run({action:'prepare'});}
+  let count=0;
+  mockPython(child,f.root,(args)=>{
+   if(!args.includes('--role'))return;
+   const stdout=execFileSync(process.env.TRELLIS_PYTHON||'python3',args,{cwd:f.root,encoding:'utf8'});
+   if(++count===1)f.put(f.task+'/prd.md','CHANGED after graph before rendering');
+   return {stdout};
+  });
+  await assert.rejects(f.dispatch(),/changed during prompt rendering/);assert.equal(f.replies.length,0);
+  if(binding)assert.equal(readExecution(binding),undefined);else assert.equal(sourceRecord(f),undefined);
+ });
+});
+test('target adapter missing rejects managed spawn without executing target CLI',async t=>{
+ const f=fixture(t),c=await f.run();await f.run({action:'prepare'});writeFileSync(join(c.binding.worktreePath,'.pi/settings.json'),'{}');
+ await assert.rejects(f.dispatch(),/target\/user settings/);assert.equal(f.replies.length,0);assert.equal(readExecution(c.binding),undefined);
+});
+
+test('target checkout changes during final native query refuse managed spawn with no lease',async t=>{
+ const f=fixture(t),c=await f.run();await f.run({action:'prepare'});const {mockPython}=await import('./runtime-fixture.mjs');let queries=0;
+ mockPython(t,f.root,args=>{
+  if(!args.includes('--role'))return;
+  const stdout=execFileSync(process.env.TRELLIS_PYTHON||'python3',args,{cwd:f.root,encoding:'utf8'});
+  if(++queries===2)writeFileSync(join(c.binding.worktreePath,'code.txt'),'changed after captured snapshot');
+  return {stdout};
+ });
+ await assert.rejects(f.dispatch(),/checkout changed during prompt rendering/);assert.equal(f.replies.length,0);assert.equal(readExecution(c.binding),undefined);
 });

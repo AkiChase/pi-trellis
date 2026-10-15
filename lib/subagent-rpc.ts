@@ -4,9 +4,9 @@ import { join } from "node:path";
 import { readFileSync } from "node:fs";
 import { acquireBindingLock, sameIdentity } from "./bindings.ts";
 import { activeExecution, processToken, readExecution, writeExecution, worktreeSnapshot, type ExecutionRecord } from "./executions.ts";
-import { queryWorktree } from "./worktree-query.ts";
+import { queryWorktree, requireMaterials, type MaterialRole } from "./worktree-query.ts";
 import { canonicalPath, validateText } from "./config.ts";
-import { assembleDispatchPrompt, buildTaskContext, isTrellisRole, readTaskRecord } from "./task-context.ts";
+import { assembleDispatchPrompt, isTrellisRole, readTaskRecord } from "./task-context.ts";
 import { readSourceExecution, sourceActive, sourceExecutionFile, sourceExecutionForAgent, writeSourceExecution, type SourceExecution } from "./source-executions.ts";
 
 import { adapterConfigured } from "./adapter-resources.ts";
@@ -147,16 +147,19 @@ export function registerDispatchTool(pi: ExtensionAPI, activeTask: (ctx: Extensi
 				publishPending(true);
 				if (sourceActive(readSourceExecution(identity))) throw new Error(`Task has running/unknown source execution; inspect ${sourceExecutionFile(identity)} (no automatic recovery)`);
 				if (!initialBinding) {
+					const selectedRole = args.agent.slice("trellis-".length) as MaterialRole;
 					const assertSource = async () => {
-						const latest = await queryWorktree(ctx.cwd, task, false, signal);
+						const latest = await queryWorktree(ctx.cwd, task, false, signal, false, selectedRole);
 						if (latest.binding) throw new Error("Task became bound before source dispatch; inspect and retry");
 						if (readTaskRecord(source.root, task).status !== "in_progress") throw new Error("Source task must be in_progress before dispatch");
 						if (sourceActive(readSourceExecution(identity))) throw new Error("Task already has running/unknown source execution");
+						return requireMaterials(latest);
 					};
-					await assertSource();
-					const context = buildTaskContext({ executionRoot: source.root, taskDir: task, role: args.agent });
-					const prompt = assembleDispatchPrompt({ prompt: `Execution directory: ${source.root}\nShared directory: Other agents may be working here. Stay within your assigned scope, preserve unrelated changes, and report overlapping edits to the main agent.\n\n${args.prompt}`, taskDir: task, contextId: `pi-source-${randomUUID()}`, role: args.agent, context });
-					await assertSource(); signal?.throwIfAborted();
+					const facts = await assertSource();
+					const prompt = assembleDispatchPrompt({ prompt: `Shared directory: Other agents may be working here. Stay within your assigned scope, preserve unrelated changes, and report overlapping edits to the main agent.\n\n${args.prompt}`, contextId: `pi-source-${randomUUID()}`, role: args.agent, materials: facts, executionRoot: source.root });
+					const final = await assertSource();
+					if (final.sourceFingerprint !== facts.sourceFingerprint) throw new Error("Source materials changed during prompt rendering; inspect and retry dispatch");
+					signal?.throwIfAborted();
 					if (shuttingDown) throw new Error("Host session shut down before spawn");
 					const record: SourceExecution = { ...identity, version: 1, mode: "source", requestId: randomUUID(), role: args.agent, state: "starting", ownerPid: process.pid, ownerToken: processToken, createdAt: new Date().toISOString() };
 					writeSourceExecution(record);
@@ -172,25 +175,26 @@ export function registerDispatchTool(pi: ExtensionAPI, activeTask: (ctx: Extensi
 						return { content: [{ type: "text", text: `Agent ID: ${record.agentId}\nDirectory: ${source.root}\nShared source directory — no filesystem isolation. Coordinate overlapping edits.\nUse task_manage status/output/wait with this ID as task_id; subagent_message uses agent_id/message for running agents.` }], details: { agentId: record.agentId, mode: "source", cwd: source.root } };
 					} catch (error) { record.state = "unknown"; record.error = String(error).slice(0, 4096); writeSourceExecution(record); throw error; }
 				}
-				const latest = await queryWorktree(ctx.cwd, task, true, signal, true);
+				const selectedRole = args.agent.slice("trellis-".length) as MaterialRole;
+				const latest = await queryWorktree(ctx.cwd, task, true, signal, true, selectedRole);
 				if (!latest.binding || !sameIdentity(latest.binding, initialBinding)) throw new Error("Binding changed before dispatch");
 				const executionBinding = latest.binding;
-				const facts = latest.materials;
-				if (!facts || facts.state !== "valid" || !facts.revision || !facts.sourceFingerprint || !facts.targetFingerprint) throw new Error("Python query returned no valid material facts");
+				const facts = requireMaterials(latest);
+				if (!await adapterConfigured(executionBinding.worktreePath)) throw new Error("Persist pi-trellis in target/user settings so the managed child can load the context adapter; no child was started");
 				if (activeExecution(executionBinding)) throw new Error("Worktree already has running/unknown execution; do not dispatch concurrently");
-				const context = buildTaskContext({ executionRoot: executionBinding.worktreePath, taskDir: task, role: args.agent });
-				const prompt = assembleDispatchPrompt({ prompt: `Execution directory: ${executionBinding.worktreePath}\nReview base: ${executionBinding.baseCommit}\n\n${args.prompt}`, taskDir: task, contextId: executionBinding.contextId, role: args.agent, context, materials: { revision: facts.revision, sourceFingerprint: facts.sourceFingerprint, targetFingerprint: facts.targetFingerprint } });
-				const final = await queryWorktree(ctx.cwd, task, true, signal, true);
-				if (!final.binding || !sameIdentity(final.binding, executionBinding) || final.materials?.revision !== facts.revision || final.materials?.sourceFingerprint !== facts.sourceFingerprint || final.materials?.targetFingerprint !== facts.targetFingerprint) throw new Error("Materials changed during prompt rendering; inspect and retry dispatch");
+				const targetFingerprint = worktreeSnapshot(executionBinding);
+				const prompt = assembleDispatchPrompt({ prompt: `Review base: ${executionBinding.baseCommit}\n\n${args.prompt}`, contextId: executionBinding.contextId, role: args.agent, materials: facts, executionRoot: executionBinding.worktreePath });
+				const final = await queryWorktree(ctx.cwd, task, true, signal, true, selectedRole);
+				if (!final.binding || !sameIdentity(final.binding, executionBinding) || requireMaterials(final).sourceFingerprint !== facts.sourceFingerprint || worktreeSnapshot(executionBinding) !== targetFingerprint) throw new Error("Materials or execution checkout changed during prompt rendering; inspect and retry dispatch");
 				signal?.throwIfAborted();
 				if (shuttingDown) throw new Error("Host session shut down before spawn");
 				const binding = executionBinding;
-				const record: ExecutionRecord = { bindingId: binding.bindingId, requestId: randomUUID(), role: args.agent, state: "starting", ownerPid: process.pid, ownerToken: processToken, createdAt: new Date().toISOString(), materialRevision: facts.revision, sourceFingerprint: facts.sourceFingerprint, targetFingerprint: facts.targetFingerprint };
+				const record: ExecutionRecord = { bindingId: binding.bindingId, requestId: randomUUID(), role: args.agent, state: "starting", ownerPid: process.pid, ownerToken: processToken, createdAt: new Date().toISOString(), materialRevision: facts.revision, sourceFingerprint: facts.sourceFingerprint, targetFingerprint };
 				writeExecution(binding, record);
 				try {
 					// No call-time abort forwarded: cancellation of waiting cannot prove the detached child stopped.
 					const reply = await rpc(pi, "spawn", { requestId: record.requestId, type: args.agent, prompt, options: { cwd: binding.worktreePath, isolation: "off" } });
-					if (!reply.success || typeof reply.data?.id !== "string") throw new Error(reply.error || "Spawn returned no valid agent id");
+					if (!reply.success || typeof reply.data?.id !== "string" || !reply.data.id) throw new Error(reply.error || "Spawn returned no valid agent id");
 					record.agentId = reply.data.id;
 					if (shuttingDown) throw new Error("Host session shut down during spawn; execution may already exist");
 					const finished = early.get(record.agentId!); early.delete(record.agentId!);

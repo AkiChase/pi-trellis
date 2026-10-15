@@ -4,7 +4,7 @@ const cli = new URL('../runtime/worktree.py', import.meta.url).pathname;
 export async function manageWorktree(request) {
   request.signal?.throwIfAborted();
   const args = [cli, request.action === 'bind' ? 'adopt' : request.action, '--cwd', request.cwd, '--task', request.task, '--json'];
-  for (const [key, flag] of [['path', '--path'], ['base', '--base'], ['branch', '--branch'], ['integratedInto', '--integrated-into']]) {
+  for (const [key, flag] of [['path', '--path'], ['base', '--base'], ['branch', '--branch'], ['integratedInto', '--integrated-into'], ['role', '--role']]) {
     if (request[key] !== undefined) args.push(flag, request[key]);
   }
   for (const file of request.files ?? []) args.push('--file', file);

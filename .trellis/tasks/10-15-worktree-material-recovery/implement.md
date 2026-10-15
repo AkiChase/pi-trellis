@@ -27,7 +27,7 @@ node --import ./tests/host-tui.mjs --test tests/python-worktree.test.mjs tests/p
 
 ## S1 主验收记录（2026-10-15）
 
-独立审查 a107ae93-5ada-428 完成并自修文件fd/path竞争、图尾重检、内部symlink、raw reference hash与nextAction等S1问题；主全文核最终materials及新增负例、审查报告/实际改动。主最终focused命令：`env -u TRELLIS_CONTEXT_ID PI_TRELLIS_TEST_HOST=/Users/jyxc-dz-0101322/.pi/agent/install/releases/1.2.0/node_modules node --import ./tests/host-tui.mjs --test tests/python-worktree.test.mjs tests/preparation.test.mjs tests/worktree-cli.test.mjs tests/worktree.test.mjs tests/manifest-provenance.test.mjs`，bq82tih0r自然exit0，91/91。独立Python28/28；33runtime hashes匹配，git diff --check通过。S1通过，准备精确stage提交；全量/真实host由S2/S3负责，未作最终验收。
+独立审查 a107ae93-5ada-428 完成并自修文件fd/path竞争、图尾重检、内部symlink、raw reference hash与nextAction等S1问题；主全文核最终materials及新增负例、审查报告/实际改动。主最终focused命令：`env -u TRELLIS_CONTEXT_ID PI_TRELLIS_TEST_HOST=/Users/jyxc-dz-0101322/.pi/agent/install/releases/1.2.0/node_modules node --import ./tests/host-tui.mjs --test tests/python-worktree.test.mjs tests/preparation.test.mjs tests/worktree-cli.test.mjs tests/worktree.test.mjs tests/manifest-provenance.test.mjs`，bq82tih0r自然exit0，91/91。独立Python28/28；33runtime hashes匹配，git diff --check通过。S1通过，已提交精确23files checkpoint `9ec131f`（feat(worktree): use source-authoritative role materials）；未夹带并行workflow/项目manifest/其他任务/logs。全量/真实host由S2/S3负责，未作最终验收。S2普通实现Agent `530dc81e-d8f2-494` 已按明确Active task首行派发，仅桥接/派发/子双根及相关测试，无生命周期或提交权限。
 
 ## S2 派发路径与子会话双根接线
 
@@ -46,9 +46,13 @@ node --import ./tests/host-tui.mjs --test tests/dispatch.test.mjs tests/source-e
 
 门禁：source新/target旧材料仅source被读取；target task不存在仍可绑定当前任务；source缺失spawn=0；另一role缺失不阻断；source pointer不变；未知spawn无自动重试；上下文不含整篇材料或complete标记。
 
+## S2 主验收记录（2026-10-15）
+
+独立77d213af自修immutable binding/ancestor sourcepath/CLI绝对路径与cwd/metadata边界/missing marker隔离；主核实际3owner修复与报告，11files指纹匹配独立最终版本。主b6jss9uuq focused104/104自然exit0，独立附加54/54。独立全量468/469唯一initialization literal35（S1新增诊断模块36）仍FAIL，S3明确修此fixture，未称最终fullPASS。S2通过，准备精确stage提交；并行init提交5d3b4e4已含runtimeDiagnostic一行，不在S2重复收录。真实agent/provider行为NOT_RUN。
+
 ## S3 角色指引、项目政策与文档
 
-文件：删除`scripts/sync-agents.mjs`；直接修改包内`agents/trellis-{implement,check,research}.md`，不改`.pi/agents/`部署副本；两个start/continue技能、`resources/templates/workflow.md`、`.trellis/workflow.md`、`docs/{worktree-execution,dispatch}.md`、`.trellis/spec/development/index.md`、`.trellis/spec/testing/index.md`；`tests/{workflow-policy,agent-documents,manifest-provenance}.test.mjs`与必要protocol断言；四类baseline按实际改动hash更新。
+文件：删除`scripts/sync-agents.mjs`；直接修改包内`agents/trellis-{implement,check,research}.md`，不改`.pi/agents/`部署副本；两个start/continue技能、`resources/templates/workflow.md`、`.trellis/workflow.md`、`docs/{worktree-execution,dispatch}.md`、`.trellis/spec/development/index.md`、`.trellis/spec/testing/index.md`；`tests/{workflow-policy,agent-documents,manifest-provenance}.test.mjs`与必要protocol断言；修复`tests/initialization.test.mjs`资源数为baseline+3以及`tests/provider-contracts.mjs`旧loader调用接线（不自动运行真实probe）；四类baseline按实际改动hash更新。
 
 1. 完整阅读包内角色/相关规范/现有测试，直接维护角色源码；删除生成器及测试中的adaptAgent/再生成anchor要求，保留直接角色合同和来源/hash检查。历史source hash、AGPL声明不改归属；不编辑custom部署角色、不改初始化资源发布接口。
 2. 子角色直接分页完整读源路径，材料与代码根明确；research明确写源research，主负责lifecycle/spec整合。

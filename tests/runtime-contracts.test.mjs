@@ -6,12 +6,14 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import test from 'node:test';
 import trellis, { __internals } from '../extensions/trellis.ts';
+import {assembleDispatchPrompt} from '../lib/task-context.ts';
+import {queryWorktree,requireMaterials} from '../lib/worktree-query.ts';
 
 import { installRuntimeFixture } from "./runtime-fixture.mjs";
 
 const python = execFileSync('which', [process.env.TRELLIS_PYTHON || 'python3'], {encoding:'utf8'}).trim();
 function fixture(t) {
- const root=mkdtempSync(join(tmpdir(),'pi-real-runtime-')); t.after(()=>rmSync(root,{recursive:true,force:true}));
+ const root=realpathSync(mkdtempSync(join(tmpdir(),'pi-real-runtime-'))); t.after(()=>rmSync(root,{recursive:true,force:true}));
  const put=(path,data)=>{mkdirSync(join(root,path,'..'),{recursive:true});writeFileSync(join(root,path),typeof data==='string'?data:JSON.stringify(data));};
  cpSync(resolve('runtime'),join(root,'.trellis/scripts'),{recursive:true});
  const env={...process.env,PYTHONDONTWRITEBYTECODE:'1',TRELLIS_CONTEXT_ID:'own'};
@@ -127,11 +129,11 @@ test('supported entrypoints run without trellis and suppress all bytecode/update
 });
 
 test('real runtime child binding/deactivate cannot resurrect from repeated dispatch header; failed binding never borrows parent',async t=>{
- const f=fixture(t);rmSync(join(f.root,'.trellis'),{recursive:true});installRuntimeFixture(f.root);const path=f.task();const handlers=new Map(),messages=[];
+ const f=fixture(t);rmSync(join(f.root,'.trellis'),{recursive:true});installRuntimeFixture(f.root);const path=f.task('own',{status:'in_progress'});f.put(path+'/implement.jsonl','{"file":"'+path+'/prd.md"}');const handlers=new Map(),messages=[];
  trellis({events:{on:()=>()=>{},emit:()=>{}},registerCommand: () => {}, registerTool:()=>{},on:(name,fn)=>handlers.set(name,fn),sendMessage:m=>messages.push(m),getAllTools:()=>[]});
  const ctx=name=>({cwd:f.root,hasUI:false,sessionManager:{getSessionId:()=>name,getSessionFile:()=>undefined},ui:{}});
  const parent=ctx('runtime-parent'),child=ctx('runtime-child'),parentKey=__internals.contextKey(f.root,parent);f.pointer(parentKey,path);
- const prompt=`Active task: ${path}\nTrellis context id: ${parentKey}\nTrellis agent: trellis-implement\n\nImplement`;
+ const prompt=assembleDispatchPrompt({prompt:'Implement',contextId:'runtime-child',role:'trellis-implement',executionRoot:f.root,materials:requireMaterials(await queryWorktree(f.root,path,false,undefined,false,'implement'))});
  await handlers.get('before_agent_start')({prompt,systemPromptOptions:{sections:{}}},child);
  const childKey=__internals.contextKey(f.root,child);assert.notEqual(childKey,parentKey);assert.equal(JSON.parse(f.ok('task.py',['current','--json'],{TRELLIS_CONTEXT_ID:childKey}).stdout).current_task.dir,path);
  f.ok('task.py',['deactivate'],{TRELLIS_CONTEXT_ID:childKey});await handlers.get('tool_result')({toolName:'bash',input:{command:'task.py deactivate'}},child);
@@ -221,7 +223,9 @@ test('recorded native provenance matches original git bytes and derived sources 
  const metadata=JSON.parse(readFileSync(resolve('resources/runtime-baseline.json'),'utf8'));const digest=data=>createHash('sha256').update(data).digest('hex');
  for(const [name,row] of Object.entries(metadata.files)){
   const bytes=readFileSync(resolve('runtime',name));
-  if(row.origin==='pi-trellis'){
+  if(row.origin==='pi-trellis' && row.sourcePath===null){
+   assert.equal(row.sourceSha256,null);assert.equal(row.license,'MIT');assert.equal(digest(bytes),row.sha256,name);
+  }else if(row.origin==='pi-trellis'){
    const original=execFileSync('git',['show',row.sourceRevision+':'+row.sourcePath],{cwd:resolve('.')});assert.equal(digest(original),row.sourceSha256,name);if(row.modified){assert.notDeepEqual(bytes,original,name);assert.equal(digest(bytes),row.sha256,name);}else{assert.deepEqual(bytes,original,name);}assert.equal(row.license,'MIT');
   }else{
    assert.equal(row.license,'AGPL-3.0-only',name);assert.match(bytes.toString(),/SPDX-License-Identifier: AGPL-3\.0-only/,name);

@@ -13,7 +13,7 @@
  * It talks to Trellis through documented surfaces only: the `task.py` / `get_context.py` CLIs, the
  * TRELLIS_CONTEXT_ID environment variable, and on-disk paths under `.trellis/`.
  * Optional UI/context discovery degrades rather than taking a session down.
- * Dispatch material failures are visible and leave the child-side fallback active.
+ * Dispatch validates source authority and hands paths/read obligations to roles.
  */
 
 import { execFile } from "node:child_process";
@@ -24,10 +24,11 @@ import { fileURLToPath } from "node:url";
 import { stripVTControlCharacters } from "node:util";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
-import { assembleDispatchPrompt, buildTaskContext, INJECTED_MARKER, isTrellisRole, parseDispatchFacts, readTaskRecord, resolveTaskPath } from "../lib/task-context.ts";
+import { assembleDispatchPrompt, dispatchAuthority, stripDispatchClaims, isTrellisRole, parseDispatchFacts, readTaskRecord, resolveTaskPath, type DispatchFacts } from "../lib/task-context.ts";
+import { queryWorktree, requireMaterials, requireSourcePath, type MaterialRole } from "../lib/worktree-query.ts";
 import { registerDispatchTool } from "../lib/subagent-rpc.ts";
-import { readBinding, readMarker } from "../lib/bindings.ts";
-import { containsPath } from "../lib/config.ts";
+import { readBinding, readMarker, sameIdentity, type WorktreeBinding } from "../lib/bindings.ts";
+import { canonicalPath, containsPath } from "../lib/config.ts";
 import { registerInitCommand } from "../lib/initialization/command.ts";
 import { registerTaskBrowserCommand } from "../lib/task-browser/command.ts";
 import { readCurrentTaskIdentity } from "../lib/task-browser/reader.ts";
@@ -100,6 +101,11 @@ const keyBySession = new Map<string, string>();
 const taskBySession = new Map<string, string>();
 // Display provenance only, never authorization or an active-pointer override.
 const roleBySession = new Map<string, string>();
+const authorityBySession = new Map<string, DispatchFacts>();
+// Remember immutable native identity, not just a reused source/target pathname.
+const bindingBySession = new Map<string, WorktreeBinding | null>();
+const sourceRootBySession = new Map<string, string>();
+const authorityErrors = new Map<string, string>();
 
 /** cacheKey -> memoized prompt sections. Must stay byte-stable for the process lifetime. */
 const sectionCache = new Map<string, { overview?: string; workflow?: string }>();
@@ -257,6 +263,8 @@ function runPython(
 	root: string, key: string, args: string[], timeoutMs = 15000,
 ): Promise<{ code: number; stdout: string } | undefined> {
 	requireRuntime(root);
+	const env = { ...process.env, TRELLIS_CONTEXT_ID: key, PYTHONDONTWRITEBYTECODE: "1", GIT_OPTIONAL_LOCKS: "0" };
+	for (const name of Object.keys(env)) if (name.startsWith("GIT_") && name !== "GIT_OPTIONAL_LOCKS") delete env[name];
 	return new Promise((done) => {
 		try {
 			execFile(
@@ -265,7 +273,7 @@ function runPython(
 				{
 					cwd: root,
 					timeout: timeoutMs,
-					env: { ...process.env, TRELLIS_CONTEXT_ID: key, PYTHONDONTWRITEBYTECODE: "1" },
+					env,
 					maxBuffer: 8 * 1024 * 1024,
 					windowsHide: true,
 				},
@@ -573,12 +581,13 @@ function platformList(trimmed: string, closeTags: Set<string>): string[] | undef
 // Renderers
 // ---------------------------------------------------------------------------
 
-function renderOverview(root: string, key: string, context: TrellisContext | undefined, role?: string, protocolPath = join(packageDir(), "docs/worktree-execution.md")): string {
+function renderOverview(root: string, key: string, context: TrellisContext | undefined, role?: string, protocolPath = join(packageDir(), "docs/worktree-execution.md"), executionRoot = root): string {
 	const lines: string[] = [
 		"Trellis-managed project. Snapshot taken when this session started;",
 		`live task state arrives as <${STATE_MESSAGE_TYPE}> messages.`,
 		"",
-		`Project root: ${root}`,
+		`Project root (source materials/CLI): ${root}`,
+		`Execution root (product code/tests): ${executionRoot}`,
 		`Trellis context id: ${key}`,
 	];
 
@@ -590,7 +599,7 @@ function renderOverview(root: string, key: string, context: TrellisContext | und
 		if (git.isClean === false && typeof git.uncommittedChanges === "number") {
 			bits.push(`${git.uncommittedChanges} uncommitted`);
 		}
-		lines.push(`Git: ${bits.join(", ")}`);
+		lines.push(`${executionRoot === root ? "Git" : "Source Git (not execution checkout)"}: ${bits.join(", ")}`);
 	}
 
 	const journal = context?.journal;
@@ -623,7 +632,7 @@ function renderOverview(root: string, key: string, context: TrellisContext | und
 		`  ${PYTHON} ./.trellis/scripts/get_context.py --mode packages`,
 		...(role ? [
 			`Task execution role: ${role}; work only in the supplied execution directory and approved task scope.`,
-			"Read missing full materials before working; do not manage worktrees, dispatch other task roles, or run source lifecycle/Git integration.",
+			"Directly and fully read source task artifacts, workflow, role JSONL and selected references in the supplied order; paginate truncated reads. Path/hash facts are not a complete-injection/read proof.",
 		] : [
 			existsSync(scriptPath(root, "worktree.py")) ? "Worktree management: python3 .trellis/scripts/worktree.py <command> --task <task>; use --help, preview then approved --confirm." : "Worktree CLI not deployed (python3 .trellis/scripts/worktree.py): explicit install/update required; no automatic repair.",
 			"Dispatch/stop: trellis_dispatch; unbound tasks use the shared source directory, bound tasks require their prepared managed worktree. Main coordinates overlapping edits and phases.",
@@ -760,41 +769,84 @@ function renderWidget(theme: ExtensionTheme, task: ActiveTask | undefined, count
 
 interface Session {
 	root: string;
+	executionRoot: string;
 	key: string;
 	cacheKey: string;
 	identity: string;
 }
 
-function session(ctx: ExtensionContext): Session | undefined {
-	const root = findRoot(ctx.cwd);
-	if (!root) return undefined;
+function session(ctx: ExtensionContext, allowAuthorityError = false): Session | undefined {
+	const executionRoot = findRoot(ctx.cwd);
+	if (!executionRoot) return undefined;
+	requireRuntime(executionRoot);
+	const identity = sessionIdentity(executionRoot, ctx);
+	if (!allowAuthorityError && authorityErrors.has(identity)) throw new Error(authorityErrors.get(identity));
+	const root = authorityBySession.get(identity)?.sourceRoot ?? sourceRootBySession.get(identity) ?? executionRoot;
 	requireRuntime(root);
-	const key = contextKey(root, ctx);
-	return { root, key, cacheKey: `${sessionIdentity(root, ctx)}::${key}`, identity: sessionIdentity(root, ctx) };
+	const key = contextKey(executionRoot, ctx);
+	return { root, executionRoot, key, cacheKey: `${identity}::${root}::${key}`, identity };
 }
 
-async function inheritDispatchTask(current: Session, taskDir: string): Promise<void> {
-	// The dispatch context is provenance, not permission to clear its pointer.
-	// Even a process-wide pinned parent id must not pin a dispatched child.
-	// Isolate before validation so a failed binding cannot fall back to its parent.
+async function inheritDispatchTask(current: Session, facts: DispatchFacts): Promise<void> {
+	// Isolate before authority validation, including caller-pinned parent keys.
 	const key = `pi-child-${shortHash(current.identity)}`;
 	keyBySession.set(current.identity, key);
-	invalidateTask(current.root, key);
-	resolveTaskPath(current.root, taskDir);
-	readTaskRecord(current.root, taskDir);
-	const result = await runPython(current.root, key, ["-c", [
+	authorityErrors.set(current.identity, "Dispatched source authority has not been verified; no local pointer fallback");
+	const native = await queryWorktree(current.executionRoot, facts.taskDir, false, undefined, false, facts.role.slice("trellis-".length) as MaterialRole);
+	const priorBinding = bindingBySession.get(current.identity);
+	if (priorBinding && (!native.local || !sameIdentity(priorBinding, native.local))) throw new Error("Managed binding changed since child startup");
+	const m = requireMaterials(native);
+	if (native.local) {
+		if (!native.binding || native.local.worktreePath !== canonicalPath(current.executionRoot) || native.binding.preparationState !== "ready" || facts.contextId !== native.binding.contextId) throw new Error("Child managed binding/context mismatch");
+	} else if (native.binding || native.source.root !== canonicalPath(current.executionRoot)) throw new Error("Unbound child must execute at its native source root");
+	const expected = dispatchAuthority(m, native.local?.worktreePath ?? native.source.root);
+	if (JSON.stringify(expected) !== JSON.stringify(dispatchAuthorityFromFacts(facts))) throw new Error("Dispatched authority paths/fingerprint differ from native source; no target fallback");
+	requireRuntime(m.sourceRoot);
+	invalidateTask(m.sourceRoot, key);
+	resolveTaskPath(m.sourceRoot, facts.taskDir);
+	readTaskRecord(m.sourceRoot, facts.taskDir);
+	const result = await runPython(m.sourceRoot, key, ["-c", [
 		"import sys",
 		"from pathlib import Path",
 		"sys.path.insert(0, str(Path.cwd() / '.trellis/scripts'))",
 		"from common.active_task import set_active_task",
 		"active = set_active_task(sys.argv[1], Path.cwd())",
 		"sys.exit(0 if active and active.task_path == sys.argv[1] else 1)",
-	].join("\n"), taskDir]);
-	if (!result || result.code !== 0) throw new Error("Could not bind dispatched task to child session; no parent context inherited");
-	invalidateTask(current.root, key);
+	].join("\n"), facts.taskDir]);
+	if (!result || result.code !== 0) throw new Error("Could not bind dispatched task to source child session; no parent context inherited");
+	bindingBySession.set(current.identity, native.binding ? { ...native.binding } : null);
+	authorityBySession.set(current.identity, facts);
+	authorityErrors.delete(current.identity);
+	invalidateTask(m.sourceRoot, key);
+}
+function dispatchAuthorityFromFacts(f: DispatchFacts) {
+	return { sourceRoot: f.sourceRoot, materialRoot: f.materialRoot, executionRoot: f.executionRoot, taskPath: f.taskPath,
+		specRoot: f.specRoot, workflowPath: f.workflowPath, requirementsFingerprint: f.requirementsFingerprint,
+		artifacts: f.artifacts, manifest: f.manifest, references: f.references };
+}
+
+async function requireChildAuthority(current: Session): Promise<void> {
+	const facts = authorityBySession.get(current.identity);
+	if (!facts) return;
+	try {
+		const native = await queryWorktree(current.executionRoot, facts.taskDir);
+		const expected = bindingBySession.get(current.identity);
+		if (native.source.root !== facts.sourceRoot || (expected
+			? !native.local || !native.binding || !sameIdentity(expected, native.local) || !sameIdentity(expected, native.binding)
+			: expected !== null || native.local || native.binding || native.source.root !== canonicalPath(current.executionRoot))) throw new Error("Child source/binding authority disappeared or changed; no pointer fallback");
+		// Only identity and path presence are rechecked. Source content/lifecycle
+		// changes are main-review evidence, not automatic cancellation conditions.
+		requireSourcePath(facts.sourceRoot, facts.taskDir, facts.taskPath, true);
+		requireSourcePath(facts.sourceRoot, ".trellis/spec", facts.specRoot, true);
+		for (const file of facts.artifacts) requireSourcePath(facts.sourceRoot, file === facts.workflowPath ? ".trellis/workflow.md" : `${facts.taskDir}/${basename(file)}`, file);
+		if (facts.manifest) requireSourcePath(facts.sourceRoot, `${facts.taskDir}/${facts.role.slice("trellis-".length)}.jsonl`, facts.manifest);
+		for (const ref of facts.references) requireSourcePath(facts.sourceRoot, ref.label, ref.path);
+		readTaskRecord(facts.sourceRoot, facts.taskDir);
+	} catch (error) { authorityErrors.set(current.identity, String(error)); throw error; }
 }
 
 async function sessionTask(current: Session): Promise<ActiveTask | undefined> {
+	if (authorityErrors.has(current.identity)) throw new Error(authorityErrors.get(current.identity));
 	return readActiveTask(current.root, current.key);
 }
 
@@ -888,23 +940,26 @@ export default function (pi: ExtensionAPI): void {
 					const found = findRoot(cwd);
 					if (!found || found !== registeredRoot) throw new Error("Project changed; reload before browsing Trellis tasks");
 					requireRuntime(found);
-					return found;
+					const current = ctx ? session(ctx) : undefined;
+					return current?.root ?? found;
 				} catch (error) { clearDisplay(ctx); throw error; }
 			},
-			currentTask: (root, ctx) => readCurrentTaskIdentity(root, contextKey(root, ctx)),
+			currentTask: (root, ctx) => readCurrentTaskIdentity(root, session(ctx)?.key ?? contextKey(root, ctx)),
 		});
 		const guardedPi = Object.create(pi) as ExtensionAPI;
 		guardedPi.registerTool = tool => pi.registerTool({ ...tool, execute: async (...args) => {
 			const ctx = args[4];
 			try {
 				if (findRoot(ctx.cwd) !== registeredRoot) throw new Error("Project changed; reload before Trellis dispatch");
+				const current = session(ctx);
+				if (current && roleBySession.has(current.identity)) throw new Error("Task roles must not recursively dispatch; return findings to main");
 				requireRuntime(registeredRoot!);
 			} catch (error) { clearDisplay(ctx); throw error; }
 			return tool.execute(...args);
 		} });
 		registerDispatchTool(guardedPi, async (ctx) => {
 			const current = session(ctx);
-			if (current?.root !== registeredRoot) throw new Error("Project changed; reload before Trellis dispatch");
+			if (current?.executionRoot !== registeredRoot) throw new Error("Project changed; reload before Trellis dispatch");
 			return current ? (await sessionTask(current))?.dir : undefined;
 		});
 	};
@@ -925,12 +980,42 @@ export default function (pi: ExtensionAPI): void {
 			if (ctx.hasUI) clearDisplay(ctx);
 			return;
 		}
-		if (registeredRoot && registeredRoot !== current.root) {
+		if (registeredRoot && registeredRoot !== current.executionRoot) {
 			clearDisplay(ctx);
 			if (ctx.hasUI) ctx.ui.notify("Project changed; reload to activate Trellis in this project", "warning");
 			return;
 		}
-		registerProjectCapabilities(current.root);
+		registerProjectCapabilities(current.executionRoot);
+		// Startup precedes the dispatch prompt. Authenticate a managed marker through
+		// native source binding facts, retain registration at the actual checkout,
+		// and isolate before any CLI can observe a stale target/parent pointer.
+		try {
+			const linkedCheckout = existsSync(join(current.executionRoot, ".git")) && lstatSync(join(current.executionRoot, ".git")).isFile();
+			if ((readMarker(current.executionRoot) || linkedCheckout) && !authorityBySession.has(current.identity)) {
+				keyBySession.set(current.identity, `pi-child-${shortHash(current.identity)}`);
+				authorityErrors.set(current.identity, "Managed child awaits a complete verified source authority header; no target pointer fallback");
+				const native = await queryWorktree(current.executionRoot);
+				if (!native.local) {
+					// A source repository can also use a .git file (submodule or
+					// separate git-dir). Native source identity distinguishes it from
+					// an unbound linked target; restore only that verified source key.
+					if (native.source.root !== canonicalPath(current.executionRoot)) throw new Error("Invalid source startup identity");
+					keyBySession.set(current.identity, current.key);
+					authorityErrors.delete(current.identity);
+					current = session(ctx)!;
+				} else {
+					if (native.local.worktreePath !== canonicalPath(current.executionRoot)) throw new Error("Invalid managed startup identity");
+					bindingBySession.set(current.identity, { ...native.local });
+					sourceRootBySession.set(current.identity, native.source.root);
+					current = session(ctx, true)!;
+				}
+			}
+		} catch (error) {
+			keyBySession.set(current.identity, `pi-child-${shortHash(current.identity)}`);
+			authorityErrors.set(current.identity, `Managed startup authority failed: ${String(error)}; no pointer fallback`);
+			if (ctx.hasUI) ctx.ui.notify(runtimeDiagnostic(error), "error");
+			clearDisplay(ctx); return;
+		}
 
 		// Behavioural version check: if the CLI contract moved, say so once
 		// instead of degrading silently.
@@ -984,21 +1069,35 @@ export default function (pi: ExtensionAPI): void {
 
 	pi.on("before_agent_start", async (event, ctx) => {
 		let initial: Session | undefined;
-		try { initial = session(ctx); }
-		catch { clearDisplay(ctx); return; }
+		try { initial = session(ctx, true); }
+		catch (error) {
+			let identity: string | undefined;
+			try { const root = findRoot(ctx.cwd); if (root) identity = sessionIdentity(root, ctx); } catch { /* unsafe discovery grants no context */ }
+			if (identity && (authorityBySession.has(identity) || sourceRootBySession.has(identity))) pi.sendMessage({ customType: STATE_MESSAGE_TYPE, content: `Status: task_error\nTrellis context diagnostic: ${runtimeDiagnostic(error)}`, display: false });
+			clearDisplay(ctx); return;
+		}
 		try {
 			let current = initial;
-			if (!current || (registeredRoot && current.root !== registeredRoot) || (!registeredRoot && startupCwd !== undefined && ctx.cwd !== startupCwd)) { clearDisplay(ctx); return; }
-			const facts = parseDispatchFacts("prompt" in event ? event.prompt : "");
-			if (facts?.role && roleBySession.get(current.identity) !== facts.role) {
+			if (!current || (registeredRoot && current.executionRoot !== registeredRoot) || (!registeredRoot && startupCwd !== undefined && ctx.cwd !== startupCwd)) { clearDisplay(ctx); return; }
+			const prompt = "prompt" in event ? event.prompt : "";
+			const facts = parseDispatchFacts(prompt);
+			if (!facts && /^Active task:/.test(prompt)) {
+				keyBySession.set(current.identity, `pi-child-${shortHash(current.identity)}`);
+				authorityErrors.set(current.identity, "Incomplete/invalid source authority header; no pointer fallback");
+			}
+			const priorAuthority = authorityBySession.get(current.identity);
+			if (facts && priorAuthority && taskBySession.get(current.identity) === facts.taskDir && roleBySession.get(current.identity) === facts.role && JSON.stringify(priorAuthority) !== JSON.stringify(facts)) {
+				authorityErrors.set(current.identity, "Dispatch authority changed within this child session; main must review/re-dispatch, no pointer fallback");
+			}
+			if (facts && (taskBySession.get(current.identity) !== facts.taskDir || roleBySession.get(current.identity) !== facts.role)) {
+				await inheritDispatchTask(current, facts);
+				taskBySession.set(current.identity, facts.taskDir);
 				roleBySession.set(current.identity, facts.role);
 				sectionCache.delete(current.cacheKey);
-			}
-			if (facts && taskBySession.get(current.identity) !== facts.taskDir) {
-				await inheritDispatchTask(current, facts.taskDir);
-				taskBySession.set(current.identity, facts.taskDir);
 				current = session(ctx)!;
 			}
+			if (authorityErrors.has(current.identity)) throw new Error(authorityErrors.get(current.identity));
+			await requireChildAuthority(current);
 
 			const sections = event.systemPromptOptions?.sections;
 			if (!sections) return;
@@ -1016,7 +1115,7 @@ export default function (pi: ExtensionAPI): void {
 
 			if (cached.overview === undefined) {
 				const context = await loadContext(current.root, current.key);
-				cached.overview = renderOverview(current.root, current.key, context, roleBySession.get(current.identity));
+				cached.overview = renderOverview(current.root, current.key, context, roleBySession.get(current.identity), undefined, current.executionRoot);
 			}
 			sections[SECTION_OVERVIEW] = cached.overview;
 
@@ -1041,6 +1140,9 @@ export default function (pi: ExtensionAPI): void {
 				});
 			}
 		} catch (error) {
+			if (initial && (authorityBySession.has(initial.identity) || sourceRootBySession.has(initial.identity))) authorityErrors.set(initial.identity, String(error));
+			delete event.systemPromptOptions?.sections?.[SECTION_OVERVIEW];
+			delete event.systemPromptOptions?.sections?.[SECTION_WORKFLOW];
 			const content = `Status: task_error\nTrellis context diagnostic: ${runtimeDiagnostic(error)}`;
 			const identity = `${ctx.cwd}::${ctx.sessionManager.getSessionId()}::error`;
 			if (lastStateSent.get(identity) !== content) {
@@ -1081,13 +1183,27 @@ export default function (pi: ExtensionAPI): void {
 		try {
 			const current = session(ctx);
 			if (!current) return;
+			await requireChildAuthority(current);
 
 			if (["bash", "monitor"].includes(event.toolName)) {
 				const input = event.input as { command?: unknown };
 				if (typeof input.command !== "string") return;
 				// Scope every shell, including indirect CLI invocations, without a process-global mutation.
 				const prefix = `export TRELLIS_CONTEXT_ID=${current.key}\n`;
-				if (!input.command.startsWith(prefix)) input.command = `${prefix}${input.command}`;
+				let command = input.command.startsWith(prefix) ? input.command.slice(prefix.length) : input.command;
+				if (current.root !== current.executionRoot && invokesRuntime(command)) {
+					// Never move a mixed product/runtime shell to source. Only a single
+					// invocation is root-scoped; callers split shell pipelines explicitly.
+					const quote = (s: string) => `'${s.replaceAll("'", "'\\''")}'`;
+					const open = `(cd ${quote(current.root)}\n`;
+					if (command.startsWith(open) && command.endsWith("\n)")) command = command.slice(open.length, -2);
+					if (/[\r\n;&|()<>`$]/.test(command)) return { block: true, reason: "Mixed runtime/product shell cannot be retargeted to source safely. Run the Trellis CLI as a separate single invocation; product commands retain execution cwd." };
+					const words = (command.match(/"[^"\n]*"|'[^'\n]*'|[^\s]+/g) ?? []).map(word => word.replace(/^(["'])(.*)\1$/s, "$2"));
+					const scripts = words.filter(word => /^(?:task|get_context|init_developer|get_developer|add_session|worktree)\.py$/.test(basename(word)));
+					if (scripts.length !== 1 || ![`.trellis/scripts/${basename(scripts[0])}`, `./.trellis/scripts/${basename(scripts[0])}`, scriptPath(current.root, basename(scripts[0]))].includes(scripts[0]) || words.some(word => /^(?:--cwd|--chdir|--directory)(?:=|$)|^-C/.test(word))) return { block: true, reason: "Managed runtime invocation must use the source .trellis/scripts CLI without cwd overrides. Absolute target/foreign scripts, inline runtime code and global CLI commands are not source-authoritative; split or correct the invocation." };
+					command = `${open}${command}\n)`;
+				}
+				if (!command.startsWith(prefix)) input.command = `${prefix}${command}`;
 				return;
 			}
 
@@ -1100,22 +1216,23 @@ export default function (pi: ExtensionAPI): void {
 				try { if (readMarker(current.root)) return { block: true, reason: "This is a managed task worktree. Dispatch through trellis_dispatch from the source host so directory occupancy is reserved; no ordinary child was started." }; }
 				catch (error) { return { block: true, reason: `Worktree marker cannot be verified: ${String(error)}. No child was started.` }; }
 			}
-			const facts = parseDispatchFacts(input.prompt);
-			const task = facts ? { dir: facts.taskDir } : await sessionTask(current);
+			if (roleBySession.has(current.identity)) return { block: true, reason: "Task roles must not recursively dispatch other roles; return findings to main." };
+			const task = await sessionTask(current);
+			if (taskErrors.has(cacheKeyFor(current.root, current.key))) throw new Error(taskErrors.get(cacheKeyFor(current.root, current.key)));
 			if (task) {
 				try {
 					if (readBinding(current.root, task.dir) || readMarker(current.root)) return { block: true, reason: "This task is bound to a worktree. Ordinary subagent_run cannot select or reserve its directory; use python3 .trellis/scripts/worktree.py prepare --task <task> (preview, then approved --confirm), then trellis_dispatch. No child was started." };
 				} catch (error) { return { block: true, reason: `Worktree binding cannot be verified: ${String(error)}. No child was started.` }; }
 			}
-			if (!task) {
-				// No material loaded: caller-provided marker must not suppress the child's fallback.
-				input.prompt = input.prompt.replaceAll(INJECTED_MARKER, "");
-				return;
-			}
-			const context = buildTaskContext({ executionRoot: current.root, taskDir: task.dir, role: input.subagent_type });
-			input.prompt = assembleDispatchPrompt({
-				prompt: input.prompt, taskDir: task.dir, contextId: current.key, role: input.subagent_type, context,
-			});
+			if (!task) return { block: true, reason: "No validated active source task; no child was started." };
+			const selectedRole = input.subagent_type.slice("trellis-".length) as MaterialRole;
+			const initial = await queryWorktree(current.executionRoot, task.dir, false, undefined, false, selectedRole);
+			if (initial.binding || initial.local || initial.source.root !== canonicalPath(current.executionRoot)) throw new Error("Ordinary dispatch must be unbound at its native source root");
+			const materials = requireMaterials(initial);
+			const prompt = assembleDispatchPrompt({ prompt: input.prompt, contextId: `pi-child-${shortHash(current.identity + Date.now() + input.prompt)}`, role: input.subagent_type, materials, executionRoot: initial.source.root });
+			const final = await queryWorktree(current.executionRoot, task.dir, false, undefined, false, selectedRole);
+			if (final.binding || final.local || requireMaterials(final).sourceFingerprint !== materials.sourceFingerprint) throw new Error("Source materials/binding changed during prompt rendering");
+			input.prompt = prompt;
 		} catch (error) {
 			if (["bash", "monitor"].includes(event.toolName) && typeof (event.input as { command?: unknown }).command === "string") {
 				return { block: true, reason: `Trellis runtime/context cannot be verified: ${String(error)}. No command was started.` };
@@ -1123,8 +1240,8 @@ export default function (pi: ExtensionAPI): void {
 			if (event.toolName === "subagent_run") {
 				const input = event.input as { subagent_type?: unknown; prompt?: unknown };
 				if (isTrellisRole(input.subagent_type) && typeof input.prompt === "string") {
-					if (/runtime|manifest|TRELLIS_CONTEXT_ID/i.test(String(error))) return { block: true, reason: `Trellis runtime/context cannot be verified: ${String(error)}. No child was started.` };
-					input.prompt = `${input.prompt.replaceAll(INJECTED_MARKER, "")}\n\npi-trellis could not load task materials: ${String(error)}. Use the context-loading fallback before working.`;
+					input.prompt = stripDispatchClaims(input.prompt);
+					return { block: true, reason: `Trellis source authority cannot be verified: ${String(error)}. No child was started.` };
 				}
 			}
 		}
@@ -1163,11 +1280,15 @@ export default function (pi: ExtensionAPI): void {
 		// Cleanup is bookkeeping, not runtime execution; unsupported roots must
 		// not throw here or retain a previously supported session's binding memo.
 		const identity = sessionIdentity(root, ctx), key = keyBySession.get(identity);
+		const materialRoot = authorityBySession.get(identity)?.sourceRoot ?? sourceRootBySession.get(identity) ?? root;
 		keyBySession.delete(identity);
 		taskBySession.delete(identity);
+		sourceRootBySession.delete(identity);
+		authorityBySession.delete(identity); bindingBySession.delete(identity); authorityErrors.delete(identity);
 		roleBySession.delete(identity);
 		if (key) {
-			const cacheKey = `${identity}::${key}`;
+			const cacheKey = `${identity}::${materialRoot}::${key}`;
+			contextCache.delete(cacheKeyFor(materialRoot, key)); taskCache.delete(cacheKeyFor(materialRoot, key)); taskErrors.delete(cacheKeyFor(materialRoot, key));
 			sectionCache.delete(cacheKey);
 			lastStateSent.delete(cacheKey);
 		}
