@@ -487,3 +487,25 @@ viewer 区分归档隐藏与真正缺失；归档父子不展示，合法引用�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 18: 明确研究产物与任务证据边界
+<!-- trellis-session: v=2 fp=f9466e7a9a35cb63 -->
+
+**Date**: 2026-10-15
+**Task**: 明确研究产物与任务证据边界
+**Branch**: `main`
+
+### Summary
+
+完成 workflow、角色与检查流程的材料分类：research 仅研究代理结果，报告与验证证据归 evidence；collect 收紧 research Markdown，保留历史读取兼容。Python20/20、聚焦126/126、最终全量446/446；独立审查问题修复并复核通过。任务已验收归档；未清理历史任务，未安装、重载或推送，保留其他任务及部署资源未提交改动。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `60a1c04` | fix(trellis): reserve research for research-agent findings |
+
+### Status
+
+[OK] **Completed**
