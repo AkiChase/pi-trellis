@@ -603,3 +603,29 @@ viewer 区分归档隐藏与真正缺失；归档父子不展示，合法引用�
 ### Next Steps
 
 - 只读讨论pi-trellis证据留存策略，尚未授权修改工作流或创建新任务
+
+
+## Session 22: Worktree authority recovery completed
+<!-- trellis-session: v=2 fp=9bc577d2e8d54e7d -->
+
+**Date**: 2026-10-15
+**Task**: Worktree authority recovery completed
+**Branch**: `main`
+
+### Summary
+
+完成source-authority零副本prepare、路径派发与双根子会话、直接维护角色与技能文档；逐stage独立审查/主复测，最终全量486/486。tmux真实离线managed implement源read/目标cwd/缺失拒绝/退出通过；自主模型、分页及其他角色/resume/stop未覆盖。用户接受并授权证据合并为单一report.md及归档。原始产物移出仓库；保留并行初始化诊断/配置/workflow，不push/install/sync/reload。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9ec131f` | feat(worktree): use source-authoritative role materials |
+| `176619d` | feat(dispatch): route task roles to source authority paths |
+| `3d12127` | refactor(trellis): align roles and workflow with source authority |
+| `0f8624c` | docs(task): consolidate worktree recovery completion report |
+| `5b2a8b2` | chore(task): archive 10-15-worktree-material-recovery |
+
+### Status
+
+[OK] **Completed**
