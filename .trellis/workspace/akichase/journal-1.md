@@ -660,3 +660,25 @@ viewer 区分归档隐藏与真正缺失；归档父子不展示，合法引用�
 ### Status
 
 [OK] **Completed**
+
+
+## Session 24: Check read-only deployment diagnostics
+<!-- trellis-session: v=2 fp=0dafbf718034c704 -->
+
+**Date**: 2026-10-15
+**Task**: Check read-only deployment diagnostics
+**Branch**: `main`
+
+### Summary
+
+将 /trellis-init 菜单 Check 替换为有效的只读诊断（S1 静态 3 提交 + S2 有界运行探测），并按用户范围纠正删除当前会话/任务与 worktree 检查（S3 取消）。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `88b1aaa` | docs(task): add S1 implementation summary |
+
+### Status
+
+[OK] **Completed**
