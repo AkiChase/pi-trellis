@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-2026-10-15 用户明确批准激活并在当前工作区执行。`task.py start ... --allow-empty-context` 成功，session `pi-29d97c9035ea`，任务 in_progress／branch main／unbound；未创建 worktree。本次运行时门禁已允许正常 start，无部署修复／reload。S1 已提交，S2 最终候选通过主会话真实组合探针、全量回归与独立反证复查，准备阶段提交。
+2026-10-15 用户明确批准激活并在当前工作区执行。`task.py start ... --allow-empty-context` 成功，session `pi-29d97c9035ea`，任务 in_progress／branch main／unbound；未创建 worktree。本次运行时门禁已允许正常 start，无部署修复／reload。S1 已提交 `56e8b9c`；S2 已提交 `94e54cf`，均仅范围内文件。源码实施与计划内验证完成，任务保持 in_progress 待用户验收／收尾；未安装、同步、reload、push或归档。
 
 ## 执行与审查
 
@@ -57,6 +57,7 @@ S1 已提交 `56e8b9c`（23 文件，代码／测试／资源／规范／任务�
 - 实现代理最终版本三轮probe自然exit0、CLI八负例／syntax检查通过（日志 `/tmp/pi-bg/bbj9ekni7.log`、`b31uy1qug.log`）。
 - 原生 provider 本机未找到，NOT_RUN，不安装；monitor仅双源拒绝，未测成功流／WebSocket，不扩大为已验。
 - 主会话最终全量450/450、Python20/20自然退出通过（`/tmp/pi-bg/bptgfns74.log`）；syntax和六CLI负例通过（`bnnv9ue5n.log`）。独立S2 reviewer `cd4a62da-3981-4bc` 初审发现 P2：成功wait后output掩盖wait未消费。主会话将output移到通知控制后，并添加已完成run的预先取消wait触发非消费reconsider，区分真正消费和只取消通知timer。修复后主probe `bbyra9x56` 自然exit0；最终独立反证复查通过：省略首次wait消费的扰动确实执行（sourceLoads=1/executions=1），在通知断言 `7 !== 6` 自然exit1，非加载／wrapper错误，日志 `bwgn6sjnn.log`。预先取消retrieval wait不消费也不停止目标的源码语义已复核，P2关闭，无新确认缺陷。
+- S2 阶段提交 `94e54cf`：probe、testing规范、实现JSONL与PRD／执行记录共五文件。首次提交因并行 index.lock 失败；只读核查后锁已自行释放，未删锁，重试成功。暂存区已清空，五项既有部署残留和其他任务未纳入。
 - 主会话补充既有 testing spec 的 `--preset` 用法与证据界限；不新增docs测试教程或修改邻仓产品。
 
 ## 测试命令（执行结果见上述阶段记录）
