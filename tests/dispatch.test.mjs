@@ -89,10 +89,10 @@ test('dispatch old call shape/optional empty task works; stop requires no agent/
  const first=await f.call({action:'',task:'',agent:'trellis-implement',prompt:'old shape'});assert.equal(first.details.agentId,'agent-1');
  let stopped;
  f.bus.on('subagents:rpc:stop',params=>{stopped=params;f.bus.emit('subagents:rpc:stop:reply:'+params.requestId,{success:true});});
- for(const input of [{action:'stop',agent:'trellis-implement'},{action:'stop',prompt:'ignored prose'}]){
+ for(const input of [{action:'stop',agent:'trellis-implement'},{action:'stop',prompt:'ignored prose'},{action:'stop',agent:''},{action:'stop',prompt:''},{action:'stop',task:'',agent:'',prompt:''}]){
   stopped=undefined;await assert.rejects(f.call(input),/dispatch-only/);assert.equal(stopped,undefined);assert.equal(readExecution(c.binding).state,'running');
  }
- const result=await f.call({action:'stop',task:'',agent:'',prompt:''});assert.equal(stopped.agentId,'agent-1');assert.equal(result.details.agentId,'agent-1');assert.equal(readExecution(c.binding).state,'running');
+ const result=await f.call({action:'stop',task:''});assert.equal(stopped.agentId,'agent-1');assert.equal(result.details.agentId,'agent-1');assert.equal(readExecution(c.binding).state,'running');
  await assert.rejects(f.dispatch(),/running\/unknown/);
  f.bus.emit('subagents:completed',{id:'agent-1'});assert.equal(readExecution(c.binding).state,'completed');
  for(const input of [{agent:'trellis-implement',prompt:''},{agent:'trellis-implement',prompt:'   '},{action:'invalid'},{task:' ',agent:'trellis-implement',prompt:'work'},{agent:''}])await assert.rejects(f.call(input));

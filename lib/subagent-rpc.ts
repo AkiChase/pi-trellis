@@ -6,11 +6,39 @@ import { acquireBindingLock, sameIdentity } from "./bindings.ts";
 import { activeExecution, processToken, readExecution, writeExecution, worktreeSnapshot, type ExecutionRecord } from "./executions.ts";
 import { queryWorktree, requireMaterials, type MaterialRole } from "./worktree-query.ts";
 import { canonicalPath, validateText } from "./config.ts";
-import { assembleDispatchPrompt, isTrellisRole, readTaskRecord } from "./task-context.ts";
+import { assembleDispatchPrompt, isTrellisRole, readTaskRecord, type TrellisRole } from "./task-context.ts";
 import { readSourceExecution, sourceActive, sourceExecutionFile, sourceExecutionForAgent, writeSourceExecution, type SourceExecution } from "./source-executions.ts";
 
 import { adapterConfigured } from "./adapter-resources.ts";
 import { verifyRuntime } from "./initialization/engine.ts";
+
+export type DispatchParams =
+	| { action: "dispatch"; agent: TrellisRole; prompt: string; task?: string }
+	| { action: "stop"; task?: string };
+
+/** Validate direct callers as well as host-normalized arguments before any query or RPC. */
+export function validateDispatchParams(input: unknown): DispatchParams {
+	if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("trellis_dispatch input must be an object with action, agent, task and prompt fields only");
+	const args = input as Record<string, unknown>;
+	for (const key of Reflect.ownKeys(args)) {
+		if (typeof key !== "string" || !["action", "agent", "task", "prompt"].includes(key)) throw new Error(`Unknown trellis_dispatch field ${String(key)}; remove it (allowed: action, agent, task, prompt)`);
+	}
+	const action = args.action === "" || args.action === undefined ? "dispatch" : args.action;
+	if (action !== "dispatch" && action !== "stop") throw new Error("action must be dispatch or stop; omit it or use an empty string for dispatch");
+	if (action === "stop") {
+		for (const key of ["agent", "prompt"]) {
+			if (Object.hasOwn(args, key)) throw new Error(`${key} is a dispatch-only field; remove it for stop (stop accepts action and task only)`);
+		}
+	}
+	const task = args.task === "" ? undefined : args.task;
+	if (task !== undefined) validateText(task, "task");
+	const optionalTask = task === undefined ? {} : { task };
+	if (action === "stop") return { action, ...optionalTask };
+	if (!isTrellisRole(args.agent)) throw new Error("agent must be trellis-implement, trellis-check or trellis-research for dispatch");
+	// Prompt is prose, not a CLI identifier: preserve newlines/tabs and spacing.
+	if (typeof args.prompt !== "string" || !args.prompt.trim() || args.prompt.includes("\0")) throw new Error("prompt must be non-empty text without NUL for dispatch");
+	return { action, agent: args.agent, prompt: args.prompt, ...optionalTask };
+}
 
 interface RpcReply { success: boolean; data?: { id?: string; version?: number }; error?: string }
 export function rpc(pi: ExtensionAPI, method: string, payload: Record<string, unknown>, timeout = 15000): Promise<RpcReply> {
@@ -88,21 +116,12 @@ export function registerDispatchTool(pi: ExtensionAPI, activeTask: (ctx: Extensi
 	pi.registerTool({
 		name: "trellis_dispatch", label: "Trellis Dispatch",
 		description: "Dispatch an approved Trellis role in the shared source directory when unbound, or its prepared managed worktree when bound. Never creates worktrees or falls back from a binding. Returns a real agent ID. Stop requests provider cancellation and retains occupancy until terminal evidence. Main coordinates shared-directory edits and phases. Use task_manage status/output/wait with the returned agent ID as task_id (optional exact run_id); successful final retrieval consumes that run. Use subagent_message with agent_id/message to steer a running agent.",
-		parameters: { type: "object", properties: { action: { type: "string", enum: ["dispatch", "stop", ""] }, agent: { type: "string", enum: ["trellis-implement", "trellis-check", "trellis-research", ""] }, task: { type: "string" }, prompt: { type: "string" } }, anyOf: [{ properties: { action: { const: "stop" } }, required: ["action"] }, { properties: { action: { enum: ["dispatch", ""] } }, required: ["agent", "prompt"] }], additionalProperties: false } as unknown as Parameters<ExtensionAPI["registerTool"]>[0]["parameters"],
+		parameters: { type: "object", properties: { action: { type: "string", enum: ["dispatch", "stop", ""], description: "dispatch (default when omitted or empty) or stop an existing execution" }, agent: { type: "string", enum: ["trellis-implement", "trellis-check", "trellis-research", ""], description: "Required non-empty Trellis role for dispatch; omit entirely for stop" }, task: { type: "string", description: "Optional approved task reference; omitted or empty uses the local/active task" }, prompt: { type: "string", description: "Required non-empty dispatch instructions; newlines/tabs are preserved, NUL is forbidden; omit entirely for stop" } }, additionalProperties: false } as unknown as Parameters<ExtensionAPI["registerTool"]>[0]["parameters"],
 		executionMode: "sequential",
 		async execute(_id, input, signal, _update, ctx) {
 			if (shuttingDown) throw new Error("Host session shut down; reload before execution");
-			const args = { ...(input as { action?: string; agent?: string; task?: string; prompt?: string }) };
-			const action = args.action === "" || args.action === undefined ? "dispatch" : args.action;
-			if (!["dispatch", "stop"].includes(action)) throw new Error("Unknown execution action");
-			for (const key of ["task", "agent", "prompt"] as const) if (args[key] === "") args[key] = undefined;
-			if (args.task !== undefined) validateText(args.task, "task");
-			if (action === "stop" && (args.agent !== undefined || args.prompt !== undefined)) throw new Error("Stop accepts task only; agent/prompt are dispatch-only fields");
-			if (action === "dispatch") {
-				if (!isTrellisRole(args.agent)) throw new Error("Unknown Trellis role");
-				// Prompt is prose, not a CLI identifier: preserve newlines/tabs.
-				if (typeof args.prompt !== "string" || !args.prompt.trim() || args.prompt.includes("\0")) throw new Error("prompt must be non-empty text without NUL");
-			}
+			const args = validateDispatchParams(input);
+			const action = args.action;
 			const { source, local } = await queryWorktree(ctx.cwd, undefined, false, signal);
 			if (canonicalPath(process.cwd()) !== source.root || canonicalPath(ctx.cwd) !== source.root) throw new Error("Dispatch from a Pi host opened at the source project root; provider role discovery/config must not silently fall back to generic agents");
 			if (!verifyRuntime(source.root)) throw new Error("Supported Pi Trellis runtime manifest required before dispatch; no child was started");
