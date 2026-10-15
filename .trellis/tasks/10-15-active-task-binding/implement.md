@@ -20,7 +20,7 @@
 ## S3 — 全量与验收收尾
 
 - [ ] `env -u TRELLIS_CONTEXT_ID npm test`、`python3 -B -m unittest discover -s tests/python -p 'test_*.py'`，使用现有 peer/host，缺失不安装。
-- [ ] 隔离临时 agent/project 的真实 SDK/CLI模拟，证明多 session 共享绑定、session 恢复、start/continue 发现变化；不联网模型/个人资源。
+- [x] 隔离临时 agent/project 的真实 SDK/CLI模拟，证明多 session 共享绑定、session 恢复、start/continue 发现变化；不联网模型/个人资源。
 - [ ] JSONL/path/provenance/links/`git diff --check`/实际 diff 核验，最小最终总结与 PRD A1–A6逐项记录。
 - [ ] 提交验证完成的最终修正；最终通过后按既有用户授权 finish-work：archive、清自身绑定、journal及适用的 scoped commits。配置禁自动提交时遵守配置。不 push。
 
@@ -31,6 +31,12 @@ Node v24.14.1。首次 focused Node 因本仓缺 pi-tui peer 在加载前失败�
 ## S2 检查记录
 
 删除 continue，start 合并恢复路由；create 提示同步为 start/active，因此 `common/task_store.py` adapted hash/releaseId 一并更新。当前技能9个、资源35个，真实SDK过滤排除一个为8。focused五文件104/104 exit0，Python32/32 exit0；增加删除技能不进入package closure的负向断言后重跑仍104/104。当前用户文档/模板/skills中无continue旧入口。独立 review无阻塞，特别确认未混入并行manifest/workflow provenance hunk。项目 `.trellis/workflow.md` 与 manifest 的既有并行修改未动，新合同仅更新包workflow模板和本项目spec。
+
+## S3 检查记录
+
+S2提交 `2677f87`。新增 `tests/active-session-host.test.mjs` 使用 Pi1.2真实SDK与public runToolCall（真实tool_call/tool_result），持久会话A关闭→创建B绑定同任务→open恢复A→切A任务；严格验证dir/id/source/state/stale、session文件路径、他人pointer/task/runtime/settings字节保持。关闭为idle SDK dispose，不是运行中取消或真实CLI `/resume`。无模型网络/个人凭据。初稿通过1/1；独立审查指出弱regex/未验证切换等证据缺口，已改为精确断言并补字节保持，最终fixture1/1 exit0，独立复核确认缺口关闭、无新阻塞。
+
+共享全量547/549，两失败发生于并行 `lib/subagent-rpc.ts` 和新增 `tests/dispatch-params.test.mjs`（stop参数合同/ESM require），本任务未修改。隔离2677f87＋新test完整运行548/549，唯一已有viewer unpreloaded SDK子进程SIGKILL。该单项在隔离/tmp、系统TMPDIR、加入现有dependency symlink、原仓均重复SIGKILL；未定位原因，不宣称是任务实现缺陷或纯环境问题。保持失败，最终检查未全过，因此不执行用户有条件授权的archive/journal。原始日志和快照仓外；排除该项的剩余覆盖运行结果单独记录，不称完整PASS。
 
 ## 已知限制与回滚
 
