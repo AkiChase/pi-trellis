@@ -1,0 +1,319 @@
+✔ adopts legacy with exact runtime, preserved documents/modes, no backups/deletion/onboarding (802.182375ms)
+✔ missing identity adopts as supported and interrupted manifest-less adoption can be reconfirmed (951.532541ms)
+✔ HOME is refused and the extension stops blocking runtime commands after adoption (567.806875ms)
+✔ reject .trellis/.runtime/init.lock before writes (97.202458ms)
+✔ reject .trellis/.runtime/init-operation.json before writes (75.213042ms)
+✔ reject .trellis/.pi-trellis.json before writes (83.75325ms)
+✔ reject .trellis/.runtime/pi-trellis/binding.json before writes (14.721625ms)
+✔ reject AGENTS.md before writes (131.3305ms)
+✔ preserved provenance records the real project Git revision when HEAD exists (645.744792ms)
+✔ an existing root file without a managed block is appended, not replaced (614.689ms)
+✔ forged/stale plans and symlink targets reject without modifying legacy runtime (639.375375ms)
+✔ concurrent preserved-template edit during publication leaves manifest unpublished (297.342875ms)
+✔ counted adoption confirmation retains scope/preservation/destructive warnings without a full-list Check promise (154.704042ms)
+✔ native command accepts no arguments; legacy arguments and noUI are static migration/interaction guides (10.738791ms)
+✔ cancel before publish leaves no files ({"selections":[]}) (4.04225ms)
+✔ cancel before publish leaves no files ({"selections":["Cancel"]}) (8.071875ms)
+✔ cancel before publish leaves no files ({"selections":["Initialize project","Cancel"]}) (101.736375ms)
+✔ cancel before publish leaves no files ({"selections":["Initialize project","Enter a different username"],"inputs":[]}) (96.3925ms)
+✔ cancel before publish leaves no files ({"selections":["Initialize project","Enter a different username"],"inputs":["Dev"],"confirm":false}) (420.598542ms)
+✔ cancel before publish leaves no files ({"selections":["Initialize project"]}) (94.29225ms)
+✔ custom input retries validation; English summary and actual persistent identity; reload is terminal (1527.162708ms)
+✔ username uses native menu/input without flags; ready Check preserves existing identity (1458.708666ms)
+✔ historical identity menu/onboarding preserves bytes and runtime; status/cancel route is read-only (2472.950416ms)
+✔ unsafe history/symlinks are skipped; bounded candidate list labels Git separately and no fake prefill (1009.597208ms)
+✔ unknown runtime and interrupted divergence notify error without writes or claimed success (893.775875ms)
+✔ Unicode/spaces/quotes username is entered natively with no argument completion owner (1057.42775ms)
+✔ Apply template uses scope selection and one action-list confirmation, cancel is read-only (1203.765375ms)
+✔ Apply template is available without developer identity and hidden for unhealthy runtime (954.5695ms)
+✔ update restores missing resources with confirmation and status contains per-file health (1205.559959ms)
+✔ Adopt native menu confirms once, cancels read-only, then reloads with supported runtime (723.42625ms)
+✔ dialog core warnings stay bounded before path examples; Check explicitly describes resource-only scope (1067.491584ms)
+✔ init from Git subdirectory targets nearest repository root, not cwd (1483.8235ms)
+✔ existing project template action from subdirectory uses discovered root (1676.467ms)
+✔ large init/identity plan summaries keep fixed warnings and category counts before bounded examples (0.3325ms)
+✔ menu snapshot cannot authorize Initialize after project state changes during native selection (81.7305ms)
+✖ large safe update confirmation retains no-backup/preservation warnings before path examples (906.265458ms)
+✔ legacy arguments and noUI perform zero filesystem reads or subprocesses even with invalid cwd (4.899708ms)
+✔ fresh: static native RPC menu always exposes Check/Help/Cancel without Python/Git or writes (32.917708ms)
+✔ manifest-less: static native RPC menu always exposes Check/Help/Cancel without Python/Git or writes (15.693334ms)
+✔ ready: static native RPC menu always exposes Check/Help/Cancel without Python/Git or writes (1164.674792ms)
+✔ supported: static native RPC menu always exposes Check/Help/Cancel without Python/Git or writes (1183.777208ms)
+✔ missing runtime: static native RPC menu always exposes Check/Help/Cancel without Python/Git or writes (1183.674667ms)
+✔ modified runtime: static native RPC menu always exposes Check/Help/Cancel without Python/Git or writes (1232.046083ms)
+✔ empty manifest: static native RPC menu always exposes Check/Help/Cancel without Python/Git or writes (10.475875ms)
+✔ malformed manifest: static native RPC menu always exposes Check/Help/Cancel without Python/Git or writes (12.178ms)
+✔ invalid identity: static native RPC menu always exposes Check/Help/Cancel without Python/Git or writes (1193.831208ms)
+✔ incomplete: static native RPC menu always exposes Check/Help/Cancel without Python/Git or writes (385.20025ms)
+✔ invalid operation: static native RPC menu always exposes Check/Help/Cancel without Python/Git or writes (7.784416ms)
+✔ external lock: static native RPC menu always exposes Check/Help/Cancel without Python/Git or writes (3.628458ms)
+✔ managed target: static native RPC menu always exposes Check/Help/Cancel without Python/Git or writes (2.247542ms)
+✔ symlink marker: static native RPC menu always exposes Check/Help/Cancel without Python/Git or writes (2.135333ms)
+✔ unsafe workspace: static native RPC menu always exposes Check/Help/Cancel without Python/Git or writes (812.404125ms)
+✔ HOME: static native RPC menu always exposes Check/Help/Cancel without Python/Git or writes (0.897625ms)
+✔ ready: Check retains failures and scope, preserves bytes and never refreshes/reloads/starts a model turn (893.650209ms)
+✔ manifest-less: Check retains failures and scope, preserves bytes and never refreshes/reloads/starts a model turn (97.867667ms)
+✔ empty manifest: Check retains failures and scope, preserves bytes and never refreshes/reloads/starts a model turn (5.351917ms)
+✔ incomplete: Check retains failures and scope, preserves bytes and never refreshes/reloads/starts a model turn (354.148542ms)
+✔ managed target: Check retains failures and scope, preserves bytes and never refreshes/reloads/starts a model turn (1.64875ms)
+✔ symlink marker: Check retains failures and scope, preserves bytes and never refreshes/reloads/starts a model turn (0.713583ms)
+✔ Check adoption probe failure remains visible rather than reporting healthy or retrying/writing (6.741208ms)
+✖ fresh inspect and complete plan are read-only; apply publishes exact release/modes and canonical task without binding/hooks/Git (1315.642375ms)
+✔ supported clone restores historical workspace and creates join without rewriting runtime or user content; repeat no-op (3808.030375ms)
+✔ unsafe/Unicode username validation and upstream-compatible slug do not slug identity (0.703417ms)
+✔ onboarding slug collisions and malformed/half existing tasks conflict without overwrite (2245.980584ms)
+✔ root blocks/attributes preserve bytes outside owned blocks and modes; exact blocks are reused (810.416041ms)
+✔ unknown/customized root or agent collision AGENTS.md: no writes (75.952458ms)
+✔ unknown/customized root or agent collision AGENTS.md: no writes (74.222291ms)
+✔ unknown/customized root or agent collision .gitignore: no writes (76.600375ms)
+✔ unknown/customized root or agent collision .gitattributes: no writes (74.878959ms)
+✔ unknown/customized root or agent collision .gitattributes: no writes (77.31275ms)
+✔ unknown/customized root or agent collision .pi/agents/trellis-check.md: no writes (78.052417ms)
+✔ symlink/dangling managed target .trellis is rejected without victim writes (2.31375ms)
+✔ symlink/dangling managed target .pi is rejected without victim writes (79.980625ms)
+✔ symlink/dangling managed target .pi/agents is rejected without victim writes (74.685791ms)
+✔ symlink/dangling managed target AGENTS.md is rejected without victim writes (77.785375ms)
+✔ symlink/dangling managed target .gitignore is rejected without victim writes (78.253917ms)
+✔ symlink/dangling managed target .gitattributes is rejected without victim writes (78.773417ms)
+✔ HOME and unknown/incompatible runtime are read-only; supported script hash drift prevents identity writes (1188.3285ms)
+✔ interrupted publication preserves outputs and resumes only identical recorded operation; divergent edits never overwritten (2192.73475ms)
+✔ manifest publication interruption is still incomplete and retryable; corrupted operation and lock are conservative (1893.103958ms)
+✔ concurrent file changes after preview conflict before lock or writes; identity recovery rechecks runtime (2305.721042ms)
+✔ new workflow retains real Python phase parser steps and extension state syntax; full lifecycle interoperates (2527.611334ms)
+✔ task_error stays distinct from no_task and command tools scope/invalidate without touching WebSocket monitors (1649.85675ms)
+✔ unsupported deployed release injects no state and blocks command/role execution while WebSocket/non-Trellis reads are untouched (693.485542ms)
+✔ malformed developer identity and tampered operation ownership cannot be mistaken for ready or publish arbitrary files (1512.261375ms)
+✔ fresh init works with no global trellis in PATH and sanitized Git suggestion environment (996.96275ms)
+✔ duplicate managed blocks conflict, exact preexisting blocks preserve surrounding bytes, task and workspace symlinks conflict (1495.241ms)
+✔ Trellis discovery stops at Git directory/file boundary and checks boundary Trellis first (7.843334ms)
+✔ invalid file Trellis marker cannot inherit ancestor (1.875625ms)
+✔ invalid dangling symlink Trellis marker cannot inherit ancestor (2.403166ms)
+✔ factory and fresh startup register only init, no RPC subscription, Python, state or persistent display (2.002208ms)
+✔ supported startup registers viewer command and dispatch tool once; invalidation clears UI without state injection (1460.669292ms)
+✔ registered runner refuses another project prompt, display and dispatch (2565.3615ms)
+✔ runtime invalidation clears stale display on tool_result before agent_end (1441.45825ms)
+✔ runtime invalidation clears stale display on viewer before agent_end (1025.015875ms)
+✔ runtime invalidation clears stale display on dispatch before agent_end (1095.034834ms)
+✔ runtime invalidation clears stale display on tool_call before agent_end (965.632458ms)
+✔ removed project marker blocks Trellis children and runtime commands but not ordinary reads (946.165542ms)
+✔ unreadable discovery never inherits parent or disrupts ordinary read/search; Trellis execution is blocked (758.467042ms)
+✔ supported clone without developer identity still activates commands and no-task count (979.179667ms)
+✔ fresh runner cannot activate another project on session replacement without reload (966.225625ms)
+✔ viewer shows English identity, original title, explicit metadata and descending order hint (13.435584ms)
+✔ current task promotes its complete ancestor tree and refresh preserves selection identity (24.480791ms)
+✔ list columns align statuses, Unicode names and titles with independent ellipses (83.155542ms)
+✔ list layout stays stable across scrolling and recomputes on resize and refresh (85.104042ms)
+✔ long directory identifiers precede titles and remain fully scrollable in detail (8.237709ms)
+✔ real host Markdown renders required syntax and readable rich-content fallbacks (46.028333ms)
+✔ full-width native overlay hides transcript remnants and stays within resized terminal rows (4.703417ms)
+✔ image fallback leaves fenced code untouched and preserves alt text and source (10.926125ms)
+✔ image fallback preserves native tables, styled lists/headings and shared reference links (2.17675ms)
+✔ valid bounded large Markdown and overview remain scrollable without argument-stack overflow (4610.44675ms)
+✔ host Markdown parser errors show scrollable original source and recover on refresh (5.7455ms)
+✔ long list navigation, Escape return and close preserve selection and viewport (53.53075ms)
+✔ detail scrolling keeps fixed header/footer, full long title and per-section offsets (20.333083ms)
+✔ refresh rereads title, current identity and documents; removal does not jump to a different task (68.8655ms)
+✔ refresh preserves canonical identity through alias changes and clamps after deletion (34.716375ms)
+✔ empty and invalid stores differ, and every bounded diagnostic is scrollable (61.968625ms)
+✔ narrow Unicode/control widths, resize clamping and actual host theme invalidation (85.575958ms)
+✔ registered command uses command-time root and disk-only own session without a runtime deployment (18.896834ms)
+✔ missing, malformed, escaping or unreadable current pointer never blocks general browsing (7.9815ms)
+✔ current task FIFO record cannot block command open or refresh (12.001625ms)
+✔ actual host custom overlay lifecycle restores focus and invalidates active Markdown theme in both TUI modes (20.096583ms)
+✔ non-TUI guards, missing project and usage return English explanations without custom UI (3.273125ms)
+✔ browser navigation/refresh/close preserve all files, session pointers, Git index and invoke no model/lifecycle (135.495916ms)
+✖ absent manifest: startup never executes runtime or binds child; lifecycle commands blocked, reads allowed (11.625208ms)
+✖ mismatched bytes: startup never executes runtime or binds child; lifecycle commands blocked, reads allowed (1176.2085ms)
+✖ corrupt manifest: startup never executes runtime or binds child; lifecycle commands blocked, reads allowed (1107.696792ms)
+✖ incomplete manifest: startup never executes runtime or binds child; lifecycle commands blocked, reads allowed (1127.643667ms)
+✖ incomplete operation: startup never executes runtime or binds child; lifecycle commands blocked, reads allowed (1183.71525ms)
+✔ fresh project has usable init help without runtime; supported full runtime still scopes commands and loads task (1218.173667ms)
+ℹ tests 130
+ℹ suites 0
+ℹ pass 123
+ℹ fail 7
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 26180.196042
+
+✖ failing tests:
+
+test at tests/init-command.test.mjs:135:1
+✖ large safe update confirmation retains no-backup/preservation warnings before path examples (906.265458ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Restore: 35/. Input:
+  
+  'Project: /private/var/folders/fx/bn7t1rq16xn7_66t233x_s1h0000gn/T/pi-init-command-LugYPb\n' +
+    'Operation: Update project resources\n' +
+    'Scope: manifest-owned resources and unchanged package templates\n' +
+    'Restore: 36\n' +
+    'Identity, tasks, journals and user-modified documents remain unchanged.\n' +
+    'Only unmodified owned resources are replaced; missing resources are restored. No backups or automatic rollback.\n' +
+    'Partial files are preserved on failure. No active task selection, hooks, model turn, installation or Git actions.\n' +
+    'Restore: .trellis/scripts/add_session.py\n' +
+    'Restore: .trellis/scripts/common/__init__.py\n' +
+    'Restore: .trellis/scripts/common/active_task.py\n' +
+    'Restore: .trellis/scripts/common/config.py\n' +
+    'Restore: .trellis/scripts/common/developer.py\n' +
+    'Restore: .trellis/scripts/common/git.py\n' +
+    '… 30 additional path examples omitted.'
+  
+      at TestContext.<anonymous> (file:///Users/jyxc-dz-0101322/tools/pi-trellis/tests/init-command.test.mjs:140:107)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Project: /private/var/folders/fx/bn7t1rq16xn7_66t233x_s1h0000gn/T/pi-init-command-LugYPb\nOperation: Update project resources\nScope: manifest-owned resources and unchanged package templates\nRestore: 36\nIdentity, tasks, journals and user-modified documents remain unchanged.\nOnly unmodified owned resources are replaced; missing resources are restored. No backups or automatic rollback.\nPartial files are preserved on failure. No active task selection, hooks, model turn, installation or Git actions.\nRestore: .trellis/scripts/add_session.py\nRestore: .trellis/scripts/common/__init__.py\nRestore: .trellis/scripts/common/active_task.py\nRestore: .trellis/scripts/common/config.py\nRestore: .trellis/scripts/common/developer.py\nRestore: .trellis/scripts/common/git.py\n… 30 additional path examples omitted.',
+    expected: /Restore: 35/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at tests/initialization.test.mjs:18:1
+✖ fresh inspect and complete plan are read-only; apply publishes exact release/modes and canonical task without binding/hooks/Git (1315.642375ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  36 !== 35
+  
+      at TestContext.<anonymous> (file:///Users/jyxc-dz-0101322/tools/pi-trellis/tests/initialization.test.mjs:20:153)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.start (node:internal/test_runner/test:1015:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:358:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 36,
+    expected: 35,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/unsupported-runtime.test.mjs:22:2
+✖ absent manifest: startup never executes runtime or binds child; lifecycle commands blocked, reads allowed (11.625208ms)
+  AssertionError [ERR_ASSERTION]: unsupported project must not inject workflow or task-state
+  + actual - expected
+  
+  + [
+  +   {
+  +     content: 'Status: task_error\n' +
+  +       'Trellis context diagnostic: Trellis runtime execution is blocked: Error: Unsupported Trellis runtime: supported project manifest is missing. Run /trellis-init and choose Check to inspect this project; explicit initialization or reconciliation is required (no automatic migration).',
+  +     customType: 'trellis-task-state',
+  +     display: false
+  +   }
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/jyxc-dz-0101322/tools/pi-trellis/tests/unsupported-runtime.test.mjs:43:10)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ { customType: 'trellis-task-state', content: 'Status: task_error\nTrellis context diagnostic: Trellis runtime execution is blocked: Error: Unsupported Trellis runtime: supported project manifest is missing. Run /trellis-init and choose Check to inspect this project; explicit initialization or reconciliation is required (no automatic migration).', display: false } ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/unsupported-runtime.test.mjs:22:2
+✖ mismatched bytes: startup never executes runtime or binds child; lifecycle commands blocked, reads allowed (1176.2085ms)
+  AssertionError [ERR_ASSERTION]: unsupported project must not inject workflow or task-state
+  + actual - expected
+  
+  + [
+  +   {
+  +     content: 'Status: task_error\n' +
+  +       'Trellis context diagnostic: Trellis runtime execution is blocked: Error: Project runtime is missing or modified: .trellis/scripts/common/active_task.py. Run /trellis-init and choose Check to inspect this project; explicit initialization or reconciliation is required (no automatic migration).',
+  +     customType: 'trellis-task-state',
+  +     display: false
+  +   }
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/jyxc-dz-0101322/tools/pi-trellis/tests/unsupported-runtime.test.mjs:43:10)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ { customType: 'trellis-task-state', content: 'Status: task_error\nTrellis context diagnostic: Trellis runtime execution is blocked: Error: Project runtime is missing or modified: .trellis/scripts/common/active_task.py. Run /trellis-init and choose Check to inspect this project; explicit initialization or reconciliation is required (no automatic migration).', display: false } ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/unsupported-runtime.test.mjs:22:2
+✖ corrupt manifest: startup never executes runtime or binds child; lifecycle commands blocked, reads allowed (1107.696792ms)
+  AssertionError [ERR_ASSERTION]: unsupported project must not inject workflow or task-state
+  + actual - expected
+  
+  + [
+  +   {
+  +     content: 'Status: task_error\n' +
+  +       "Trellis context diagnostic: Trellis runtime execution is blocked: SyntaxError: Expected property name or '}' in JSON at position 1 (line 1 column 2). Run /trellis-init and choose Check to inspect this project; explicit initialization or reconciliation is required (no automatic migration).",
+  +     customType: 'trellis-task-state',
+  +     display: false
+  +   }
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/jyxc-dz-0101322/tools/pi-trellis/tests/unsupported-runtime.test.mjs:43:10)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ { customType: 'trellis-task-state', content: "Status: task_error\nTrellis context diagnostic: Trellis runtime execution is blocked: SyntaxError: Expected property name or '}' in JSON at position 1 (line 1 column 2). Run /trellis-init and choose Check to inspect this project; explicit initialization or reconciliation is required (no automatic migration).", display: false } ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/unsupported-runtime.test.mjs:22:2
+✖ incomplete manifest: startup never executes runtime or binds child; lifecycle commands blocked, reads allowed (1127.643667ms)
+  AssertionError [ERR_ASSERTION]: unsupported project must not inject workflow or task-state
+  + actual - expected
+  
+  + [
+  +   {
+  +     content: 'Status: task_error\n' +
+  +       'Trellis context diagnostic: Trellis runtime execution is blocked: Error: Incomplete or unknown managed resource entries. Run /trellis-init and choose Check to inspect this project; explicit initialization or reconciliation is required (no automatic migration).',
+  +     customType: 'trellis-task-state',
+  +     display: false
+  +   }
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/jyxc-dz-0101322/tools/pi-trellis/tests/unsupported-runtime.test.mjs:43:10)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ { customType: 'trellis-task-state', content: 'Status: task_error\nTrellis context diagnostic: Trellis runtime execution is blocked: Error: Incomplete or unknown managed resource entries. Run /trellis-init and choose Check to inspect this project; explicit initialization or reconciliation is required (no automatic migration).', display: false } ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/unsupported-runtime.test.mjs:22:2
+✖ incomplete operation: startup never executes runtime or binds child; lifecycle commands blocked, reads allowed (1183.71525ms)
+  AssertionError [ERR_ASSERTION]: unsupported project must not inject workflow or task-state
+  + actual - expected
+  
+  + [
+  +   {
+  +     content: 'Status: task_error\n' +
+  +       'Trellis context diagnostic: Trellis runtime execution is blocked: Error: Initialization operation is incomplete or invalid; runtime execution is blocked. Run /trellis-init and choose Check to inspect this project; explicit initialization or reconciliation is required (no automatic migration).',
+  +     customType: 'trellis-task-state',
+  +     display: false
+  +   }
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/jyxc-dz-0101322/tools/pi-trellis/tests/unsupported-runtime.test.mjs:43:10)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ { customType: 'trellis-task-state', content: 'Status: task_error\nTrellis context diagnostic: Trellis runtime execution is blocked: Error: Initialization operation is incomplete or invalid; runtime execution is blocked. Run /trellis-init and choose Check to inspect this project; explicit initialization or reconciliation is required (no automatic migration).', display: false } ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

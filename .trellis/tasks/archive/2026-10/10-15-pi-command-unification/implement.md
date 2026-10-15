@@ -33,6 +33,12 @@
 
 未运行 lint/typecheck（无 scripts）、真实终端/在线模型。模板/hash/nav/doc 与 check/implement manifest 静态校验通过。局部 stage 提交排除所有并行 worktree/context/runtime 变更，extension 仅包含 runtimeDiagnostic 一行导航。
 
+## Stage 检查点
+
+已提交 `5d3b4e4`（20 个精确文件），包含产品、测试、用户指引、耦合模板/技能 hash 与任务材料。`extensions/trellis.ts` 只提交 runtimeDiagnostic 一行 Check 导航，其余并行 worktree 改动保留。独立审查通过、范围内回归通过；全量 467/468 的并行资源计数限制如上保留。
+
+指令统一实施完成；用户已接受并授权归档、随后继续查看原诊断任务。全量并行资源数量限制保留，不标整体全量 PASS；未授权部署/安装/reload/push。
+
 ## 待运行验证
 
 ```bash
