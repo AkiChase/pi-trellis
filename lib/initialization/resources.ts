@@ -23,7 +23,10 @@ function oldManifest(root: string): { manifest: InstalledManifest; raw: Buffer }
  const m=JSON.parse(raw.toString()) as InstalledManifest;
  const expected=packageResources(), templates=defaultTemplates();
  if (!m || m.schemaVersion!==2 || !/^pi-trellis-runtime-v1-[a-f0-9]{64}$/.test(m.runtimeReleaseId) || !m.files || !m.templates || Object.keys(m).sort().join()!==["files","runtimeReleaseId","schemaVersion","templates"].sort().join()) throw new Error("Invalid managed project manifest");
- if (Object.keys(m.files).sort().join()!==Object.keys(expected).sort().join() || Object.keys(m.templates).sort().join()!==Object.keys(templates).sort().join()) throw new Error("Unsupported resource inventory; explicit reconciliation is required");
+ // Older releases may predate package-added managed files; those rows are absent and planned as new resources.
+ // Unknown/removed entries, any gap within the current release, and template inventory changes remain unsupported.
+ const added=Object.keys(expected).filter(path=>!Object.hasOwn(m.files,path));
+ if (Object.keys(m.files).some(path=>!Object.hasOwn(expected,path)) || added.length && m.runtimeReleaseId===runtimeBaseline().releaseId || Object.keys(m.templates).sort().join()!==Object.keys(templates).sort().join()) throw new Error("Unsupported resource inventory; explicit reconciliation is required");
  for(const [path,r] of Object.entries(m.files)) {
   const e=expected[path]; if(!r || Object.keys(r).sort().join()!==["sha256","mode","kind","source"].sort().join() || r.source!==e.source || r.kind!==e.kind || !/^[a-f0-9]{64}$/.test(r.sha256) || !Number.isInteger(r.mode) || r.mode<0 || r.mode>0o777) throw new Error(`Invalid resource ownership: ${path}`);
  }
@@ -131,7 +134,7 @@ export function templatePlan(rootInput: string, scope: TemplateScope): TemplateP
  const { manifest: old, raw } = oldManifest(root), expected = packageResources();
  if (old.runtimeReleaseId !== runtimeBaseline().releaseId || Object.entries(expected).some(([path, want]) =>
   want.kind === "runtime" && (!equal(stamp(root, path), want) || Object.keys(want).some(key => old.files[path][key as keyof typeof want] !== want[key as keyof typeof want])))) {
-  throw new Error("Update project resources before applying a template; current unmodified runtime required");
+  throw new Error("Run Update resources before Apply template; a current, unmodified runtime is required");
  }
  const defaults = defaultTemplates(), manifest: InstalledManifest = JSON.parse(JSON.stringify(old));
  const rows: TemplatePlan["rows"] = [], changes: Change[] = [], guards: TemplatePlan["guards"] = {};

@@ -43,7 +43,7 @@ test('supported static report is short, no normal hashes/file inventory and no r
  const f=fixture(t,true);f.pointer(f.task());assert.ok(verifyRuntime(f.root));const before=snapshot(f.root),g=guards(t,{forbidden:[join(f.root,'.trellis/.runtime/sessions'),join(f.root,'.trellis/tasks')]});
  const r=f.check(),report=formatDiagnostics(r);g.restore();
  assert.equal(item(r,'package').status,'pass');assert.equal(item(r,'manifest').status,'pass');assert.equal(item(r,'inventory:runtime').status,'pass');assert.equal(item(r,'documents').status,'pass');assert.equal(item(r,'current-task'),undefined);assert.doesNotMatch(report,/current task|session/i);assert.match(report,/Scope: Trellis deployment in this project/);
- assert.equal(item(r,'runtime-probe').status,'blocked');assert.equal(item(r,'effective-config').status,'skipped');assert.equal(item(r,'worktree-probe'),undefined);assert.doesNotMatch(report,/All checks passed|allHealthy|[a-f0-9]{64}|scripts\/task\.py/);assert.ok(Buffer.byteLength(report)<5000);assert.equal(report.match(/Trellis Check ·/g).length,1);assert.deepEqual(g.calls,[]);assert.deepEqual(snapshot(f.root),before);
+ assert.equal(item(r,'runtime-probe').status,'blocked');assert.equal(item(r,'effective-config').status,'skipped');assert.equal(item(r,'worktree-probe'),undefined);assert.doesNotMatch(report,/All checks passed|allHealthy|[a-f0-9]{64}|scripts\/task\.py/);assert.ok(Buffer.byteLength(report)<5000);assert.equal(report.match(/Check project ·/g).length,1);assert.deepEqual(g.calls,[]);assert.deepEqual(snapshot(f.root),before);
 });
 
 test('fresh project stops at nearest Git and does not report every missing runtime file',t=>{
@@ -90,7 +90,7 @@ test('package descriptor malformed source inventory is separate from project err
 test('cooperative cancelled input and bounded formatter retain honest omission/runtime boundaries',t=>{
  const f=fixture(t,true),controller=new AbortController();controller.abort();const r=collectDiagnostics({cwd:f.root},{signal:controller.signal});assert.ok(r.items.some(i=>i.status==='cancelled'));assert.match(formatDiagnostics(r),/Cancelled/);
  const item={id:'bad',category:'configuration',status:'issue',severity:'error',summary:'bad\x1b[31m\n'+ '字'.repeat(500),evidence:['字'.repeat(500)],impact:'字'.repeat(500),advice:'字'.repeat(500)};
- const report=formatDiagnostics({...r,items:Array.from({length:64},()=>item),omitted:2});assert.ok(Buffer.byteLength(report)<=DIAGNOSTIC_LIMITS.report);assert.match(report,/omitted by the report budget/);assert.match(report,/no execution probe/);assert.doesNotMatch(report,/\x1b/);
+ const report=formatDiagnostics({...r,items:Array.from({length:64},()=>item),omitted:2});assert.ok(Buffer.byteLength(report)<=DIAGNOSTIC_LIMITS.report);assert.match(report,/omitted by the report budget/);assert.match(report,/Read-only: no files were changed/);assert.doesNotMatch(report,/\x1b/);
 });
 
 for(const mutation of [m=>{m.schemaVersion=1;},m=>{delete m.files['.trellis/scripts/task.py'];},m=>{m.files['.trellis/scripts/evil.py']=m.files['.trellis/scripts/task.py'];delete m.files['.trellis/scripts/task.py'];},m=>{m.files['.trellis/scripts/task.py'].source='../victim';},m=>{m.templates['.trellis/workflow.md'].origin='preserved-project';m.templates['.trellis/workflow.md'].source={kind:'project-snapshot',revision:'/victim'};},m=>{m.extra=true;}])test('static manifest projection rejects strict engine provenance attack without authorizing execution',t=>{
@@ -121,7 +121,7 @@ test('package runtime byte drift is detected separately through the bounded desc
 test('menu Check discovers project root from a subdirectory and preserves pointers/index/config/modes without reading session state',async t=>{
  const f=fixture(t,true),ref=f.task();f.pointer(ref,'caller-key');f.put('.git/index',Buffer.from([9,0,255]));f.put('.pi/settings.json','{}');const sub=join(f.root,'src');mkdirSync(sub);let command;const notices=[];
  registerInitCommand({registerCommand:(_n,v)=>command=v},async()=>assert.fail('refresh forbidden'));
- const before=snapshot(f.root),g=guards(t,{allowDiagnostic:true,forbidden:[join(f.root,'.trellis/.runtime/sessions'),join(f.root,'.trellis/tasks')]});await command.handler('',{cwd:sub,hasUI:true,sessionManager:{getSessionId:()=>assert.fail('no session identity')},reload:()=>assert.fail('reload forbidden'),ui:{select:async()=> 'Check',notify:text=>notices.push(text)}});g.restore();assert.equal(notices.length,1);assert.match(notices[0],/Project: /);assert.doesNotMatch(notices[0],/Current task/);assert.deepEqual(g.calls,[]);assert.deepEqual(snapshot(f.root),before);
+ const before=snapshot(f.root),g=guards(t,{allowDiagnostic:true,forbidden:[join(f.root,'.trellis/.runtime/sessions'),join(f.root,'.trellis/tasks')]});await command.handler('',{cwd:sub,hasUI:true,sessionManager:{getSessionId:()=>assert.fail('no session identity')},reload:()=>assert.fail('reload forbidden'),ui:{select:async()=> 'Check project',notify:text=>notices.push(text)}});g.restore();assert.equal(notices.length,1);assert.match(notices[0],/Project: /);assert.doesNotMatch(notices[0],/Current task/);assert.deepEqual(g.calls,[]);assert.deepEqual(snapshot(f.root),before);
 });
 
 test('cancellation during fixed inventory never leaves a passed inventory item or escapes collector',t=>{
@@ -171,12 +171,12 @@ test('formatter identifies omitted categories without leaking category controls'
  const report=formatDiagnostics({...r,items:Array.from({length:64},()=>row)});assert.ok(Buffer.byteLength(report)<=DIAGNOSTIC_LIMITS.report);assert.match(report,/Omitted categories: secret-category/);assert.doesNotMatch(report,/\u202e/);
 });
 
-test('parent lifecycle wrapper may suppress stale Check report without extra UI or writes',async t=>{const f=fixture(t,true);let command,calls=0,notices=0;registerInitCommand({registerCommand:(_name,v)=>command=v},async()=>assert.fail('refresh'),async(_ctx,scope)=>{calls++;assert.deepEqual(Object.keys(scope).sort(),['cwd','isProjectTrusted']);return undefined;});await command.handler('',{cwd:f.root,hasUI:true,ui:{select:async()=> 'Check',notify:()=>notices++}});assert.equal(calls,1);assert.equal(notices,0);});
+test('parent lifecycle wrapper may suppress stale Check report without extra UI or writes',async t=>{const f=fixture(t,true);let command,calls=0,notices=0;registerInitCommand({registerCommand:(_name,v)=>command=v},async()=>assert.fail('refresh'),async(_ctx,scope)=>{calls++;assert.deepEqual(Object.keys(scope).sort(),['cwd','isProjectTrusted']);return undefined;});await command.handler('',{cwd:f.root,hasUI:true,ui:{select:async()=> 'Check project',notify:()=>notices++}});assert.equal(calls,1);assert.equal(notices,0);});
 
 test('production Check lifecycle cancels stale runs before publishing reports',async t=>{
  const f=fixture(t,true),commands=new Map(),events=new Map(),notices=[];
  trellis({registerCommand:(name,value)=>commands.set(name,value),registerTool:()=>{},on:(name,value)=>events.set(name,value),events:{on:()=>()=>{},emit:()=>{}},sendMessage:()=>{}});
- const ctx={cwd:f.root,hasUI:true,sessionManager:{getSessionId:()=> 'lifecycle-'+f.root,getSessionFile:()=>undefined},ui:{select:async()=> 'Check',notify:text=>notices.push(text)}};
+ const ctx={cwd:f.root,hasUI:true,sessionManager:{getSessionId:()=> 'lifecycle-'+f.root,getSessionFile:()=>undefined},ui:{select:async()=> 'Check project',notify:text=>notices.push(text)}};
  const handler=commands.get('trellis-init').handler;
  const first=handler('',ctx);await events.get('session_shutdown')({},ctx);await first;assert.equal(notices.length,0,'shutdown suppresses old report');
  await events.get('session_start')({},ctx);notices.length=0;

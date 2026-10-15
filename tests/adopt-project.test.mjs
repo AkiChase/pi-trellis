@@ -77,14 +77,14 @@ test('concurrent preserved-template edit during publication leaves manifest unpu
 
 test('counted adoption confirmation retains scope/preservation/destructive warnings without a full-list Check promise',t=>{
  const f=fixture(t),value=adoptPlan(f.root),dialog=adoptionDialog(value);
- assert.match(dialog,/Project:/);assert.match(dialog,/Scope: package runtime, roles, managed root blocks/);assert.match(dialog,/Replace: \d+/);assert.match(dialog,/Preserve: \d+/);
- assert.match(dialog,/without backups/);assert.match(dialog,/Nothing is deleted/);assert.match(dialog,/workflow, config, spec, tasks, journals and identity are preserved/);assert.match(dialog,/No automatic rollback/);
+ assert.match(dialog,/^Confirm · Adopt project\nProject:/);assert.match(dialog,/Replace \d+/);assert.match(dialog,/Preserve \d+/);
+ assert.match(dialog,/Backup: +none — runtime scripts, roles and managed root blocks are replaced; nothing is deleted/);assert.match(dialog,/Keeps: +workflow, config, spec, tasks, journals and identity/);
  assert.doesNotMatch(dialog,/--check|Full per-path list/);assert.ok(dialog.split('\n').length<=14);
  const large=adoptionDialog({...value,rows:Array.from({length:1000},(_,i)=>({state:i%2?'Replace':'Install',path:`path-${i}`})),legacy:Array.from({length:300},(_,i)=>`legacy-${i}`)});
- assert.match(large,/Install: 500.*Replace: 500/);assert.match(large,/Legacy — left in place: 300 paths/);assert.match(large,/without backups/);assert.ok(large.split('\n').length<=14);
+ assert.match(large,/Install 500 · Replace 500/);assert.match(large,/Legacy: +300 paths left in place/);assert.match(large,/Backup: +none/);assert.ok(large.split('\n').length<=14);
 });
 
 test('adoption dialog renders multiline/control roots on one line without hiding no-backup warning',t=>{
  const f=fixture(t),value=adoptPlan(f.root);value.root+="\n".repeat(40)+'\x1b[31m';const dialog=adoptionDialog(value);
- assert.ok(dialog.split('\n').length<=14);assert.match(dialog,/without backups/);assert.match(dialog,/workflow, config, spec, tasks, journals and identity are preserved/);assert.doesNotMatch(dialog,/\x1b/);
+ assert.ok(dialog.split('\n').length<=14);assert.match(dialog,/Backup: +none/);assert.match(dialog,/Keeps: +workflow, config, spec, tasks, journals and identity/);assert.doesNotMatch(dialog,/\x1b/);
 });

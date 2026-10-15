@@ -78,11 +78,12 @@ const ADOPTION_NOTES = ["Runtime scripts, roles and managed root blocks are repl
 export function adoptionDialog(value: AdoptPlan): string {
  const counts = new Map<string, number>();
  for (const row of value.rows) counts.set(row.state, (counts.get(row.state) ?? 0) + 1);
- return [`Adopt existing project`, `Project: ${value.root.replace(/[\p{C}\p{Zl}\p{Zp}]/gu, char => `\\u{${char.codePointAt(0)!.toString(16)}}`)}`,
-  "Scope: package runtime, roles, managed root blocks and missing default templates",
-  [...counts].map(([state, count]) => `${state}: ${count}`).join("  "),
-  `Legacy — left in place: ${value.legacy.length} path${value.legacy.length === 1 ? "" : "s"}`,
-  ...ADOPTION_NOTES, "No automatic rollback; partial files are preserved on failure."].join("\n");
+ const field = (key: string, text: string) => `${(key + ":").padEnd(11)}${text}`;
+ return ["Confirm · Adopt project", field("Project", value.root.replace(/[\p{C}\p{Zl}\p{Zp}]/gu, char => `\\u{${char.codePointAt(0)!.toString(16)}}`)),
+  field("Changes", [...counts].map(([state, count]) => `${state} ${count}`).join(" · ") || "none"),
+  field("Keeps", "workflow, config, spec, tasks, journals and identity"),
+  field("Backup", "none — runtime scripts, roles and managed root blocks are replaced; nothing is deleted"),
+  field("Legacy", `${value.legacy.length} path${value.legacy.length === 1 ? "" : "s"} left in place`)].join("\n");
 }
 export function applyAdoptPlan(value: AdoptPlan, options: { afterWrite?: (path: string) => void } = {}) {
  const fresh = adoptPlan(value.root);

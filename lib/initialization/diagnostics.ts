@@ -144,8 +144,11 @@ function manifestEnvelope(value: unknown): asserts value is InstalledManifest {
 function manifestSnapshot(value: unknown, pkg: PackageSnapshot): InstalledManifest {
 	manifestEnvelope(value);
 	if (value.schemaVersion !== 2 || typeof value.runtimeReleaseId !== "string" || !/^pi-trellis-runtime-v1-[a-f0-9]{64}$/.test(value.runtimeReleaseId) || value.runtimeReleaseId.length !== 86 || !object(value.files) || !object(value.templates)) throw Error("Invalid managed project manifest");
-	if (Object.keys(value.files).length !== Object.keys(pkg.files).length || Object.keys(value.templates).length !== Object.keys(pkg.templates).length) throw Error("Incomplete or unknown managed resource entries");
+	// An older release may lack rows for package-added files; the current release must match exactly.
+	const older = value.runtimeReleaseId !== pkg.release;
+	if (Object.keys(value.files).some(path => !Object.hasOwn(pkg.files, path)) || !older && Object.keys(value.files).length !== Object.keys(pkg.files).length || Object.keys(value.templates).length !== Object.keys(pkg.templates).length) throw Error("Incomplete or unknown managed resource entries");
 	for (const [path, expected] of Object.entries(pkg.files)) {
+		if (older && !Object.hasOwn(value.files, path)) continue;
 		const row = value.files[path]; fields(row, ["sha256", "mode", "kind", "source"], "project resource entry");
 		if (!hash(row.sha256) || !mode(row.mode) || row.source !== expected.source || row.kind !== expected.kind) throw Error(`Invalid resource provenance: ${path}`);
 		if (value.runtimeReleaseId === pkg.release && (row.sha256 !== expected.sha256 || row.mode !== expected.mode)) throw Error(`Malformed project resource provenance: ${path}`);
@@ -233,12 +236,12 @@ export function collectDiagnostics(scope: DiagnosticScope, options: { signal?: A
 		}, "Lock ownership is unknown; no lock was removed.", "Inspect the existing lock; an invalid lock does not authorize recovery.");
 		attempt("marker", "project", ".trellis/.runtime/pi-trellis/binding.json", () => {
 			result.facts.managedMarker = !!reader.stat(root!, ".trellis/.runtime/pi-trellis/binding.json");
-			if (result.facts.managedMarker) add("marker", "project", "issue", "This directory is a managed task worktree checkout", [".trellis/.runtime/pi-trellis/binding.json"], "Check reports the deployment of the source project; runtime probes are skipped here.", "Run Check from the source project checkout.", "warning");
-		}, "Managed checkout marker could not be read safely.", "Run Check from the source project checkout.");
+			if (result.facts.managedMarker) add("marker", "project", "issue", "This directory is a managed task worktree checkout", [".trellis/.runtime/pi-trellis/binding.json"], "Check reports the deployment of the source project; runtime probes are skipped here.", "Run /trellis-init → Check project from the source project checkout.", "warning");
+		}, "Managed checkout marker could not be read safely.", "Run /trellis-init → Check project from the source project checkout.");
 		let raw: unknown;
 		attempt("manifest", "resources", MANIFEST, () => {
 			raw = reader.json(root!, MANIFEST);
-			if (raw === undefined) { add("manifest", "resources", result.facts.project === "fresh" ? "skipped" : "issue", result.facts.project === "fresh" ? "No manifest: project is not initialized" : "No managed project manifest", [MANIFEST], "No project code is authorized.", "Use /trellis-init; review and explicitly confirm Initialize project or Adopt existing project."); return; }
+			if (raw === undefined) { add("manifest", "resources", result.facts.project === "fresh" ? "skipped" : "issue", result.facts.project === "fresh" ? "No manifest: project is not initialized" : "No managed project manifest", [MANIFEST], "No project code is authorized.", "Use /trellis-init; review and explicitly confirm Initialize project or Adopt project."); return; }
 			manifestEnvelope(raw);
 			if (!pkg) { add("manifest", "resources", "blocked", "Manifest provenance blocked by package validation", [MANIFEST], "Only its envelope was checked; no execution authorization.", "Review the package error first."); return; }
 			result.facts.manifest = manifestSnapshot(raw, pkg);
@@ -321,8 +324,8 @@ export function formatDiagnostics(result: DiagnosticResult): string {
 	const passed = result.items.filter(i => i.status === "pass"), categories = [...new Set(passed.map(i => clean(i.category, 32)))];
 	const runtime = result.items.some(i => i.id === "python");
 	const title = result.items.some(i => i.status === "cancelled") ? "Cancelled" : issues.length ? "Issues found" : incomplete.length ? runtime ? "Checks completed · some capabilities unverified" : "Static checks completed · probes not completed" : runtime ? "Checks completed" : "Static checks completed";
-	const lines = [`Trellis Check · ${title}`, `Project: ${clean(result.scope.executionRoot ?? result.scope.cwd, 1000)}`, "Scope: Trellis deployment in this project", `Completed ${runtime ? "bounded" : "static"} items: ${passed.length} (${clean(categories.join(", "), 256) || "none"})`, `Issues: ${issues.length}; not completed/not applicable: ${incomplete.length}`, ...passed.filter(i => i.id === "developer" || i.id === "project").map(i => clean(i.summary))];
-	const footer = "Read-only: no files changed, hooks, model calls, lifecycle actions, refresh or reload.\n" + (runtime ? "Bounded worker/deployed-source probes; loaded host resources remain unverified. Not an OS sandbox." : "Static collector only: bounded reads, no execution probe. Not an OS sandbox.");
+	const lines = [`Check project · ${title}`, `Project: ${clean(result.scope.executionRoot ?? result.scope.cwd, 1000)}`, "Scope: Trellis deployment in this project", `Completed ${runtime ? "bounded" : "static"} items: ${passed.length} (${clean(categories.join(", "), 256) || "none"})`, `Issues: ${issues.length}; not completed/not applicable: ${incomplete.length}`, ...passed.filter(i => i.id === "developer" || i.id === "project").map(i => clean(i.summary))];
+	const footer = "Read-only: no files were changed.";
 	let omitted = result.omitted;
 	const omittedCategories = new Set((result.omittedCategories ?? []).slice(0, 16).map(c => clean(c, 32)));
 	for (const item of [...issues, ...incomplete]) {
