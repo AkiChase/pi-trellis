@@ -172,6 +172,39 @@ class NativeContracts(unittest.TestCase):
             with self.assertRaises(ValueError): collectible(self.task, label)
         collectible(self.task, self.task+'/research/report.md')
 
+    def test_collection_research_markdown_and_evidence_format_matrix(self):
+        for suffix in ('.md', '.MD'):
+            collectible(self.task, self.task + '/research/topic' + suffix)
+        for suffix in ('.md', '.txt', '.json', '.jsonl', '.csv', '.log'):
+            with self.subTest(suffix=suffix):
+                collectible(self.task, self.task + '/evidence/report' + suffix)
+                if suffix != '.md':
+                    with self.assertRaisesRegex(ValueError, r'Markdown.*evidence/'):
+                        collectible(self.task, self.task + '/research/topic' + suffix)
+        for directory in ('research', 'evidence'):
+            for suffix in ('.py', '.mjs', '.sh', '.png', ''):
+                with self.assertRaises(ValueError):
+                    collectible(self.task, self.task + '/' + directory + '/output' + suffix)
+        for name in ('prd.md', 'design.md', 'implement.md', 'implement.jsonl', 'check.jsonl'):
+            collectible(self.task, self.task + '/' + name)
+        for directory in ('research', 'evidence'):
+            for name in ('credentials.md', 'secret.md', 'password.md', 'private-key.md'):
+                with self.assertRaisesRegex(ValueError, 'Credential/environment'):
+                    collectible(self.task, self.task + '/' + directory + '/' + name)
+
+    def test_historical_research_formats_remain_readable_in_material_graph(self):
+        paths = [self.task + '/research/history' + suffix for suffix in ('.txt', '.json', '.jsonl', '.csv', '.log')]
+        for path in paths:
+            self.put(path, 'historical text')
+        manifest = json.dumps({'file': self.task + '/research', 'type': 'directory'})
+        self.put(self.task + '/implement.jsonl', manifest)
+        self.put(self.task + '/check.jsonl', manifest)
+        graph = material_graph(self.root, self.task)
+        for path in paths:
+            self.assertIn(path, graph['hashes'])
+            self.assertEqual(MaterialView(self.root, self.task).data(path), b'historical text')
+            self.assertEqual((self.root / path).read_text(), 'historical text')
+
     def test_task_local_alias_and_impossible_overlay_ancestors(self):
         task_dir = self.root / self.task
         alias = self.root / '.trellis/tasks/other'

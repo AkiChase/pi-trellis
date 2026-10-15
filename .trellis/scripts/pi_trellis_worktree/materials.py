@@ -618,8 +618,13 @@ def refresh_plan(b):
 def collectible(task, label):
     local = label.removeprefix(task + '/')
     fixed = {'prd.md', 'design.md', 'implement.md', 'implement.jsonl', 'check.jsonl'}
-    # Evidence is textual documentation, not arbitrary code/environment files.
-    if local not in fixed and not (local.startswith(('research/', 'evidence/')) and Path(local).suffix.lower() in ('.md', '.txt', '.json', '.jsonl', '.csv', '.log')):
+    # Collection format policy does not restrict reading historical references.
+    suffix = Path(local).suffix.lower()
+    if local.startswith('research/') and suffix != '.md':
+        raise ValueError('Research collection requires Markdown (.md); store non-research evidence under evidence/: ' + label)
+    research = local.startswith('research/') and suffix == '.md'
+    evidence = local.startswith('evidence/') and suffix in ('.md', '.txt', '.json', '.jsonl', '.csv', '.log')
+    if local not in fixed and not (research or evidence):
         raise ValueError('Not a collectible task document/evidence path: ' + label)
     if any(token in Path(local).name.lower() for token in ('credential', 'secret', 'password', '.env', 'private-key')):
         raise ValueError('Credential/environment file is not collectible: ' + label)

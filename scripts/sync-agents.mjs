@@ -37,6 +37,8 @@ export function adaptAgent(role, source) {
 - Work only on this task's approved scope. Do not revert unrelated user or concurrent changes.
 - Only the main session manages task lifecycle: do not run task.py start/finish/archive or add_session.py.
 - Do not commit, push, merge, switch/create branches, or clean/reset the checkout. Preserve the working directory for review.
+- Persist optional implementation/review reports and retained verification evidence under the current task's \`evidence/\`, never \`research/\`. Short results may be recorded directly in planning artifacts; keep temporary execution files in temporary directories and link evidence instead of duplicating reports.
+- \`research/\` is reserved for research-agent findings. Report historical misclassification without moving, deleting, renaming files or repairing references without separate approval.
 - Tool allowlists and these instructions prevent common mistakes; they are not an OS sandbox.
 
 ${guard}`);
@@ -53,6 +55,11 @@ ${guard}`);
     text = replace(text, "## Core Principle", `## Pi Tools and Task Ownership
 
 Use read/find/grep/bash for local research and write for findings. Pi loads skills via read of a discovered SKILL.md; there is no built-in Skill tool. Only call external search/MCP tools actually available in this session. The inherited extension tool set is not restricted by the built-in tools list; obey this role's write scope for those tools too. If external access is unavailable, persist local findings and clearly report that external research was not performed.
+
+Research output is limited to your own Markdown findings under \`{TASK_DIR}/research/\`.
+This directory is not a general attachment store: do not put implementation summaries, progress or authorization
+records, review reports, test logs, screenshots or temporary scripts there. Include the requested query, scope,
+references and caveats using the existing research format. Do not clean up historical task materials.
 
 Do not spawn implement/check yourself; recommend them to the main agent. Do not run task lifecycle or session-recording commands. These role limits are not a shell sandbox.
 

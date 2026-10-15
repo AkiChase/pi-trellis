@@ -67,6 +67,17 @@ Run relevant focused checks, plus project lint, type-check and broader tests acc
 
 > "If I fixed a bug or discovered something non-obvious, should I document it so future me won't hit the same issue?" → If YES, update the relevant spec doc.
 
+### Task Material Boundaries
+
+- [ ] New `research/` files are research-agent findings, not implementation summaries, progress/authorization records, review reports, test logs, screenshots or temporary scripts?
+- [ ] Implement/check/main-session reports use `evidence/`, never `research/`?
+- [ ] Retained evidence has review value, without redundant reports, temporary execution files or sensitive data?
+- [ ] Planning artifacts link evidence instead of repeatedly copying whole reports? Short results may be recorded directly; separate reports are optional.
+- [ ] Historical misclassification is reported without moving, deleting, renaming files or repairing references without separate approval?
+
+Collection format checks do not prove authorship or research semantics. Review the actual new materials;
+keep temporary files in temporary directories, and follow the project workflow's material classification.
+
 ### Scope Discipline
 
 - [ ] Any tidying of code the task did not require?

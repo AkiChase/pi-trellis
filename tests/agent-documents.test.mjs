@@ -61,6 +61,31 @@ test("research persists output, resolves dispatch task first, and reports unavai
   assert.match(text, /do not spawn it yourself/);
   assert.match(text, /### External References/);
 });
+test('task material rules reserve research for findings and keep optional evidence separate', () => {
+ const text = read('resources/templates/workflow.md');
+ assert.match(text, /Research findings persisted by the research agent only/);
+ assert.match(text, /main session must not write their own reports into `research\/`/);
+ assert.match(text, /Reports are optional/);
+ assert.match(text, /Read-only exploration without a task/);
+ assert.match(text, /historical reference reads remain supported/);
+ assert.match(text, /not author authentication or semantic classification/);
+ const check = read('skills/trellis-check/SKILL.md');
+ assert.match(check, /### Task Material Boundaries/);
+ assert.match(check, /Historical misclassification is reported/);
+ assert.match(check, /Collection format checks do not prove authorship/);
+ for (const role of ['implement', 'check']) {
+  const text = agent(role).text;
+  assert.match(text, /evidence\//);
+  assert.match(text, /never `research\/`/);
+  assert.match(text, /Short results may be recorded directly/);
+  assert.match(text, /without separate approval/);
+ }
+ const research = agent('research').text;
+ assert.match(research, /your own Markdown findings/);
+ assert.match(research, /test logs, screenshots or temporary scripts/);
+ assert.match(research, /Do not clean up historical task materials/);
+});
+
 test("adaptation rejects unreviewed upstream drift", () => {
   assert.throws(() => adaptAgent("implement", "unreviewed upstream text"), /anchor/);
 });

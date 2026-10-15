@@ -16,6 +16,34 @@ well-scoped work; delegate when it meaningfully reduces context load, enables in
 
 ## Planning Artifacts
 
+### Task Material Boundaries
+
+| Path | Purpose |
+| --- | --- |
+| `prd.md` | Goals, scope, acceptance criteria and authorization boundaries |
+| `design.md` | Design decisions, interfaces and trade-offs |
+| `implement.md` | Implementation stages, progress, commit checkpoints and evidence links |
+| `research/*.md` | Research findings persisted by the research agent only |
+| `evidence/` | Useful implementation, review, test and acceptance evidence |
+| Role JSONL | Curated context references, not reports or logs |
+
+`research/` is not a general task attachment directory. Do not write implementation summaries,
+progress or authorization records, review reports, test logs, screenshots or temporary scripts there.
+Implement/check agents and the main session must not write their own reports into `research/`.
+The main session verifies research findings and integrates adopted conclusions into design/planning artifacts;
+its own task analysis belongs in those artifacts, with retained supporting evidence under `evidence/`.
+Read-only exploration without a task still requires neither task creation nor persistence.
+
+Persist only evidence worth retaining for review; `evidence/` is not an arbitrary attachment store either.
+Reports are optional: short results may go directly into the PRD or implementation record.
+Keep temporary execution files in temporary directories, and link retained evidence instead of duplicating reports.
+These rules govern new outputs. Do not move, delete, rename or repair references in historical tasks without
+separate approval; report historical misclassification without automatically cleaning it up.
+Collection accepts Markdown only under `research/` and the existing textual evidence formats under `evidence/`.
+This is a format boundary, not author authentication or semantic classification; historical reference reads remain supported.
+
+### Planning and Dispatch Context
+
 Lightweight tasks may use a PRD alone; complex tasks need `prd.md`, `design.md`, `implement.md`.
 For multi-stage implementation, identify independently verifiable stages and commit checkpoints in `implement.md`;
 a lightweight single-stage task can record its checkpoint in the PRD. Record any explicit no-commit instruction.

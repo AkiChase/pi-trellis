@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "runtimeReleaseId": "pi-trellis-runtime-v1-30ce60cc6cacb83752a231ded3730d578aec69deecf065dc62f141f6ff5eede9",
+  "runtimeReleaseId": "pi-trellis-runtime-v1-9ba397e06aa3c7ef234e9c54bd8a5cd04a0f903a043fc7d1e60d493c58c36467",
   "files": {
     ".trellis/scripts/add_session.py": {
       "sha256": "432c29b3adcd3510f86b63803f6ecefc3901f3ee623ffda3e0b693ad83ca730c",
@@ -165,7 +165,7 @@
       "source": "runtime/pi_trellis_worktree/records.py"
     },
     ".trellis/scripts/pi_trellis_worktree/materials.py": {
-      "sha256": "1e51edfbed879dd5334c01f891bac1a7ffb61ad04df647f8afb2d2a1bc86f428",
+      "sha256": "28f466b1f49aabdec103f5df39dfb60a161db4556a6e9453e386b5b265b8549f",
       "mode": 420,
       "kind": "runtime",
       "source": "runtime/pi_trellis_worktree/materials.py"
@@ -195,19 +195,19 @@
       "source": "runtime/common/task_records.py"
     },
     ".pi/agents/trellis-implement.md": {
-      "sha256": "986ea4a4df6da8da0eae02c149c85bd540c8cbbf2201ca28dcbc830b0a1c1db2",
+      "sha256": "25607b9b6557a1b1fbb907882b79a69dd5e784996421d0571ba33652a846361b",
       "mode": 420,
       "kind": "agent",
       "source": "agents/trellis-implement.md"
     },
     ".pi/agents/trellis-check.md": {
-      "sha256": "11274ee858db08c589b58bcc838d94debc5ca3b9bbdcbbfc1aa338c8860281c2",
+      "sha256": "867f8af5f5a15c9d05af6c72c3bf92db4bbd848ded0f61e519d808cc2db52105",
       "mode": 420,
       "kind": "agent",
       "source": "agents/trellis-check.md"
     },
     ".pi/agents/trellis-research.md": {
-      "sha256": "5247a7012d7f7f51d32e79ac5b7076b7e8126ba3509751786742a146e7ddcc94",
+      "sha256": "ba98b996010a0fc34a89a49235ab9df96eee1dd8c959f07e9774abf598d0ea6e",
       "mode": 420,
       "kind": "agent",
       "source": "agents/trellis-research.md"
@@ -215,10 +215,13 @@
   },
   "templates": {
     ".trellis/workflow.md": {
-      "origin": "package-default",
-      "sha256": "a893fd998a8342f271423c045d0b7e5508110f21b4aee94c9dd2e3a62e3bbe48",
+      "origin": "preserved-project",
+      "sha256": "dc0d7868806fb291d3b025e4d0d519652fd5c4ada4bea931f3caa51f3f10cd63",
       "mode": 420,
-      "source": "resources/templates/workflow.md"
+      "source": {
+        "kind": "project-snapshot",
+        "revision": null
+      }
     },
     ".trellis/config.yaml": {
       "origin": "preserved-project",

@@ -272,8 +272,8 @@
       "sourcePath": "python/pi_trellis_worktree/materials.py",
       "sourceSha256": "1e51edfbed879dd5334c01f891bac1a7ffb61ad04df647f8afb2d2a1bc86f428",
       "license": "MIT",
-      "sha256": "1e51edfbed879dd5334c01f891bac1a7ffb61ad04df647f8afb2d2a1bc86f428",
-      "modified": false,
+      "sha256": "28f466b1f49aabdec103f5df39dfb60a161db4556a6e9453e386b5b265b8549f",
+      "modified": true,
       "sourceRevision": "9af75d2f52f78ee932bb31563cc29fe7ce5a9b73"
     },
     "pi_trellis_worktree/__init__.py": {
@@ -312,6 +312,6 @@
       "modified": true
     }
   },
-  "releaseId": "pi-trellis-runtime-v1-30ce60cc6cacb83752a231ded3730d578aec69deecf065dc62f141f6ff5eede9",
+  "releaseId": "pi-trellis-runtime-v1-9ba397e06aa3c7ef234e9c54bd8a5cd04a0f903a043fc7d1e60d493c58c36467",
   "projectSourceRevision": "9af75d2f52f78ee932bb31563cc29fe7ce5a9b73"
 }

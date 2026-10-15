@@ -53,6 +53,6 @@ Online models, third-party original-package compatibility, physical IME and arbi
 
 In finally, request normal quit from the owned CLI and verify the CLI and owned children actually exit. If needed, TERM/KILL only verified test PIDs/process groups; stale PIDs do not authorize signals. Stop the unique test server and delete only self-created temporary configuration.
 
-Report residual processes, timeouts and cleanup failures. Closing a panel or terminal status is not OS-level exit. Keep bounded evidence in the task research directory; this guide does not accumulate historical PASS counts.
+Report residual processes, timeouts and cleanup failures. Closing a panel or terminal status is not OS-level exit. Keep bounded evidence in the current task's `evidence/` directory; this guide does not accumulate historical PASS counts.
 
 Before reusing a historical fixture, read its failure notes, launch flags and versions. Neighbor-project results are not pi-trellis acceptance evidence. General environment/reporting rules are in [testing guidelines](index.md).

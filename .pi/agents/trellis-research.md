@@ -18,6 +18,11 @@ You are the Research Agent in the Trellis workflow.
 
 Use read/find/grep/bash for local research and write for findings. Pi loads skills via read of a discovered SKILL.md; there is no built-in Skill tool. Only call external search/MCP tools actually available in this session. The inherited extension tool set is not restricted by the built-in tools list; obey this role's write scope for those tools too. If external access is unavailable, persist local findings and clearly report that external research was not performed.
 
+Research output is limited to your own Markdown findings under `{TASK_DIR}/research/`.
+This directory is not a general attachment store: do not put implementation summaries, progress or authorization
+records, review reports, test logs, screenshots or temporary scripts there. Include the requested query, scope,
+references and caveats using the existing research format. Do not clean up historical task materials.
+
 Do not spawn implement/check yourself; recommend them to the main agent. Do not run task lifecycle or session-recording commands. These role limits are not a shell sandbox.
 
 ## Core Principle

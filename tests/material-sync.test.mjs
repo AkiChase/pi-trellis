@@ -67,6 +67,47 @@ test('collect explicit report is idempotent and does not accept unrelated source
  assert.ok((await f.op('status')).materials.sourceDrift.count);await assert.rejects(queryWorktree(f.root,f.task,true),/drift/);
 });
 
+test('collect separates research Markdown from evidence formats without touching rejected outputs',async t=>{
+ const f=await prepared(t), rejected=['txt','json','jsonl','csv','log'];
+ f.target('research/result.md','research findings');
+ for(const ext of rejected)f.target('research/result.'+ext,'keep research '+ext);
+ const evidence=['md',...rejected];
+ for(const ext of evidence)f.target('evidence/report.'+ext,'review evidence '+ext);
+ const before=readBinding(f.root,f.task).materials.snapshotId;
+ const pointer=readFileSync(join(f.b.worktreePath,'.trellis/.runtime/sessions',f.b.contextId+'.json'));
+ const preview=await f.op('collect',{confirm:false});
+ assert.ok(preview.candidates.paths.includes(f.task+'/research/result.md'));
+ for(const ext of rejected){
+  const path=f.task+'/research/result.'+ext;
+  assert.ok(!preview.candidates.paths.includes(path));
+  for(const confirm of [false,true])await assert.rejects(f.op('collect',{files:[path],confirm}),/Markdown.*evidence\//);
+  assert.equal(f.text('research/result.'+ext),'keep research '+ext);
+  assert.ok(!existsSync(join(f.root,path)));
+ }
+ assert.equal(readBinding(f.root,f.task).materials.snapshotId,before);
+ for(const ext of evidence)assert.ok(preview.candidates.paths.includes(f.task+'/evidence/report.'+ext));
+ const files=[f.task+'/research/result.md',...evidence.map(ext=>f.task+'/evidence/report.'+ext)];
+ await f.op('collect',{files});
+ for(const path of files)assert.equal(readFileSync(join(f.root,path),'utf8'),readFileSync(join(f.b.worktreePath,path),'utf8'));
+ for(const ext of rejected)assert.equal(f.text('research/result.'+ext),'keep research '+ext);
+ assert.deepEqual(readFileSync(join(f.b.worktreePath,'.trellis/.runtime/sessions',f.b.contextId+'.json')),pointer);
+ assert.equal(readBinding(f.root,f.task).preparationState,'ready');
+});
+
+test('historical research log remains a readable refresh input but cannot be collected',async t=>{
+ const f=fixture(t);f.put(f.task+'/research/history.log','old history');
+ for(const role of ['implement','check'])f.put(f.task+'/'+role+'.jsonl',JSON.stringify({file:f.task+'/research',type:'directory'}));
+ await f.run();await f.run({action:'prepare'});
+ const b=readBinding(f.root,f.task), path=f.task+'/research/history.log';
+ const target=()=>readFileSync(join(b.worktreePath,path),'utf8');
+ assert.equal(target(),'old history');assert.equal((await queryWorktree(f.root,f.task,true)).materials.sourceDrift.count,0);
+ f.put(path,'updated historical input');await f.run({action:'refresh'});assert.equal(target(),'updated historical input');
+ assert.ok(!(await f.run({action:'collect',confirm:false})).candidates.paths.includes(path));
+ await assert.rejects(f.run({action:'collect',files:[path]}),/Markdown.*evidence\//);
+ assert.equal(target(),'updated historical input');assert.equal(readFileSync(join(f.root,path),'utf8'),'updated historical input');
+ assert.equal(readBinding(f.root,f.task).preparationState,'ready');
+});
+
 test('collect bilateral/unknown conflicts, missing deletion, aliases, binary and hidden files preserve source',async t=>{
  const f=await prepared(t);f.source('research/topic.md','source edit');f.target('research/topic.md','target edit');await assert.rejects(f.op('collect',{files:[f.task+'/research/topic.md']}),/conflict/);assert.equal(readFileSync(join(f.root,f.task,'research/topic.md'),'utf8'),'source edit');
  f.source('research/new.md','unknown source');f.target('research/new.md','unknown target');await assert.rejects(f.op('collect',{files:[f.task+'/research/new.md']}),/conflict/);
